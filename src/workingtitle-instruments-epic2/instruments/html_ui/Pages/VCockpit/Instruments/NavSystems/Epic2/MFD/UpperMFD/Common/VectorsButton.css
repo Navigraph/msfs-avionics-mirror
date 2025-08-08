@@ -1,0 +1,35 @@
+.vectors-button {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  z-index: 2;
+}
+
+.flight-plan-list-section .vectors-button {
+  bottom: 70px;
+  left: 174px;
+  width: 100%;
+}
+
+.flight-plan-list-section.expanded .vectors-button {
+  bottom: 122px;
+}
+
+.map-container .vectors-button {
+  bottom: 80px;
+  left: 344px;
+}
+
+.vectors-button .button-wrapper {
+  display: flex;
+  justify-content: space-between;
+  width: 114px;
+  height: 48px;
+  line-height: 17px;
+  font-size: 20px;
+}
+
+.vectors-button .touch-button {
+  height: 100%;
+  width: 109px;
+}

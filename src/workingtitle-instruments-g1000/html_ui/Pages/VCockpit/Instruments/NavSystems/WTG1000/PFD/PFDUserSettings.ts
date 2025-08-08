@@ -28,6 +28,8 @@ export type PFDUserSettingTypes = {
   windOption: WindOverlaySettingMode;
   /** The pfd map layout setting. */
   mapLayout: PfdMapLayoutSettingMode;
+  /** The pathways toggle setting */
+  svtPathwaysShow: boolean;
   /** The SVT toggle setting. */
   svtToggle: boolean;
   /** The baro unit setting. */
@@ -61,6 +63,10 @@ export class PFDUserSettings {
       },
       {
         name: 'svtToggle',
+        defaultValue: true
+      },
+      {
+        name: 'svtPathwaysShow',
         defaultValue: true
       },
       {

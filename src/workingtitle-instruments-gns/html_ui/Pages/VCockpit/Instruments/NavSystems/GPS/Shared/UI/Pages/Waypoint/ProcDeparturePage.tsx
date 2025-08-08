@@ -25,6 +25,9 @@ import './ProcDeparturePage.css';
  * Props on the ProcDeaparturePage page.
  */
 interface ProcDeparturePageProps extends WaypointPageProps {
+  /** The index of the GPS receiver used by the page's parent instrument. */
+  gpsReceiverIndex: number;
+
   /** The airport that is currently selected on the waypoint pages. */
   selectedAirport: Subject<AirportFacility | undefined>;
 
@@ -46,7 +49,7 @@ type GNSStandardMapControllers = GNSMapControllers & {
 export class ProcDeparturePage extends WaypointPage<ProcDeparturePageProps> {
   private readonly previewMap = GNSMapBuilder
     .withProcedurePreviewMap(this.props.bus, this.props.settingsProvider, this.props.gnsType, this.props.instrumentIndex)
-    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.settingsProvider, this.props.fms))
+    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.gpsReceiverIndex, this.props.settingsProvider, this.props.fms))
     .build<GNSMapModules, GNSMapLayers, GNSStandardMapControllers, GNSMapContextProps>('waypoint-page-map');
 
   private readonly planModule = this.previewMap.context.model.getModule(MapSystemKeys.FlightPlan);
@@ -547,7 +550,7 @@ export class ProcDeparturePage extends WaypointPage<ProcDeparturePageProps> {
             onFinalized={this.onWaypointFinalized.bind(this)}
             onPopupDonePressed={this.props.onPopupDonePressed}
             showDoneButton={this.props.isPopup}
-            length={4}
+            length={5}
             ppos={this.props.ppos}
             facilityLoader={this.props.fms.facLoader}
             title={'APT'}

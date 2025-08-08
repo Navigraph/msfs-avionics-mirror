@@ -1,4 +1,13 @@
 /**
+ * Rounding behaviors.
+ */
+export enum Rounding {
+  Down = -1,
+  Nearest = 0,
+  Up = 1
+}
+
+/**
  * A utitlity class for basic math.
  */
 export class MathUtils {
@@ -140,5 +149,45 @@ export class MathUtils {
    */
   public static hardSign(n: number): 1 | -1 | typeof NaN {
     return isNaN(n) ? NaN : (n < 0 || Object.is(n, -0) ? -1 : 1);
+  }
+
+  /**
+   * Drives an initial value toward a target value linearly over a period of time.
+   * @param initialValue The initial value.
+   * @param targetValue The target value.
+   * @param rate The rate at which to drive the value, in the same units as `dt`.
+   * @param dt The amount of time over which to drive the value.
+   * @param clampStart Whether to clamp the driven value such that it cannot be driven in the opposite direction from
+   * the target value. Defaults to `true`.
+   * @param clampEnd Whether to clamp the driven value such that it cannot be driven past the target value. Defaults to
+   * `true`.
+   * @returns The final driven value after the specified amount of time has elapsed.
+   */
+  public static driveLinear(initialValue: number, targetValue: number, rate: number, dt: number, clampStart = true, clampEnd = true): number {
+    if (isNaN(initialValue) || isNaN(targetValue) || isNaN(rate) || isNaN(dt)) {
+      return NaN;
+    }
+
+    if (rate === 0 || dt === 0 || initialValue === targetValue) {
+      return initialValue;
+    }
+
+    if (targetValue - initialValue < 0) {
+      return MathUtils.clamp(initialValue - rate * dt, clampEnd ? targetValue : -Infinity, clampStart ? initialValue : Infinity);
+    } else {
+      return MathUtils.clamp(initialValue + rate * dt, clampStart ? initialValue : -Infinity, clampEnd ? targetValue : Infinity);
+    }
+  }
+
+  /**
+   * Drives an initial value toward a target value via an exponential decay curve over a period of time.
+   * @param initialValue The initial value.
+   * @param targetValue The target value.
+   * @param timeConstant The exponential decay time constant, in the same units as `dt`. Must be a positive number.
+   * @param dt The amount of time over which to drive the value.
+   * @returns The final driven value after the specified amount of time has elapsed.
+   */
+  public static driveExp(initialValue: number, targetValue: number, timeConstant: number, dt: number): number {
+    return targetValue + (initialValue - targetValue) * Math.exp(-dt / timeConstant);
   }
 }

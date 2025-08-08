@@ -28,8 +28,8 @@ export class SvtAirportLabel extends DisplayComponent<SvtAirportLabelProps> {
    */
   constructor(props: SvtAirportLabelProps) {
     super(props);
-    const rwy = this.props.facility.runways[0];
-    this.facilityLatLong = new LatLongAlt(rwy.latitude, rwy.longitude, rwy.elevation);
+    const arpt = this.props.facility;
+    this.facilityLatLong = new LatLongAlt(arpt.lat, arpt.lon, arpt.altitude);
   }
 
   /**

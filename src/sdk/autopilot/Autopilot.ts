@@ -4,9 +4,10 @@ import { CdiEvents } from '../cdi/CdiEvents';
 import { CdiUtils } from '../cdi/CdiUtils';
 import { ControlEvents } from '../data/ControlPublisher';
 import { EventBus } from '../data/EventBus';
+import { SimVarValueType } from '../data/SimVars';
 import { FlightPlanner } from '../flightplan/FlightPlanner';
-import { APEvents } from '../instruments/APPublisher';
 import { AdcEvents } from '../instruments/Adc';
+import { APEvents } from '../instruments/APPublisher';
 import { ClockEvents } from '../instruments/Clock';
 import { NavComEvents } from '../instruments/NavCom';
 import { NavSourceId, NavSourceType } from '../instruments/NavProcessor';
@@ -14,14 +15,16 @@ import { NavRadioIndex } from '../instruments/RadioCommon';
 import { MSFSAPStates } from '../navigation/AutopilotListener';
 import { Subject } from '../sub/Subject';
 import { APAltitudeModes, APConfig, APLateralModes, APValues, APVerticalModes } from './APConfig';
+import { APControlEvents } from './APControlEvents';
+import { AutopilotModeVars } from './APModeVars';
 import { AutopilotDriver } from './AutopilotDriver';
-import { VNavAltCaptureType, VNavState } from './VerticalNavigation';
 import { APNoneLateralDirector, APNoneVerticalDirector } from './directors/APNoneDirectors';
 import { DirectorState, PlaneDirector } from './directors/PlaneDirector';
 import { APModePressEvent, APStateManager } from './managers/APStateManager';
 import { NavToNavManager } from './managers/NavToNavManager';
 import { NavToNavManager2 } from './managers/NavToNavManager2';
 import { VNavManager } from './managers/VNavManager';
+import { VNavAltCaptureType, VNavState } from './VerticalNavigation';
 import { VNavEvents } from './vnav/VNavEvents';
 
 /**
@@ -132,8 +135,8 @@ export class Autopilot<Config extends APConfig = APConfig> {
   /** This autopilot's variable bank angle Manager. */
   public readonly variableBankManager: Record<any, any> | undefined;
 
-  /** This autopilot's variable bank angle Manager. */
-  private readonly apDriver: AutopilotDriver;
+  /** This autopilot's sim autopilot driver. */
+  protected readonly apDriver: AutopilotDriver;
 
   protected cdiSource: Readonly<NavSourceId> = { type: NavSourceType.Nav, index: 0 };
 
@@ -167,6 +170,8 @@ export class Autopilot<Config extends APConfig = APConfig> {
     selectedPitch: Subject.create(0),
     maxBankId: Subject.create(0),
     maxBankAngle: Subject.create(30),
+    maxNoseUpPitchAngle: Subject.create(Infinity),
+    maxNoseDownPitchAngle: Subject.create(Infinity),
     selectedHeading: Subject.create(0),
     capturedAltitude: Subject.create(0),
     approachIsActive: Subject.create<boolean>(false),
@@ -202,6 +207,13 @@ export class Autopilot<Config extends APConfig = APConfig> {
 
     if (config.defaultMaxBankAngle !== undefined) {
       this.apValues.maxBankAngle.set(config.defaultMaxBankAngle);
+    }
+
+    if (config.defaultMaxNoseUpPitchAngle !== undefined) {
+      this.apValues.maxNoseUpPitchAngle.set(config.defaultMaxNoseUpPitchAngle);
+    }
+    if (config.defaultMaxNoseDownPitchAngle !== undefined) {
+      this.apValues.maxNoseDownPitchAngle.set(config.defaultMaxNoseDownPitchAngle);
     }
 
     this.directors = this.createDirectors(config);
@@ -342,7 +354,7 @@ export class Autopilot<Config extends APConfig = APConfig> {
     }
     const set = data.set;
     if (set === undefined || set === false) {
-      if (this.isLateralModeActivatedOrArmed(mode)) {
+      if (this.deactivateArmedOrActiveLateralMode(mode)) {
         return;
       }
     }
@@ -362,6 +374,7 @@ export class Autopilot<Config extends APConfig = APConfig> {
         case APLateralModes.TRACK:
         case APLateralModes.TRACK_HOLD:
         case APLateralModes.LOC:
+        case APLateralModes.VOR:
         case APLateralModes.BC:
         case APLateralModes.FMS_LOC:
           this.lateralModes.get(mode)?.arm();
@@ -433,11 +446,21 @@ export class Autopilot<Config extends APConfig = APConfig> {
   }
 
   /**
-   * Checks if a mode is active or armed and optionally deactivates it.
-   * @param mode is the AP Mode to check.
-   * @returns whether this mode was active or armed and subsequently disabled.
+   * Checks if a lateral mode is armed or active and if so, deactivates it.
+   * @param mode The lateral mode to check and deactivate.
+   * @returns Whether the specified mode was armed or active and deactivated by this method.
+   * @deprecated Please use `deactivateArmedOrActiveLateralMode()` instead.
    */
   protected isLateralModeActivatedOrArmed(mode: APLateralModes): boolean {
+    return this.deactivateArmedOrActiveLateralMode(mode);
+  }
+
+  /**
+   * Attempts to deactivate an armed or active lateral mode.
+   * @param mode The lateral mode to deactivate.
+   * @returns Whether the specified mode was armed or active and deactivated by this method.
+   */
+  protected deactivateArmedOrActiveLateralMode(mode: APLateralModes): boolean {
     const { lateralActive, lateralArmed } = this.apValues;
     switch (mode) {
       case lateralActive.get():
@@ -479,9 +502,9 @@ export class Autopilot<Config extends APConfig = APConfig> {
   }
 
   /**
-   * Checks if a mode is active or armed and deactivates it.
-   * @param mode is the AP Mode to check.
-   * @returns whether this mode was active or armed and subsequently disabled.
+   * Attempts to deactivate an armed or active vertical mode.
+   * @param mode The vertical mode to deactivate.
+   * @returns Whether the specified mode was armed or active and deactivated by this method.
    */
   protected deactivateArmedOrActiveVerticalMode(mode: APVerticalModes): boolean {
     const { verticalActive, verticalArmed } = this.apValues;
@@ -562,7 +585,9 @@ export class Autopilot<Config extends APConfig = APConfig> {
           this.verticalModes.get(APVerticalModes.TO)?.arm();
           this.lateralModes.get(APLateralModes.TO)?.arm();
         } else {
-          SimVar.SetSimVarValue('K:AUTOPILOT_OFF', 'number', 0);
+          if (this.config.deactivateAutopilotOnGa !== false) {
+            SimVar.SetSimVarValue('K:AUTOPILOT_OFF', 'number', 0);
+          }
           this.verticalModes.get(APVerticalModes.GA)?.arm();
           this.lateralModes.get(APLateralModes.GA)?.arm();
         }
@@ -1129,7 +1154,7 @@ export class Autopilot<Config extends APConfig = APConfig> {
   /**
    * Monitors subevents and bus events.
    */
-  private monitorEvents(): void {
+  protected monitorEvents(): void {
     this.stateManager.lateralPressed.on((sender, data) => {
       if (this.autopilotInitialized && data !== undefined) {
         this.lateralPressed(data);
@@ -1238,6 +1263,24 @@ export class Autopilot<Config extends APConfig = APConfig> {
         this.apValues.maxBankAngle.set(value);
       });
     }
+
+    if (this.config.defaultMaxNoseUpPitchAngle === undefined) {
+      this.bus.getSubscriber<APControlEvents>().on('ap_set_max_nose_up_pitch').handle(value => {
+        this.apValues.maxNoseUpPitchAngle.set(value);
+      });
+    }
+    if (this.config.defaultMaxNoseDownPitchAngle === undefined) {
+      this.bus.getSubscriber<APControlEvents>().on('ap_set_max_nose_down_pitch').handle(value => {
+        this.apValues.maxNoseDownPitchAngle.set(value);
+      });
+    }
+
+    if (this.config.publishAutopilotModesAsLVars === true) {
+      this.apValues.lateralActive.sub((mode) => SimVar.SetSimVarValue(AutopilotModeVars.LateralActive, SimVarValueType.Number, mode), true);
+      this.apValues.lateralArmed.sub((mode) => SimVar.SetSimVarValue(AutopilotModeVars.LateralArmed, SimVarValueType.Number, mode), true);
+      this.apValues.verticalActive.sub((mode) => SimVar.SetSimVarValue(AutopilotModeVars.VerticalActive, SimVarValueType.Number, mode), true);
+      this.apValues.verticalArmed.sub((mode) => SimVar.SetSimVarValue(AutopilotModeVars.VerticalArmed, SimVarValueType.Number, mode), true);
+    }
   }
 
   /**
@@ -1306,7 +1349,6 @@ export class Autopilot<Config extends APConfig = APConfig> {
    */
   protected checkRollModeActive(): void {
     if (!APController.apGetAutopilotModeActive(MSFSAPStates.Bank)) {
-      // console.log('checkRollModeActive had to set Bank mode');
       this.setSimAP(MSFSAPStates.Bank, true);
     }
   }
@@ -1316,7 +1358,6 @@ export class Autopilot<Config extends APConfig = APConfig> {
    */
   private checkPitchModeActive(): void {
     if (!APController.apGetAutopilotModeActive(MSFSAPStates.Pitch)) {
-      // console.log('checkPitchModeActive had to set Pitch mode');
       this.setSimAP(MSFSAPStates.Pitch, true);
     }
   }

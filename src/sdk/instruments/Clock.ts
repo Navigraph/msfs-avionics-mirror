@@ -20,6 +20,15 @@ export interface ClockEvents {
   simTime: number;
 
   /**
+   * A Javascript timestamp corresponding to the real-world (operating system) time, fired every sim frame instead of
+   * on each Coherent animation frame. The timestamp uses the UNIX epoch (00:00 UTC January 1, 1970) and has units of
+   * milliseconds.
+   *
+   * USE THIS EVENT SPARINGLY, as it will impact performance and ignores the user set glass cockpit refresh setting.
+   */
+  realTimeHiFreq: number;
+
+  /**
    * A Javascript timestamp corresponding to the simulation time, fired every sim frame instead of on each Coherent
    * animation frame. The timestamp uses the UNIX epoch (00:00 UTC January 1, 1970) and has units of milliseconds.
    *
@@ -45,7 +54,7 @@ export class ClockPublisher extends BasePublisher<ClockEvents> {
 
   private needPublishRealTime = false;
 
-  private hiFreqInterval?: NodeJS.Timer;
+  private hiFreqInterval?: NodeJS.Timeout;
 
   /**
    * Creates a new instance of ClockPublisher.
@@ -82,7 +91,7 @@ export class ClockPublisher extends BasePublisher<ClockEvents> {
     this.simVarPublisher.startPublish();
 
     if (this.hiFreqInterval === undefined) {
-      this.hiFreqInterval = setInterval(() => this.publish('simTimeHiFreq', ClockPublisher.absoluteTimeToUNIXTime(SimVar.GetSimVarValue('E:ABSOLUTE TIME', 'seconds'))), 0);
+      this.hiFreqInterval = setInterval(this.publishHiFreq.bind(this), 0);
     }
   }
 
@@ -105,6 +114,14 @@ export class ClockPublisher extends BasePublisher<ClockEvents> {
     }
 
     this.simVarPublisher.onUpdate();
+  }
+
+  /**
+   * Publishes the high-frequency topics.
+   */
+  private publishHiFreq(): void {
+    this.publish('realTimeHiFreq', Date.now());
+    this.publish('simTimeHiFreq', ClockPublisher.absoluteTimeToUNIXTime(SimVar.GetSimVarValue('E:ABSOLUTE TIME', 'seconds')));
   }
 
   /**

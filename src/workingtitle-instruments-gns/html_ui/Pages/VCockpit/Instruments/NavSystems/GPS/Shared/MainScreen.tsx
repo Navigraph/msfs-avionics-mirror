@@ -61,6 +61,12 @@ export interface MainScreenOptions {
   /** The COM radio index to use. */
   comIndex: ComRadioIndex;
 
+  /** The GPS receiver index to use. */
+  gpsReceiverIndex: number;
+
+  /** Whether the GPS receiver supports syncing its state to replica receivers. */
+  gpsReceiverSync: boolean;
+
   /** Whether the instrument is configured to use split CDIs */
   isUsingNewCdiBehaviour: boolean;
 
@@ -240,13 +246,13 @@ export class MainScreen extends DisplayComponent<MainScreenProps> {
 
     this.enabledSbasGroups = SetSubject.create(Object.values(SBASGroupName));
     this.gpsSatComputer = new GPSSatComputer(
-      1,
+      this.props.options.gpsReceiverIndex,
       this.props.bus,
       'coui://html_ui/Pages/VCockpit/Instruments/NavSystems/GPS/Shared/Assets/gps_ephemeris.json',
       'coui://html_ui/Pages/VCockpit/Instruments/NavSystems/GPS/Shared/Assets/gps_sbas.json',
       5000,
       this.enabledSbasGroups,
-      'none',
+      this.props.options.gpsReceiverSync ? 'primary' : 'none',
       {
         channelCount: 15,
         satInUseMaxCount: 15,
@@ -822,7 +828,7 @@ export class MainScreen extends DisplayComponent<MainScreenProps> {
           <RadioPane bus={this.props.bus} type={RadioType.Com} index={this.props.options.comIndex} ref={this.comPane} />
           <RadioPane bus={this.props.bus} type={RadioType.Nav} index={this.props.options.navIndex} ref={this.vLocPane} />
           {this.props.class === 'wt530' ? <NavInfoPane bus={this.props.bus} radioIndex={this.props.options.navIndex} /> : null}
-          <StatusPane bus={this.props.bus} lnavIndex={this.lnavIndex} />
+          <StatusPane bus={this.props.bus} gpsReceiverIndex={this.props.options.gpsReceiverIndex} lnavIndex={this.lnavIndex} />
         </div>
         <div class={`${this.props.class} mainscreen-right`}>
           <PageContainer

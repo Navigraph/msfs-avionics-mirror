@@ -25,8 +25,11 @@ type GNSStandardMapControllers = GNSMapControllers & {
  * Props on the ArcNavMap page.
  */
 interface StandardNavMapProps extends PageProps {
+  /** The index of the GPS receiver used by the page's parent instrument. */
+  gpsReceiverIndex: number;
+
   /** The FMS */
-  fms: Fms,
+  fms: Fms;
 
   /** The GNS user settings provider. */
   settingsProvider: GNSSettingsProvider;
@@ -70,7 +73,7 @@ export class StandardNavMap extends Page<StandardNavMapProps> {
       true,
       this.props.trafficSystem,
       this.props.tcasDataProvider)
-    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.settingsProvider, this.props.fms))
+    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.gpsReceiverIndex, this.props.settingsProvider, this.props.fms))
     .withProjectedSize(this.mapSize)
     .build<GNSMapModules, GNSMapLayers, GNSStandardMapControllers, GNSMapContextProps>('standard-map-container');
 
@@ -253,6 +256,7 @@ export class StandardNavMap extends Page<StandardNavMapProps> {
         <StandardNavMapFields
           ref={this.dataFields}
           bus={this.props.bus}
+          gpsReceiverIndex={this.props.gpsReceiverIndex}
           fms={this.props.fms}
           gnsType={this.props.gnsType}
           isolateScroll

@@ -31,6 +31,9 @@ type GNSStandardMapControllers = GNSMapControllers & {
  * Props on the WaypointRunwayPageProps page.
  */
 interface WaypointRunwayPageProps extends WaypointPageProps {
+  /** The index of the GPS receiver used by the page's parent instrument. */
+  gpsReceiverIndex: number;
+
   /** The airport that is currently selected on the waypoint pages. */
   selectedAirport: Subject<AirportFacility | undefined>;
 
@@ -86,7 +89,7 @@ export class WaypointRunwayPage extends WaypointPage<WaypointRunwayPageProps> {
 
   private readonly AirportMap = GNSMapBuilder
     .withAirportMap(this.props.bus, this.props.settingsProvider, this.props.gnsType, this.props.instrumentIndex)
-    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.settingsProvider, this.props.fms))
+    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.gpsReceiverIndex, this.props.settingsProvider, this.props.fms))
     .build<GNSMapModules, GNSMapLayers, GNSStandardMapControllers, GNSMapContextProps>('waypoint-runway-page-map');
 
   /** @inheritdoc */
@@ -173,23 +176,33 @@ export class WaypointRunwayPage extends WaypointPage<WaypointRunwayPageProps> {
     const airport = this.props.selectedAirport.get();
     if (airport !== undefined) {
       const runway = airport.runways[index];
+      if (runway !== undefined) {
+        this.runwayLength.set(runway.length, UnitType.METER);
+        this.runwayWidth.set(runway.width, UnitType.METER);
 
-      this.runwayLength.set(runway.length, UnitType.METER);
-      this.runwayWidth.set(runway.width, UnitType.METER);
-
-      this.runwaySurface.set(runway);
-      this.runwayLighting.set(runway);
+        this.runwaySurface.set(runway);
+        this.runwayLighting.set(runway);
+      } else {
+        this.resetRunwayData();
+      }
 
       const airportWaypoint = GarminFacilityWaypointCache.getCache(this.props.bus).get(airport) as AirportWaypoint;
       this.AirportMap.context.getController(GNSMapKeys.Controller).focusAirport(airportWaypoint, index);
     } else {
-      this.runwayLength.set(NaN);
-      this.runwayWidth.set(NaN);
-      this.runwaySurface.set(undefined);
-      this.runwayLighting.set(undefined);
+      this.resetRunwayData();
 
       this.AirportMap.context.getController(GNSMapKeys.Controller).unfocusAirport();
     }
+  }
+
+  /**
+   * Resets the runway data to an undefined state.
+   */
+  private resetRunwayData(): void {
+    this.runwayLength.set(NaN);
+    this.runwayWidth.set(NaN);
+    this.runwaySurface.set(undefined);
+    this.runwayLighting.set(undefined);
   }
 
   /**
@@ -237,7 +250,7 @@ export class WaypointRunwayPage extends WaypointPage<WaypointRunwayPageProps> {
             onFinalized={this.onWaypointFinalized.bind(this)}
             onPopupDonePressed={this.props.onPopupDonePressed}
             showDoneButton={this.props.isPopup}
-            length={4}
+            length={5}
             ppos={this.props.ppos}
             facilityLoader={this.props.fms.facLoader}
             title={'APT'}

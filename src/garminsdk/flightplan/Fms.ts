@@ -209,26 +209,11 @@ export class Fms<ID extends string = any> {
   /** A facility loader instance. */
   public readonly facLoader = new FacilityLoader(this.facRepo);
 
-  private readonly approachDetails = ObjectSubject.create<ApproachDetails>({
-    isLoaded: false,
-    type: ApproachType.APPROACH_TYPE_UNKNOWN,
-    isRnpAr: false,
-    bestRnavType: RnavTypeFlags.None,
-    rnavTypeFlags: RnavTypeFlags.None,
-    isCircling: false,
-    isVtf: false,
-    referenceFacility: null,
-    runway: null
-  });
+  private readonly approachDetails = ObjectSubject.create<ApproachDetails>(FmsUtils.createEmptyApproachDetails());
   private needPublishApproachDetails = false;
   private updateApproachDetailsOpId = 0;
 
-  private readonly flightPhase = ObjectSubject.create<FmsFlightPhase>({
-    isApproachActive: false,
-    isToFaf: false,
-    isPastFaf: false,
-    isInMissedApproach: false
-  });
+  private readonly flightPhase = ObjectSubject.create<FmsFlightPhase>(FmsUtils.createEmptyFlightPhase());
   private needPublishFlightPhase = false;
 
   private readonly flightPhaseDebounceTimer = new DebounceTimer();
@@ -1551,14 +1536,37 @@ export class Fms<ID extends string = any> {
     insertProcedureObject.procedureLegs.push(originLeg);
 
     if (runwayTransition !== undefined && runwayTransition.legs.length > 0) {
-      runwayTransition.legs.forEach((leg) => {
-        const insertLeg = this.procedureLegMapFunc(leg);
-        insertLeg && insertProcedureObject.procedureLegs.push(FlightPlan.createLeg(insertLeg));
-      });
+      for (let i = 0; i < runwayTransition.legs.length; i++) {
+        const insertLeg = this.procedureLegMapFunc(
+          FlightPlanUtils.convertLegRunwayIcaosToSdkFormat(FlightPlan.createLeg(runwayTransition.legs[i]))
+        );
+
+        if (!insertLeg) {
+          continue;
+        }
+
+        if (i === 0 && ICAO.isFacility(insertLeg.fixIcao, FacilityType.RWY)) {
+          const runway = RunwayUtils.matchOneWayRunwayFromIdent(facility, ICAO.getIdent(insertLeg.fixIcao));
+
+          if (!runway) {
+            continue;
+          }
+
+          // If the procedure runway leg is the first leg, then check if we already added an origin runway leg for
+          // the same runway. If we did, then skip the procedure runway leg since we don't want to duplicate the
+          // runway leg. If we did not, then replace the origin leg we added with the procedure runway leg (converted
+          // to using our own runway leg format).
+          if (!oneWayRunway || runway.designation !== oneWayRunway.designation) {
+            insertProcedureObject.procedureLegs.splice(0, 1, FmsUtils.buildRunwayLeg(facility, runway, true));
+          }
+        } else {
+          insertProcedureObject.procedureLegs.push(insertLeg);
+        }
+      }
     }
 
     for (let i = 0; i < departure.commonLegs.length; i++) {
-      const leg = FlightPlan.createLeg(departure.commonLegs[i]);
+      const leg = FlightPlanUtils.convertLegRunwayIcaosToSdkFormat(FlightPlan.createLeg(departure.commonLegs[i]));
       if (i == 0 && insertProcedureObject.procedureLegs.length > 0 &&
         this.isDuplicateIFLeg(insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1], leg)) {
         insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1] =
@@ -1571,7 +1579,7 @@ export class Fms<ID extends string = any> {
 
     if (enRouteTransition) {
       for (let i = 0; i < enRouteTransition.legs.length; i++) {
-        const leg = FlightPlan.createLeg(enRouteTransition.legs[i]);
+        const leg = FlightPlanUtils.convertLegRunwayIcaosToSdkFormat(FlightPlan.createLeg(enRouteTransition.legs[i]));
         if (i == 0 && insertProcedureObject.procedureLegs.length > 0 &&
           this.isDuplicateIFLeg(insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1], leg)) {
           insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1] =
@@ -1695,13 +1703,15 @@ export class Fms<ID extends string = any> {
 
     if (enRouteTransition !== undefined && enRouteTransition.legs.length > 0) {
       enRouteTransition.legs.forEach((leg) => {
-        const insertLeg = this.procedureLegMapFunc(leg);
-        insertLeg && insertProcedureObject.procedureLegs.push(FlightPlan.createLeg(insertLeg));
+        const insertLeg = this.procedureLegMapFunc(
+          FlightPlanUtils.convertLegRunwayIcaosToSdkFormat(FlightPlan.createLeg(leg))
+        );
+        insertLeg && insertProcedureObject.procedureLegs.push(insertLeg);
       });
     }
 
     for (let i = 0; i < arrival.commonLegs.length; i++) {
-      const leg = FlightPlan.createLeg(arrival.commonLegs[i]);
+      const leg = FlightPlanUtils.convertLegRunwayIcaosToSdkFormat(FlightPlan.createLeg(arrival.commonLegs[i]));
       if (i == 0 && insertProcedureObject.procedureLegs.length > 0 &&
         this.isDuplicateIFLeg(insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1], leg)) {
         insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1] =
@@ -1712,9 +1722,11 @@ export class Fms<ID extends string = any> {
       insertLeg && insertProcedureObject.procedureLegs.push(FlightPlan.createLeg(insertLeg));
     }
 
+    let didAddRunwayLeg = false;
+
     if (runwayTransition) {
       for (let i = 0; i < runwayTransition.legs.length; i++) {
-        const leg = FlightPlan.createLeg(runwayTransition.legs[i]);
+        const leg = FlightPlanUtils.convertLegRunwayIcaosToSdkFormat(FlightPlan.createLeg(runwayTransition.legs[i]));
         if (i == 0 && insertProcedureObject.procedureLegs.length > 0 &&
           this.isDuplicateIFLeg(insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1], leg)) {
           insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1] =
@@ -1722,20 +1734,44 @@ export class Fms<ID extends string = any> {
           continue;
         }
         const insertLeg = this.procedureLegMapFunc(leg);
-        insertLeg && insertProcedureObject.procedureLegs.push(FlightPlan.createLeg(insertLeg));
+
+        if (!insertLeg) {
+          continue;
+        }
+
+        if (i === runwayTransition.legs.length - 1 && ICAO.isFacility(insertLeg.fixIcao, FacilityType.RWY)) {
+          const runway = RunwayUtils.matchOneWayRunwayFromIdent(facility, ICAO.getIdent(insertLeg.fixIcao));
+
+          if (!runway) {
+            continue;
+          }
+
+          // If the procedure runway leg is the first leg, then check if we already added an origin runway leg for
+          // the same runway. If we did, then skip the procedure runway leg since we don't want to duplicate the
+          // runway leg. If we did not, then replace the origin leg we added with the procedure runway leg (converted
+          // to using our own runway leg format).
+          if (!arrivalRunway || runway.designation !== arrivalRunway.designation) {
+            insertProcedureObject.procedureLegs.push(FmsUtils.buildRunwayLeg(facility, runway, true));
+            didAddRunwayLeg = true;
+          }
+        } else {
+          insertProcedureObject.procedureLegs.push(insertLeg);
+        }
       }
     }
 
-    const destinationLeg = arrivalRunway
-      ? FmsUtils.buildRunwayLeg(facility, arrivalRunway, false)
-      : FlightPlan.createLeg({
-        lat: facility.lat,
-        lon: facility.lon,
-        type: LegType.TF,
-        fixIcao: facility.icao
-      });
+    if (!didAddRunwayLeg) {
+      const destinationLeg = arrivalRunway
+        ? FmsUtils.buildRunwayLeg(facility, arrivalRunway, false)
+        : FlightPlan.createLeg({
+          lat: facility.lat,
+          lon: facility.lon,
+          type: LegType.TF,
+          fixIcao: facility.icao
+        });
 
-    insertProcedureObject.procedureLegs.push(destinationLeg);
+      insertProcedureObject.procedureLegs.push(destinationLeg);
+    }
 
     this.tryInsertIFLeg(insertProcedureObject);
 
@@ -2022,7 +2058,9 @@ export class Fms<ID extends string = any> {
           }
         }
         for (let n = 0; n < missedLegs.length; n++) {
-          const validLeg = this.procedureLegMapFunc(missedLegs[n]);
+          const validLeg = this.procedureLegMapFunc(
+            FlightPlanUtils.convertLegRunwayIcaosToSdkFormat(FlightPlan.createLeg(missedLegs[n]))
+          );
           if (validLeg) {
             const newLeg = FlightPlan.createLeg(validLeg);
             if (maphIndex >= 0 && n === maphIndex) {
@@ -2118,26 +2156,49 @@ export class Fms<ID extends string = any> {
       ? FmsUtils.buildVisualApproach(facility, visualRunway!, this.visualApproachOptions.finalFixDistance, this.visualApproachOptions.strghtFixDistance)
       : facility.approaches[approachIndex];
 
+    const finalLegs = approach.finalLegs;
+
     const transition = approach.transitions[approachTransitionIndex];
     const isVtf = approachTransitionIndex < 0;
     const insertProcedureObject: InsertProcedureObject = { procedureLegs: [] };
 
     if (transition !== undefined && transition.legs.length > 0) {
       for (let t = 0; t < transition.legs.length; t++) {
-        const insertLeg = this.procedureLegMapFunc(transition.legs[t]);
-        insertLeg && insertProcedureObject.procedureLegs.push(FlightPlan.createLeg(insertLeg));
+        const insertLeg = this.procedureLegMapFunc(
+          FlightPlanUtils.convertLegRunwayIcaosToSdkFormat(FlightPlan.createLeg(transition.legs[t]))
+        );
+        insertLeg && insertProcedureObject.procedureLegs.push(insertLeg);
       }
     }
 
-    const lastTransitionLeg = insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1];
+    const lastTransitionLeg = insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1] as InsertProcedureObjectLeg | undefined;
+
+    let finalLegsStartIndex = 0;
 
     if (isVtf) {
       insertProcedureObject.procedureLegs.push(FlightPlan.createLeg({ type: LegType.ThruDiscontinuity }));
+    } else if (lastTransitionLeg) {
+      // Check if the last transition leg is an XF leg that terminates at the FACF (flagged as IF) or FAF. If so, then
+      // we need to merge the last transition leg with the FACF/FAF leg and skip every leg in the final legs array
+      // before the latter.
+      if (FlightPlanUtils.isToFixLeg(lastTransitionLeg.type) && ICAO.isFacility(lastTransitionLeg.fixIcao)) {
+        for (let i = 0; i < finalLegs.length; i++) {
+          const leg = finalLegs[i];
+          if (
+            BitFlags.isAny(leg.fixTypeFlags, FixTypeFlags.IF | FixTypeFlags.FAF)
+            && FlightPlanUtils.isToFixLeg(leg.type)
+            && leg.fixIcao === lastTransitionLeg.fixIcao
+          ) {
+            insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1] = this.mergeDuplicateLegData(lastTransitionLeg, leg);
+            finalLegsStartIndex = i + 1;
+            break;
+          }
+        }
+      }
     }
 
-    const finalLegs = approach.finalLegs;
-    for (let i = 0; i < finalLegs.length; i++) {
-      const leg = FlightPlan.createLeg(finalLegs[i]);
+    for (let i = finalLegsStartIndex; i < finalLegs.length; i++) {
+      const leg = FlightPlanUtils.convertLegRunwayIcaosToSdkFormat(FlightPlan.createLeg(finalLegs[i]));
       if (i === 0 && lastTransitionLeg && this.isDuplicateIFLeg(lastTransitionLeg, leg)) {
         insertProcedureObject.procedureLegs[insertProcedureObject.procedureLegs.length - 1] = this.mergeDuplicateLegData(lastTransitionLeg, leg);
         continue;
@@ -2222,7 +2283,7 @@ export class Fms<ID extends string = any> {
 
   /**
    * Inserts a VFR approach into the primary flight plan, replacing any approach that is already loaded.
-   * 
+   *
    * VFR approaches are distinct from both _visual instrument approaches_, which are a type of published IFR approach,
    * and _Garmin visual approaches_, which are auto-generated approaches not based on any published approach. A VFR
    * approach is based on a published IFR approach, but only includes the flight plan legs between and including those
@@ -2439,8 +2500,10 @@ export class Fms<ID extends string = any> {
           // If this is a VTF approach, attempt to replace the faf leg with a VTF leg
           await this.insertVtfLeg(insertProcedureObject, FlightPlan.createLeg(leg), finalLegs[i - 1], finalLegs[i + 1]);
         } else {
-          const insertLeg = this.procedureLegMapFunc(leg);
-          insertLeg && insertProcedureObject.procedureLegs.push(FlightPlan.createLeg(insertLeg));
+          const insertLeg = this.procedureLegMapFunc(
+            FlightPlanUtils.convertLegRunwayIcaosToSdkFormat(FlightPlan.createLeg(leg))
+          );
+          insertLeg && insertProcedureObject.procedureLegs.push(insertLeg);
         }
       }
     }
@@ -5868,18 +5931,31 @@ export class Fms<ID extends string = any> {
   }
 
   /**
-   * Merges two duplicate legs such that the new merged leg contains the fix type and altitude data from the source leg
-   * and all other data is derived from the target leg.
+   * Merges two duplicate legs. The merged leg will be identical to the target leg with the following exceptions:
+   * - The merged leg's fix type flags are the union of those of the target and source legs.
+   * - The merged leg's altitude restriction data are equal to those of the source leg if the source leg defines an
+   * altitude restriction. Otherwise the merged leg's altitude restriction data are equal to those of the target leg.
+   * - The merged leg's speed restriction data are equal to those of the source leg if the source leg defines a speed
+   * restriction. Otherwise the merged leg's speed restriction data are equal to those of the target leg.
    * @param target The target leg.
    * @param source The source leg.
-   * @returns the merged leg.
+   * @returns The merged leg.
    */
   private mergeDuplicateLegData(target: FlightPlanLeg, source: FlightPlanLeg): FlightPlanLeg {
     const merged = FlightPlan.createLeg(target);
+
     merged.fixTypeFlags |= source.fixTypeFlags;
-    merged.altDesc = source.altDesc;
-    merged.altitude1 = source.altitude1;
-    merged.altitude2 = source.altitude2;
+
+    if (source.altDesc !== AltitudeRestrictionType.Unused) {
+      merged.altDesc = source.altDesc;
+      merged.altitude1 = source.altitude1;
+      merged.altitude2 = source.altitude2;
+    }
+
+    if (source.speedRestriction !== 0) {
+      merged.speedRestriction = source.speedRestriction;
+    }
+
     return merged;
   }
 

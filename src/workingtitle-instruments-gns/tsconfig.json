@@ -23,17 +23,8 @@
     }
   },
   "exclude": [
-    "Gulpfile.ts",
     "**/node_modules",
     "**/build",
     "**/dist"
-  ],
-  "ts-node": {
-    "transpiler": "@sucrase/ts-node-plugin",
-    "transpileOnly": true,
-    "compilerOptions": {
-      "module": "commonjs"
-    },
-    "files": true
-  }
+  ]
 }

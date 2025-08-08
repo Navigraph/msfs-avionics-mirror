@@ -2,11 +2,14 @@ import css from 'rollup-plugin-import-css';
 import image from '@rollup/plugin-image';
 import resolve from '@rollup/plugin-node-resolve';
 
+const packageName = 'workingtitle-instruments-g3000';
+const htmlUiPath = 'html_ui/Pages/VCockpit/Instruments/NavSystems/WTG3000';
+
 export default [
     {
-      input: 'build/workingtitle-instruments-g3000/html_ui/Pages/VCockpit/Instruments/NavSystems/WTG3000/MFD/index.js',
+      input: 'build/html_ui/MFD/index.js',
       output: {
-        file: 'dist/workingtitle-instruments-g3000/html_ui/Pages/VCockpit/Instruments/NavSystems/WTG3000/MFD/MFD.js',
+        file: `dist/${packageName}/${htmlUiPath}/MFD/MFD.js`,
         format: 'iife',
         name: 'wtg3000mfd',
         globals: {
@@ -19,9 +22,9 @@ export default [
       plugins: [image(), css({ output: 'MFD.css' }), resolve()]
     },
     {
-      input: 'build/workingtitle-instruments-g3000/html_ui/Pages/VCockpit/Instruments/NavSystems/WTG3000/PFD/index.js',
+      input: 'build/html_ui/PFD/index.js',
       output: {
-        file: 'dist/workingtitle-instruments-g3000/html_ui/Pages/VCockpit/Instruments/NavSystems/WTG3000/PFD/PFD.js',
+        file: `dist/${packageName}/${htmlUiPath}/PFD/PFD.js`,
         format: 'iife',
         name: 'wtg3000pfd',
         globals: {
@@ -34,9 +37,9 @@ export default [
       plugins: [image(), css({ output: 'PFD.css' }), resolve()]
     },
     {
-      input: 'build/workingtitle-instruments-g3000/html_ui/Pages/VCockpit/Instruments/NavSystems/WTG3000/GTC/index.js',
+      input: 'build/html_ui/GTC/index.js',
       output: {
-        file: 'dist/workingtitle-instruments-g3000/html_ui/Pages/VCockpit/Instruments/NavSystems/WTG3000/GTC/GTC.js',
+        file: `dist/${packageName}/${htmlUiPath}/GTC/GTC.js`,
         format: 'iife',
         name: 'wtg3000gtc',
         globals: {

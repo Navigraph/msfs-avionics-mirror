@@ -115,6 +115,9 @@ export interface BaseAdcEvents {
 
   /** The density altitude, in feet */
   density_alt: number;
+
+  /** The dynamic pressure, in inches of mercury */
+  dynamic_pressure_inhg: number;
 }
 
 /**
@@ -259,6 +262,7 @@ export class AdcPublisher extends SimVarPublisher<AdcEvents> {
       ['stall_aoa', { name: 'STALL ALPHA', type: SimVarValueType.Degree }],
       ['zero_lift_aoa', { name: 'ZERO LIFT ALPHA', type: SimVarValueType.Degree }],
       ['density_alt', { name: 'DENSITY ALTITUDE', type: SimVarValueType.Feet }],
+      ['dynamic_pressure_inhg', { name: 'DYNAMIC PRESSURE', type: SimVarValueType.InHG }],
     ]);
 
     super(simvars, bus, pacer);
@@ -593,7 +597,8 @@ export class AdcPublisher extends SimVarPublisher<AdcEvents> {
     }
 
     const factor = entry.kias < 1 || this.mach === 0
-      ? 1 / AeroMath.casToMach(1, this.pressure)
+      // 1 m/s = 1.943844492440605 knots
+      ? AeroMath.machToCas(1, this.pressure) * 1.943844492440605
       : entry.kias / this.mach;
 
     this.publish(entry.machToKiasTopic, isFinite(factor) ? factor : 1);
@@ -626,7 +631,8 @@ export class AdcPublisher extends SimVarPublisher<AdcEvents> {
     }
 
     const factor = entry.kias < 1 || entry.indicatedMach === 0
-      ? 1 / AeroMath.casToMach(1, this.pressure)
+      // 1 m/s = 1.943844492440605 knots
+      ? AeroMath.machToCas(1, this.pressure) * 1.943844492440605
       : entry.kias / entry.indicatedMach;
 
     this.publish(entry.indicatedMachToKiasTopic, isFinite(factor) ? factor : 1);

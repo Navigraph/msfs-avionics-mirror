@@ -1,0 +1,26 @@
+{
+  "name": "workingtitle-instruments-epic2-common",
+  "version": "1.1.0",
+  "description": "Working Title Epic2 Common Library",
+  "main": "index.ts",
+  "scripts": {
+    "build": "npm run build:compile && npm run build:rollup && npm run build:npm",
+    "build:compile": "npx tsc",
+    "build:rollup": "robocopy . *.css build /s & npx rollup -c rollup.config.js",
+    "build:npm": "copy package.json.src dist\\package.json /y && cd dist && npm pack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/msfs-avionics-mirror/"
+  },
+  "author": "Working Title Simulations, LLC",
+  "license": "Modified MIT",
+  "devDependencies": {
+    "@microsoft/msfs-sdk": "0.9.0",
+    "@microsoft/msfs-types": "1.14.6",
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "rollup": "^2.79.1",
+    "rollup-plugin-import-css": "^3.1.0",
+    "typescript": "5.3.3"
+  }
+}

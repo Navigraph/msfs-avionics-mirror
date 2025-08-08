@@ -1,5 +1,7 @@
 import { Unit, UnitFamily, UnitType } from '@microsoft/msfs-sdk';
 
+import { GarminUnitType } from '../../math/GarminUnitType';
+
 /**
  * A utility class for creating Garmin unit formatters.
  *
@@ -8,7 +10,9 @@ import { Unit, UnitFamily, UnitType } from '@microsoft/msfs-sdk';
 export class UnitFormatter {
   private static readonly UNIT_TEXT: Partial<Record<string, Partial<Record<string, string>>>> = {
     [UnitFamily.Distance]: {
+      [UnitType.CENTIMETER.name]: 'CM',
       [UnitType.METER.name]: 'M',
+      [UnitType.INCH.name]: 'IN',
       [UnitType.FOOT.name]: 'FT',
       [UnitType.KILOMETER.name]: 'KM',
       [UnitType.NMILE.name]: 'NM',
@@ -28,7 +32,19 @@ export class UnitFormatter {
       [UnitType.POUND.name]: 'LB',
       [UnitType.LITER_FUEL.name]: 'LT',
       [UnitType.GALLON_FUEL.name]: 'GAL',
-      [UnitType.IMP_GALLON_FUEL.name]: 'IG'
+      [UnitType.IMP_GALLON_FUEL.name]: 'IG',
+      [UnitType.LITER_JET_A_FUEL.name]: 'LT',
+      [UnitType.GALLON_JET_A_FUEL.name]: 'GAL',
+      [UnitType.IMP_GALLON_JET_A_FUEL.name]: 'IG',
+      [UnitType.LITER_100LL_FUEL.name]: 'LT',
+      [UnitType.GALLON_100LL_FUEL.name]: 'GAL',
+      [UnitType.IMP_GALLON_100LL_FUEL.name]: 'IG',
+      [UnitType.LITER_AUTOGAS_FUEL.name]: 'LT',
+      [UnitType.GALLON_AUTOGAS_FUEL.name]: 'GAL',
+      [UnitType.IMP_GALLON_AUTOGAS_FUEL.name]: 'IG',
+      [GarminUnitType.LITER_SIM_FUEL_NAME]: 'LT',
+      [GarminUnitType.GALLON_SIM_FUEL_NAME]: 'GAL',
+      [GarminUnitType.IMP_GALLON_SIM_FUEL_NAME]: 'IG',
     },
     [UnitFamily.Volume]: {
       [UnitType.LITER.name]: 'L',
@@ -57,7 +73,19 @@ export class UnitFormatter {
       [UnitType.PPH.name]: 'LB/HR',
       [UnitType.LPH_FUEL.name]: 'LT/HR',
       [UnitType.GPH_FUEL.name]: 'GAL/HR',
-      [UnitType.IGPH_FUEL.name]: 'IG/HR'
+      [UnitType.IGPH_FUEL.name]: 'IG/HR',
+      [UnitType.LPH_JET_A_FUEL.name]: 'LT/HR',
+      [UnitType.GPH_JET_A_FUEL.name]: 'GAL/HR',
+      [UnitType.IGPH_JET_A_FUEL.name]: 'IG/HR',
+      [UnitType.LPH_100LL_FUEL.name]: 'LT/HR',
+      [UnitType.GPH_100LL_FUEL.name]: 'GAL/HR',
+      [UnitType.IGPH_100LL_FUEL.name]: 'IG/HR',
+      [UnitType.LPH_AUTOGAS_FUEL.name]: 'LT/HR',
+      [UnitType.GPH_AUTOGAS_FUEL.name]: 'GAL/HR',
+      [UnitType.IGPH_AUTOGAS_FUEL.name]: 'IG/HR',
+      [GarminUnitType.LPH_SIM_FUEL_NAME]: 'LT/HR',
+      [GarminUnitType.GPH_SIM_FUEL_NAME]: 'GAL/HR',
+      [GarminUnitType.IGPH_SIM_FUEL_NAME]: 'IG/HR',
     }
   };
 

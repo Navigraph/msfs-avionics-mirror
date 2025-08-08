@@ -125,7 +125,7 @@ export class WaypointAirportPage extends WaypointPage<WaypointAirportPageProps> 
     this.approachType.set(facility);
     if (facility !== undefined) {
       this.position.set(facility.lat, facility.lon);
-      this.elevation.set(facility.runways[0].elevation, UnitType.METER);
+      this.elevation.set(facility.altitude, UnitType.METER);
       this.waypointSelection.instance.setIdent(ICAO.getIdent(facility.icao).trim(), false);
     } else {
       this.elevation.set(NaN);
@@ -173,7 +173,7 @@ export class WaypointAirportPage extends WaypointPage<WaypointAirportPageProps> 
             onFinalized={this.onWaypointFinalized.bind(this)}
             onPopupDonePressed={this.props.onPopupDonePressed}
             showDoneButton={this.props.isPopup}
-            length={4}
+            length={5}
             ppos={this.props.ppos}
             facilityLoader={this.props.fms.facLoader}
             title={'APT'}

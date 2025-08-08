@@ -486,6 +486,7 @@ export class PageContainer extends DisplayComponent<PageContainerProps> implemen
               bus={this.props.bus}
               gnsType={this.props.gnsType}
               instrumentIndex={this.props.options.instrumentIndex}
+              gpsReceiverIndex={this.props.options.gpsReceiverIndex}
               settingsProvider={this.props.settingsProvider}
               fms={this.props.fms}
               trafficSystem={this.props.trafficSystem}
@@ -495,6 +496,7 @@ export class PageContainer extends DisplayComponent<PageContainerProps> implemen
             <NavInfo
               gnsType={this.props.gnsType}
               bus={this.props.bus}
+              gpsReceiverIndex={this.props.options.gpsReceiverIndex}
               fms={this.props.fms}
             />
           )}
@@ -502,6 +504,7 @@ export class PageContainer extends DisplayComponent<PageContainerProps> implemen
             bus={this.props.bus}
             gnsType={this.props.gnsType}
             instrumentIndex={this.props.options.instrumentIndex}
+            gpsReceiverIndex={this.props.options.gpsReceiverIndex}
             fms={this.props.fms}
             settingsProvider={this.props.settingsProvider}
             flightPlanner={this.props.fms.flightPlanner}
@@ -512,6 +515,7 @@ export class PageContainer extends DisplayComponent<PageContainerProps> implemen
             bus={this.props.bus}
             gnsType={this.props.gnsType}
             instrumentIndex={this.props.options.instrumentIndex}
+            gpsReceiverIndex={this.props.options.gpsReceiverIndex}
             fms={this.props.fms}
             settingsProvider={this.props.settingsProvider}
             flightPlanner={this.props.fms.flightPlanner}
@@ -579,7 +583,13 @@ export class PageContainer extends DisplayComponent<PageContainerProps> implemen
 
         </PageGroup>
         <PageGroup bus={this.props.bus} label='FPL' onPageChanged={this.props.onPageChanged} isDetached>
-          <FPLPage bus={this.props.bus} gnsType={this.props.gnsType} fms={this.props.fms} onPageSelected={<T extends Page = Page>(v: number): T | undefined => this.openPageGroup('WPT', false, v)} />
+          <FPLPage
+            bus={this.props.bus}
+            gnsType={this.props.gnsType}
+            gpsReceiverIndex={this.props.options.gpsReceiverIndex}
+            fms={this.props.fms}
+            onPageSelected={<T extends Page = Page>(v: number): T | undefined => this.openPageGroup('WPT', false, v)}
+          />
         </PageGroup>
         {this.props.gnsType === 'wt530' && (
           <PageGroup bus={this.props.bus} label='VNAV' onPageChanged={this.props.onPageChanged} isDetached>

@@ -75,12 +75,14 @@ export class GNSMapController extends MapSystemController<GNSMapModules, GNSMapL
   /**
    * Creates an instance of the GNSMapController.
    * @param context The map system context to use with this controller.
+   * @param gpsReceiverIndex The index of the GPS receiver used by the map.
    * @param settingProvider The GNS settings provider to use with this controller.
    * @param fms The GNS FMS flight planner.
    * @param forceTrackUp Whether or not the map is forced into track up mode.
    */
   constructor(
     context: MapSystemContext<GNSMapModules, GNSMapLayers, GNSMapControllers, GNSMapContextProps>,
+    private readonly gpsReceiverIndex: number,
     private readonly settingProvider: GNSSettingsProvider,
     private readonly fms: Fms,
     private readonly forceTrackUp?: boolean
@@ -112,7 +114,7 @@ export class GNSMapController extends MapSystemController<GNSMapModules, GNSMapL
     this.context.model.getModule(GNSMapKeys.Declutter)?.declutterLevel.sub(() => this.syncElementVisibilities(rangeModule.nominalRange.get()), true);
     rotationModule.rotationType.sub(this.onRotationChanged.bind(this), true);
 
-    this.context.bus.getSubscriber<GPSSatComputerEvents>().on('gps_system_state_changed_1').handle(state => {
+    this.context.bus.getSubscriber<GPSSatComputerEvents>().on(`gps_system_state_changed_${this.gpsReceiverIndex}`).handle(state => {
       this.context.model.getModule(MapSystemKeys.DataIntegrity).gpsSignalValid.set(
         state === GPSSystemState.SolutionAcquired || state === GPSSystemState.DiffSolutionAcquired
       );

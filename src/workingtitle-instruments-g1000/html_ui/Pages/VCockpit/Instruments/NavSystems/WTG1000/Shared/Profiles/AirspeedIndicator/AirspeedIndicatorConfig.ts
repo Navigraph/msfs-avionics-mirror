@@ -1,5 +1,3 @@
-import { SubscribableMapFunctions, SubscribableUtils } from '@microsoft/msfs-sdk';
-
 import {
   AirspeedDefinitionFactory, AirspeedIndicatorBottomDisplayMode, AirspeedIndicatorBottomDisplayOptions, AirspeedIndicatorColorRange,
   AirspeedIndicatorColorRangeColor, AirspeedIndicatorColorRangeWidth, AirspeedIndicatorDataProviderOptions, AirspeedTapeScaleOptions
@@ -16,11 +14,17 @@ import { VSpeedBugConfig } from './VSpeedBugConfig';
 export class AirspeedIndicatorConfig implements Config {
   private static readonly DEFAULT_DATA_OPTIONS: Readonly<AirspeedIndicatorDataProviderOptions> = {
     trendLookahead: 6,
-    overspeedThreshold: (): number => {
+    overspeedThreshold: () => {
       const vne = Simplane.getDesignSpeeds().VNe;
-      return vne > 60 ? vne : Number.POSITIVE_INFINITY;
+      return {
+        value: vne > 60 ? vne : Number.POSITIVE_INFINITY
+      };
     },
-    underspeedThreshold: (): number => Simplane.getDesignSpeeds().VS0
+    underspeedThreshold: () => {
+      return {
+        value: Simplane.getDesignSpeeds().VS0
+      };
+    }
   };
 
   private static readonly DEFAULT_TAPE_SCALE_OPTIONS: Readonly<AirspeedTapeScaleOptions> = {
@@ -256,52 +260,96 @@ export class AirspeedIndicatorConfig implements Config {
       {
         width: AirspeedIndicatorColorRangeWidth.Full,
         color: AirspeedIndicatorColorRangeColor.Red,
-        minimum: () => SubscribableUtils.isSubscribable(tapeScaleOptions.minimum)
-          ? tapeScaleOptions.minimum.map(SubscribableMapFunctions.identity())
-          : tapeScaleOptions.minimum,
-        maximum: () => Simplane.getDesignSpeeds().VS0
+        minimum: () => {
+          return {
+            value: tapeScaleOptions.minimum
+          };
+        },
+        maximum: () => {
+          return {
+            value: Simplane.getDesignSpeeds().VS0
+          };
+        }
       },
 
       // Flaps extended operating range
       {
         width: AirspeedIndicatorColorRangeWidth.Full,
         color: AirspeedIndicatorColorRangeColor.White,
-        minimum: () => Simplane.getDesignSpeeds().VS0,
-        maximum: () => Simplane.getDesignSpeeds().VFe
+        minimum: () => {
+          return {
+            value: Simplane.getDesignSpeeds().VS0
+          };
+        },
+        maximum: () => {
+          return {
+            value: Simplane.getDesignSpeeds().VFe
+          };
+        }
       },
 
       // Flaps retracted/extended operating range
       {
         width: AirspeedIndicatorColorRangeWidth.Half,
         color: AirspeedIndicatorColorRangeColor.Green,
-        minimum: () => Simplane.getDesignSpeeds().VS1,
-        maximum: () => Simplane.getDesignSpeeds().VFe
+        minimum: () => {
+          return {
+            value: Simplane.getDesignSpeeds().VS1
+          };
+        },
+        maximum: () => {
+          return {
+            value: Simplane.getDesignSpeeds().VFe
+          };
+        }
       },
 
       // Flaps retracted operating range
       {
         width: AirspeedIndicatorColorRangeWidth.Full,
         color: AirspeedIndicatorColorRangeColor.Green,
-        minimum: () => Simplane.getDesignSpeeds().VFe,
-        maximum: () => Simplane.getDesignSpeeds().VNo
+        minimum: () => {
+          return {
+            value: Simplane.getDesignSpeeds().VFe
+          };
+        },
+        maximum: () => {
+          return {
+            value: Simplane.getDesignSpeeds().VNo
+          };
+        }
       },
 
       // Overspeed caution range
       {
         width: AirspeedIndicatorColorRangeWidth.Full,
         color: AirspeedIndicatorColorRangeColor.Yellow,
-        minimum: () => Simplane.getDesignSpeeds().VNo,
-        maximum: () => Simplane.getDesignSpeeds().VNe
+        minimum: () => {
+          return {
+            value: Simplane.getDesignSpeeds().VNo
+          };
+        },
+        maximum: () => {
+          return {
+            value: Simplane.getDesignSpeeds().VNe
+          };
+        }
       },
 
       // Barber pole
       {
         width: AirspeedIndicatorColorRangeWidth.Full,
         color: AirspeedIndicatorColorRangeColor.BarberPole,
-        minimum: () => Simplane.getDesignSpeeds().VNe,
-        maximum: () => SubscribableUtils.isSubscribable(tapeScaleOptions.maximum)
-          ? tapeScaleOptions.maximum.map(SubscribableMapFunctions.identity())
-          : tapeScaleOptions.maximum
+        minimum: () => {
+          return {
+            value: Simplane.getDesignSpeeds().VNe
+          };
+        },
+        maximum: () => {
+          return {
+            value: tapeScaleOptions.maximum
+          };
+        }
       }
     ];
   }

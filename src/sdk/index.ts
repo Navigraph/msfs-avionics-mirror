@@ -3,6 +3,7 @@ export * from './autopilot';
 export * from './autothrottle';
 export * from './cas';
 export * from './cdi';
+export * from './checklist';
 export * from './components';
 export * from './data';
 export * from './fadec';

@@ -192,6 +192,7 @@ export class WaypointPageGroup extends PageGroup<WaypointPageGroupProps> {
           settingsProvider={this.props.settingsProvider}
           gnsType={this.props.gnsType}
           instrumentIndex={this.props.options.instrumentIndex}
+          gpsReceiverIndex={this.props.options.gpsReceiverIndex}
           selectedAirport={this.airport}
           ppos={this.ppos}
           fms={this.props.fms}
@@ -214,6 +215,7 @@ export class WaypointPageGroup extends PageGroup<WaypointPageGroupProps> {
           bus={this.props.bus}
           gnsType={this.props.gnsType}
           instrumentIndex={this.props.options.instrumentIndex}
+          gpsReceiverIndex={this.props.options.gpsReceiverIndex}
           selectedAirport={this.airport}
           settingsProvider={this.props.settingsProvider}
           ppos={this.ppos}
@@ -225,6 +227,7 @@ export class WaypointPageGroup extends PageGroup<WaypointPageGroupProps> {
           bus={this.props.bus}
           gnsType={this.props.gnsType}
           instrumentIndex={this.props.options.instrumentIndex}
+          gpsReceiverIndex={this.props.options.gpsReceiverIndex}
           selectedAirport={this.airport}
           settingsProvider={this.props.settingsProvider}
           ppos={this.ppos}
@@ -236,6 +239,7 @@ export class WaypointPageGroup extends PageGroup<WaypointPageGroupProps> {
           bus={this.props.bus}
           gnsType={this.props.gnsType}
           instrumentIndex={this.props.options.instrumentIndex}
+          gpsReceiverIndex={this.props.options.gpsReceiverIndex}
           selectedAirport={this.airport}
           settingsProvider={this.props.settingsProvider}
           ppos={this.ppos}

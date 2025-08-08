@@ -23,6 +23,9 @@ import './NavInfo.css';
  * Props for {@link NavInfo}
  */
 export interface NavInfoProps extends PageProps {
+  /** The index of the GPS receiver used by the page's parent instrument. */
+  gpsReceiverIndex: number;
+
   /** The fms */
   fms: Fms,
 }
@@ -138,7 +141,7 @@ export class NavInfo extends Page<NavInfoProps> {
       this.rootControl.instance.focus(FocusPosition.First);
     };
 
-    this.props.bus.getSubscriber<GPSSatComputerEvents>().on('gps_system_state_changed_1').handle(state => {
+    this.props.bus.getSubscriber<GPSSatComputerEvents>().on(`gps_system_state_changed_${this.props.gpsReceiverIndex}`).handle(state => {
       const valid = state === GPSSystemState.SolutionAcquired || state === GPSSystemState.DiffSolutionAcquired;
       this.gpsValidity.set(valid ? NavDataFieldGpsValidity.Valid : NavDataFieldGpsValidity.Invalid);
     });
@@ -247,7 +250,7 @@ export class NavInfo extends Page<NavInfoProps> {
     return (
       <div class='page nav-info-page hide-element' ref={this.el}>
         <GNSUiControl ref={this.rootControl} isolateScroll>
-          <WT430Cdi bus={this.props.bus} fms={this.props.fms} />
+          <WT430Cdi bus={this.props.bus} gpsReceiverIndex={this.props.gpsReceiverIndex} fms={this.props.fms} />
 
           <div class="nav-info-fromto">
             <WaypointLeg ref={this.fromWaypoint} class='arc-map-waypoints-from' isArcMap={true} />

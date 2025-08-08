@@ -1,0 +1,54 @@
+.cas-container {
+  background-color: var(--g3000-color-black);
+  border: 1px solid var(--g3000-color-border-gray);
+  font-size: 15px;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: stretch;
+}
+
+.cas-display {
+  margin: 0px 1px;
+  display: block;
+}
+
+.cas-message-count {
+  margin: 0px 2px;
+  border-top: 1px solid var(--g3000-color-border-gray);
+  display: block;
+  text-align: center;
+}
+
+.cas-message-count>span {
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.cas-message-count-header.caution {
+  color: var(--g3000-color-yellow);
+}
+
+.cas-message-count-header.warning {
+  color: var(--g3000-color-red);
+}
+
+.annunciation.warning {
+  color: var(--g3000-color-red);
+}
+
+.annunciation.warning.new {
+  animation: cas-flash-red 1s infinite;
+}
+
+.annunciation.caution {
+  color: var(--g3000-color-yellow);
+}
+
+.annunciation.caution.new {
+  animation: cas-flash-yellow 1s infinite;
+}
+
+.annunciation.advisory,
+.annunciation.safe-op {
+  color: var(--g3000-color-white);
+}

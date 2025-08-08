@@ -1,4 +1,8 @@
-import { AdcEvents, AhrsEvents, ClockEvents, ComponentProps, DisplayComponent, EventBus, FSComponent, GNSSEvents, Subject, Vec2Subject, VNode } from '@microsoft/msfs-sdk';
+import {
+  AdcEvents, AhrsEvents, ClockEvents, ComponentProps, DisplayComponent, EventBus, FlightPlanner, FSComponent, GNSSEvents, Subject, Vec2Subject, VNode
+} from '@microsoft/msfs-sdk';
+
+import { Fms } from '@microsoft/msfs-garminsdk';
 
 import { AHRSSystemEvents } from '../../../Shared/Systems/AHRSSystem';
 import { AvionicsSystemState, AvionicsSystemStateEvent } from '../../../Shared/Systems/G1000AvionicsSystem';
@@ -9,6 +13,7 @@ import { FlightPathMarker } from './FlightPathMarker';
 import { G1000SynVis } from './G1000SynVis';
 
 import './PrimaryHorizonDisplay.css';
+import { Pathways } from '../Overlays/Pathway/Pathways';
 
 /**
  * The properties on the primary horizon display component.
@@ -20,6 +25,12 @@ interface PrimaryHorizonDisplayProps extends ComponentProps {
 
   /** Whether this instance of the G1000 has a Radio Altimeter. */
   hasRadioAltimeter: boolean;
+
+  /** The flight planner. */
+  flightPlanner: FlightPlanner;
+
+  /** The fms. */
+  fms: Fms;
 
 }
 
@@ -224,6 +235,7 @@ export class PrimaryHorizonDisplay extends DisplayComponent<PrimaryHorizonDispla
             resolution={Vec2Subject.createFromVector(new Float64Array([1228, 921]))}
             isActive={this.isSvtActiveSub}
           />
+          <Pathways bus={this.props.bus} fms={this.props.fms} flightPlanner={this.props.flightPlanner} />
           <FlightPathMarker ref={this.flightPathMarkerRef} isActive={this.isSvtActiveSub} />
         </div>
         <AttitudeIndicator ref={this.attitudeIndicatorRef} bus={this.props.bus} hasRadioAltimeter={this.props.hasRadioAltimeter} />

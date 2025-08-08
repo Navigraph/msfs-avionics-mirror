@@ -704,4 +704,20 @@ export class AeroMath {
      */
     (cd: number, area: number, dynamicPressure: number): number;
   } = AeroMath.flowForceFromCoef;
+
+
+  // ---- Engine equations ----
+
+  /**
+   * Calculates a thrust correction factor. Multiplying the correction factor by uncorrected thrust yields corrected
+   * thrust.
+   * @param mach The mach number.
+   * @param ambientPressure The ambient static pressure in hPa.
+   * @returns The thrust correction factor for the specified parameters.
+   */
+  public static thrustCorrectionFactor(mach: number, ambientPressure: number): number {
+    const totalInletPressureMachRise = AeroMath.totalPressureRatioAir(mach);
+    const deltaPressureRatio = ambientPressure / 1013.25;
+    return 1 / (deltaPressureRatio * totalInletPressureMachRise);
+  }
 }

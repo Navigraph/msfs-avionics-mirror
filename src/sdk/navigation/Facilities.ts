@@ -228,7 +228,7 @@ export interface FlightPlanLeg {
   /** An exact longitude for this leg termination. */
   lon?: number
 
-  /** Flags indicating the approach fix type. See {@link FixTypeFlags}. Use BitFlags to check. */
+  /** Flags indicating the approach fix type. See {@link FixTypeFlags}. Use the BitFlags class to check. */
   fixTypeFlags: number;
 
   /** Vertical glide path angle for the leg in degrees + 360 (e.g -3° descent = 357), or 0 if invalid */
@@ -245,13 +245,19 @@ export type ExtendedApproachType = ApproachType | AdditionalApproachType;
 
 /**
  * Flags indicating the approach fix type.
+ * They can be combined to indicate multiple types on a single fix using BitFlags class.
  */
 export enum FixTypeFlags {
   None = 0,
+  /* Initial Approach Fix. */
   IAF = 1 << 0,
+  /* Intermediate Fix. */
   IF = 1 << 1,
+  /* Missed Approach Point. */
   MAP = 1 << 2,
+  /* Final Approach Fix. */
   FAF = 1 << 3,
+  /* Missed Approach Holding Point. This doesn't come from the sim. We populate it in `insertApproach` in the Fms. */
   MAHP = 1 << 4
 }
 
@@ -372,7 +378,7 @@ export interface Facility {
   /** The FS ICAO for this facility. */
   readonly icao: string;
 
-  /** The name of the facility. */
+  /** The name of the facility. Can be a localized string (prefix with `TT:`) that needs passed to Utils.Translate. */
   readonly name: string;
 
   /** The latitude of the facility. */
@@ -384,7 +390,10 @@ export interface Facility {
   /** The region code in which this facility appears. */
   readonly region: string;
 
-  /** The city region boundary within which this facility appears.*/
+  /**
+   * The city region boundary within which this facility appears, and optionally also the state, separated by `, `.
+   * Both city and state can be localized strings (prefixed with `TT:`), and will need split before passing to Utils.Translate individually.
+   */
   readonly city: string;
 
   /** The magnetic variation at a given facilty location. */
@@ -434,6 +443,9 @@ export interface AirportFacility extends Facility {
 
   /** The arrival procedures on the airport. */
   readonly arrivals: readonly ArrivalProcedure[];
+
+  /** The airport altitude in metres. */
+  readonly altitude: number;
 }
 
 /**

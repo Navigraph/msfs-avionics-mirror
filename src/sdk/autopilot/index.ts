@@ -11,3 +11,4 @@ export * from './Autopilot';
 export * from './AutopilotDriver';
 export * from './VerticalNavigation';
 export * from './GpsSynchronizer';
+export * from './APModeVars';

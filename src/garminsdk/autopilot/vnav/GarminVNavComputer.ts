@@ -8,7 +8,7 @@ import {
 } from '@microsoft/msfs-sdk';
 
 import { FmsEvents } from '../../flightplan/FmsEvents';
-import { BaseGarminVNavDataEvents, GarminVNavDataEvents, GarminVNavFlightPhase, GarminVNavTrackingPhase } from './GarminVNavDataEvents';
+import { BaseGarminVNavDataEvents, GarminVNavDataEvents, GarminVNavFlightPhase, GarminVNavTrackAlertType, GarminVNavTrackingPhase } from './GarminVNavDataEvents';
 import { BaseGarminVNavEvents, GarminVNavEvents } from './GarminVNavEvents';
 import { GarminTodBodDetails, GarminVNavComputerAPValues, GarminVNavGuidance, GarminVNavPathGuidance, GlidepathServiceLevel } from './GarminVNavTypes';
 import { GarminVNavUtils } from './GarminVNavUtils';
@@ -32,7 +32,7 @@ export interface GarminVNavComputerOptions {
  */
 type UsedBaseVNavDataEvents = Pick<
   BaseGarminVNavDataEvents,
-  'vnav_cruise_altitude' | 'vnav_flight_phase' | 'vnav_tracking_phase' | 'vnav_active_constraint_global_leg_index'
+  'vnav_cruise_altitude' | 'vnav_flight_phase' | 'vnav_tracking_phase' | 'vnav_active_constraint_global_leg_index' | 'vnav_track_alert'
 >;
 
 /**
@@ -70,6 +70,18 @@ export class GarminVNavComputer {
    * The amount of hysteresis applied to the time to TOD threshold, in seconds, after a descent path has become active.
    */
   private static readonly ACTIVE_PATH_TOD_TIME_HYSTERESIS = 30;
+
+  /**
+   * The amount of time, in seconds, remaining to a vertical track change, at or below which a vertical track alert can
+   * be issued.
+   */
+  private static readonly TRACK_ALERT_ISSUE_THRESHOLD = 60;
+
+  /**
+   * The amount of time, in seconds, remaining to a vertical track change, at or above which the corresponding vertical
+   * track alert is re-armed.
+   */
+  private static readonly TRACK_ALERT_REARM_THRESHOLD = 90;
 
   private readonly publisher = this.bus.getPublisher<GarminVNavEvents & GarminVNavDataEvents>();
 
@@ -159,6 +171,14 @@ export class GarminVNavComputer {
 
   private readonly todBodDetailsSubject = ObjectSubject.create<GarminTodBodDetails>(Object.assign({}, this.todBodDetails));
   private readonly tocBocDetailsSubject = ObjectSubject.create<TocBocDetails>(Object.assign({}, this.tocBocDetails));
+
+  private readonly allTrackAlertTypes = Object.values(GarminVNavTrackAlertType);
+  private readonly isTrackAlertArmed: Record<GarminVNavTrackAlertType, boolean> = {
+    [GarminVNavTrackAlertType.TodOneMinute]: true,
+    [GarminVNavTrackAlertType.BodOneMinute]: true,
+    [GarminVNavTrackAlertType.TocOneMinute]: true,
+    [GarminVNavTrackAlertType.BocOneMinute]: true,
+  };
 
   // Subjects for each vnav var to be set
   private readonly vnavState = Subject.create<VNavState>(VNavState.Enabled_Inactive);
@@ -304,6 +324,7 @@ export class GarminVNavComputer {
       'vnav_flight_phase': `vnav_flight_phase${eventBusTopicSuffix}`,
       'vnav_tracking_phase': `vnav_tracking_phase${eventBusTopicSuffix}`,
       'vnav_active_constraint_global_leg_index': `vnav_active_constraint_global_leg_index${eventBusTopicSuffix}`,
+      'vnav_track_alert': `vnav_track_alert${eventBusTopicSuffix}`,
 
       // VNAV control events
       'vnav_set_state': `vnav_set_state${eventBusTopicSuffix}`,
@@ -502,6 +523,7 @@ export class GarminVNavComputer {
     this.resetVNavTrackingVars();
     this.resetTodBodVars();
     this.resetTocBocVars();
+    this.resetTrackAlerts();
 
     this.activePathConstraintIndex = -1;
     this.isAwaitingPathRearm = false;
@@ -681,6 +703,7 @@ export class GarminVNavComputer {
             this.resetVNavTrackingVars();
             this.resetTodBodVars();
             this.resetTocBocVars();
+            this.resetTrackAlerts();
             this.activePathConstraintIndex = -1;
             this.isAwaitingPathRearm = false;
             this.pathRearmIndex = -1;
@@ -828,6 +851,7 @@ export class GarminVNavComputer {
               this.resetVNavTrackingVars();
               this.resetTodBodVars();
               this.resetTocBocVars();
+              this.resetTrackAlerts();
 
               if (inClimb) {
                 // The active constraint is the current phase constraint.
@@ -953,6 +977,8 @@ export class GarminVNavComputer {
               this.isActive = this.state === VNavState.Enabled_Active;
 
               if (!inClimb && !this.isClimbArmed) {
+                this.updateDescentTrackAlerts(todBodDetails);
+
                 // If there is no active descent constraint, then VNAV remains inactive and PATH cannot be armed.
                 if (activeConstraintIndex < 0) {
                   this.isActive = false;
@@ -965,6 +991,8 @@ export class GarminVNavComputer {
                 this.pathAvailable.set(true);
                 this.trackDescent(dt, verticalPlan, lateralPlan, todBodDetails, activeConstraintIndex, activePathConstraintIndex);
               } else if (this.enableAdvancedVNav && (inClimb || this.isClimbArmed)) {
+                this.updateClimbTrackAlerts(tocBocDetails);
+
                 this.disarmPath();
 
                 this.fpa.set(null);
@@ -973,6 +1001,8 @@ export class GarminVNavComputer {
                 this.lastCapturedPathDesiredAltitude = undefined;
                 this.trackClimb(verticalPlan, lateralPlan, tocBocDetails, activeConstraintIndex);
               } else {
+                this.resetTrackAlerts();
+
                 this.disarmPath();
                 this.fpa.set(null);
                 this.resetVNavTrackingVars();
@@ -1228,6 +1258,96 @@ export class GarminVNavComputer {
     guidance.deviation = deviation ?? 0;
 
     this._pathGuidance.set(guidance);
+  }
+
+  /**
+   * Updates vertical track alerts for the climb phase.
+   * @param tocBocDetails The computed TOC/BOC details.
+   */
+  private updateClimbTrackAlerts(tocBocDetails: TocBocDetails): void {
+    this.isTrackAlertArmed[GarminVNavTrackAlertType.TodOneMinute] = true;
+    this.isTrackAlertArmed[GarminVNavTrackAlertType.BodOneMinute] = true;
+
+    let alertTypeToIssue: GarminVNavTrackAlertType.TocOneMinute | GarminVNavTrackAlertType.BocOneMinute | null = null;
+
+    if (tocBocDetails.tocLegIndex >= 0 && tocBocDetails.distanceFromToc > 0) {
+      const timeToTocSeconds = UnitType.METER.convertTo(tocBocDetails.distanceFromToc, UnitType.NMILE) / this.currentGroundSpeed * 3600;
+
+      if (timeToTocSeconds >= GarminVNavComputer.TRACK_ALERT_REARM_THRESHOLD) {
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.TocOneMinute] = true;
+      } else if (timeToTocSeconds <= GarminVNavComputer.TRACK_ALERT_ISSUE_THRESHOLD && this.isTrackAlertArmed[GarminVNavTrackAlertType.TocOneMinute]) {
+        alertTypeToIssue = GarminVNavTrackAlertType.TocOneMinute;
+      }
+    } else if (tocBocDetails.bocLegIndex >= 0 && tocBocDetails.distanceFromBoc >= 0) {
+      const timeToBocSeconds = UnitType.METER.convertTo(tocBocDetails.distanceFromBoc, UnitType.NMILE) / this.currentGroundSpeed * 3600;
+
+      if (timeToBocSeconds >= GarminVNavComputer.TRACK_ALERT_REARM_THRESHOLD) {
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.BocOneMinute] = true;
+      } else if (timeToBocSeconds <= GarminVNavComputer.TRACK_ALERT_ISSUE_THRESHOLD && this.isTrackAlertArmed[GarminVNavTrackAlertType.BocOneMinute]) {
+        alertTypeToIssue = GarminVNavTrackAlertType.BocOneMinute;
+      }
+    }
+
+    if (alertTypeToIssue !== null) {
+      if (alertTypeToIssue === GarminVNavTrackAlertType.TocOneMinute) {
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.TocOneMinute] = false;
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.BocOneMinute] = true;
+      } else {
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.BocOneMinute] = false;
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.TocOneMinute] = true;
+      }
+
+      this.issueTrackAlert(alertTypeToIssue);
+    }
+  }
+
+  /**
+   * Updates vertical track alerts for the descent phase.
+   * @param todBodDetails The computed TOD/BOD details.
+   */
+  private updateDescentTrackAlerts(todBodDetails: GarminTodBodDetails): void {
+    this.isTrackAlertArmed[GarminVNavTrackAlertType.TocOneMinute] = true;
+    this.isTrackAlertArmed[GarminVNavTrackAlertType.BocOneMinute] = true;
+
+    let alertTypeToIssue: GarminVNavTrackAlertType.TodOneMinute | GarminVNavTrackAlertType.BodOneMinute | null = null;
+
+    if (todBodDetails.todLegIndex >= 0 && todBodDetails.distanceFromTod > 0) {
+      const timeToTodSeconds = UnitType.METER.convertTo(todBodDetails.distanceFromTod, UnitType.NMILE) / this.currentGroundSpeed * 3600;
+
+      if (timeToTodSeconds >= GarminVNavComputer.TRACK_ALERT_REARM_THRESHOLD) {
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.TodOneMinute] = true;
+      } else if (timeToTodSeconds <= GarminVNavComputer.TRACK_ALERT_ISSUE_THRESHOLD && this.isTrackAlertArmed[GarminVNavTrackAlertType.TodOneMinute]) {
+        alertTypeToIssue = GarminVNavTrackAlertType.TodOneMinute;
+      }
+    } else if (todBodDetails.bodLegIndex >= 0 && todBodDetails.distanceFromBod >= 0) {
+      const timeToBodSeconds = UnitType.METER.convertTo(todBodDetails.distanceFromBod, UnitType.NMILE) / this.currentGroundSpeed * 3600;
+
+      if (timeToBodSeconds >= GarminVNavComputer.TRACK_ALERT_REARM_THRESHOLD) {
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.BodOneMinute] = true;
+      } else if (timeToBodSeconds <= GarminVNavComputer.TRACK_ALERT_ISSUE_THRESHOLD && this.isTrackAlertArmed[GarminVNavTrackAlertType.BodOneMinute]) {
+        alertTypeToIssue = GarminVNavTrackAlertType.BodOneMinute;
+      }
+    }
+
+    if (alertTypeToIssue !== null) {
+      if (alertTypeToIssue === GarminVNavTrackAlertType.TodOneMinute) {
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.TodOneMinute] = false;
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.BodOneMinute] = true;
+      } else {
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.BodOneMinute] = false;
+        this.isTrackAlertArmed[GarminVNavTrackAlertType.TodOneMinute] = true;
+      }
+
+      this.issueTrackAlert(alertTypeToIssue);
+    }
+  }
+
+  /**
+   * Issues a vertical track alert.
+   * @param type The type of alert to issue.
+   */
+  private issueTrackAlert(type: GarminVNavTrackAlertType): void {
+    this.publisher.pub(this.vnavTopicMap['vnav_track_alert'], type, true, false);
   }
 
   /**
@@ -2045,6 +2165,15 @@ export class GarminVNavComputer {
     this.tocBocDetailsSubject.set('tocLegDistance', 0);
     this.tocBocDetailsSubject.set('distanceFromBoc', 0);
     this.tocBocDetailsSubject.set('distanceFromToc', 0);
+  }
+
+  /**
+   * Resets vertical track alert state.
+   */
+  private resetTrackAlerts(): void {
+    for (let i = 0; i < this.allTrackAlertTypes.length; i++) {
+      this.isTrackAlertArmed[this.allTrackAlertTypes[i]] = true;
+    }
   }
 
   /**

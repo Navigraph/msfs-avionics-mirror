@@ -26,6 +26,9 @@ import './ProcApproachPage.css';
  * Props on the ProcApproachPage page.
  */
 interface ProcApproachPageProps extends WaypointPageProps {
+  /** The index of the GPS receiver used by the page's parent instrument. */
+  gpsReceiverIndex: number;
+
   /** The airport that is currently selected on the waypoint pages. */
   selectedAirport: Subject<AirportFacility | undefined>;
 
@@ -46,7 +49,7 @@ type GNSStandardMapControllers = GNSMapControllers & {
 export class ProcApproachPage extends WaypointPage<ProcApproachPageProps> {
   private readonly previewMap = GNSMapBuilder
     .withProcedurePreviewMap(this.props.bus, this.props.settingsProvider, this.props.gnsType, this.props.instrumentIndex)
-    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.settingsProvider, this.props.fms))
+    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.gpsReceiverIndex, this.props.settingsProvider, this.props.fms))
     .build<GNSMapModules, GNSMapLayers, GNSStandardMapControllers, GNSMapContextProps>('waypoint-page-map');
 
   private readonly planModule = this.previewMap.context.model.getModule(MapSystemKeys.FlightPlan);
@@ -497,7 +500,7 @@ export class ProcApproachPage extends WaypointPage<ProcApproachPageProps> {
     const currentOpId = this.previewOpId;
 
     const airport = this.props.selectedAirport.get();
-    const approachIndex = this.selectedApproach ?? this.gnsValidApproaches[0].index;
+    const approachIndex = this.selectedApproach ?? (this.gnsValidApproaches.length > 0 ? this.gnsValidApproaches[0].index : undefined);
     const transitionIndex = this.selectedTransition ?? -1;
 
     if (airport !== undefined && airport.approaches.length > 0 && approachIndex !== undefined && transitionIndex !== undefined) {
@@ -594,7 +597,7 @@ export class ProcApproachPage extends WaypointPage<ProcApproachPageProps> {
             onFinalized={this.onWaypointFinalized.bind(this)}
             onPopupDonePressed={this.props.onPopupDonePressed}
             showDoneButton={this.props.isPopup}
-            length={4}
+            length={5}
             ppos={this.props.ppos}
             facilityLoader={this.props.fms.facLoader}
             title={'APT'}

@@ -1,0 +1,124 @@
+<ModelBehaviors>
+  <Include ModelBehaviorFile="Asobo\Generic.xml"/>
+  <Include ModelBehaviorFile="Asobo\GlassCockpit\AS3000.xml"/>
+  <Include ModelBehaviorFile="Asobo\GlassCockpit\Inputs\AS1000_Inputs.xml"/>
+
+  <Template Name="WT_G3000_PFD_Template">
+    <Parameters Type="Default">
+      <EMISSIVE_VAR_TYPE>Pfd</EMISSIVE_VAR_TYPE>
+    </Parameters>
+    <UseTemplate Name="WT_G3000_GDU_Template">
+      <DISPLAY>PFD</DISPLAY>
+    </UseTemplate>
+  </Template>
+
+  <Template Name="WT_G3000_MFD_Template">
+    <Parameters Type="Default">
+      <EMISSIVE_VAR_TYPE>Mfd</EMISSIVE_VAR_TYPE>
+    </Parameters>
+    <UseTemplate Name="WT_G3000_GDU_Template">
+      <DISPLAY>MFD</DISPLAY>
+    </UseTemplate>
+  </Template>
+
+  <Template Name="WT_G3000_GDU_Template">
+    <Parameters Type="Default">
+      <ID>1</ID>
+    </Parameters>
+    <Parameters Type="Default">
+      <EMISSIVE_VAR>(L:WTG3000_#EMISSIVE_VAR_TYPE#_Backlight:#ID#)</EMISSIVE_VAR>
+    </Parameters>
+    <UseTemplate Name="ASOBO_GT_Helper_Suffix_ID_Appender">
+      <TEMPLATE_TO_CALL>WT_G3000_GDU_SubTemplate</TEMPLATE_TO_CALL>
+    </UseTemplate>
+  </Template>
+
+  <Template Name="WT_G3000_GDU_SubTemplate">
+    <Parameters Type="Default">
+      <AS3000>AS3000</AS3000>
+
+      <Switch Param="DISPLAY">
+        <Case Value="PFD">
+          <Switch Param="ID">
+            <Case Value="1">
+              <DISPLAY_POS>L</DISPLAY_POS>
+            </Case>
+            <Case Value="2">
+              <DISPLAY_POS>R</DISPLAY_POS> 
+            </Case>
+          </Switch>
+          <DISPLAY_ID>#DISPLAY#_#ID#</DISPLAY_ID>
+        </Case>
+        <Case Value="MFD">
+          <DISPLAY_POS>M</DISPLAY_POS>	
+          <DISPLAY_ID>#DISPLAY#</DISPLAY_ID>
+        </Case>
+      </Switch>
+
+      <EMISSIVE_MIN>0.02</EMISSIVE_MIN>
+      <EMISSIVE_MAX>1</EMISSIVE_MAX>
+      <EMISSIVE_GAMMA>2.2</EMISSIVE_GAMMA>
+      <EMISSIVE_VAR>1</EMISSIVE_VAR>
+    </Parameters>
+
+    <Parameters Type="Default">
+      <SCREEN_EMISSIVE_MIN>#EMISSIVE_MIN#</SCREEN_EMISSIVE_MIN>
+      <SCREEN_EMISSIVE_MAX>#EMISSIVE_MAX#</SCREEN_EMISSIVE_MAX>
+      <SCREEN_EMISSIVE_GAMMA>#EMISSIVE_GAMMA#</SCREEN_EMISSIVE_GAMMA>
+      <SCREEN_EMISSIVE_VAR>#EMISSIVE_VAR#</SCREEN_EMISSIVE_VAR>
+    </Parameters>
+
+    <Parameters Type="Default">
+      <SCREEN_NODE_ID>AS1000_#DISPLAY_ID#</SCREEN_NODE_ID>
+      <SCREEN_EMISSIVE_CODE>#SCREEN_EMISSIVE_MIN# #SCREEN_EMISSIVE_VAR# #SCREEN_EMISSIVE_GAMMA# pow #SCREEN_EMISSIVE_MAX# #SCREEN_EMISSIVE_MIN# - * +</SCREEN_EMISSIVE_CODE>
+    </Parameters>
+
+    <Condition Check="NO_SOFTKEYS">
+      <False>
+        <Component ID="#AS3000#_Softkeys_#DISPLAY_ID#">
+          <Parameters Type="Default">
+            <Condition Check="CIRCUIT_ID">
+              <True>
+                <SOFTKEY_FAILURE>(A:CIRCUIT ON:#CIRCUIT_ID#, Bool)</SOFTKEY_FAILURE>
+              </True>
+              <False>
+                <SOFTKEY_FAILURE>(A:CIRCUIT GENERAL PANEL ON, Bool)</SOFTKEY_FAILURE>
+              </False>
+            </Condition>
+
+            <SOFTKEY_EMISSIVE_MIN>#EMISSIVE_MIN#</SOFTKEY_EMISSIVE_MIN>
+            <SOFTKEY_EMISSIVE_MAX>#EMISSIVE_MAX#</SOFTKEY_EMISSIVE_MAX>
+            <SOFTKEY_EMISSIVE_GAMMA>#EMISSIVE_GAMMA#</SOFTKEY_EMISSIVE_GAMMA>
+            <SOFTKEY_EMISSIVE_VAR>#EMISSIVE_VAR#</SOFTKEY_EMISSIVE_VAR>
+          </Parameters>
+
+          <Parameters Type="Default">
+            <SOFTKEY_EMISSIVE_CODE>#SOFTKEY_EMISSIVE_MIN# #SOFTKEY_EMISSIVE_VAR# #SOFTKEY_EMISSIVE_GAMMA# pow #SOFTKEY_EMISSIVE_MAX# #SOFTKEY_EMISSIVE_MIN# - * +</SOFTKEY_EMISSIVE_CODE>
+          </Parameters>
+
+          <Parameters Type="Override">
+            <EMISSIVE_CODE>#SOFTKEY_EMISSIVE_CODE#</EMISSIVE_CODE>
+            <FAILURE>#SOFTKEY_FAILURE#</FAILURE>
+          </Parameters>
+          
+          <Loop>
+            <Setup>
+              <Param>KEY_ID</Param>
+              <From>1</From>
+              <Inc>1</Inc>
+              <To>12</To>
+            </Setup>
+            <Do>
+              <UseTemplate Name="ASOBO_AS3000_Softkey_Template"/>
+            </Do>
+          </Loop>
+        </Component>
+      </False>
+    </Condition>
+
+    <UseTemplate Name="ASOBO_AS3000_Screen_Template">
+      <SCREEN_EMISSIVE_CODE>#SCREEN_EMISSIVE_CODE#</SCREEN_EMISSIVE_CODE>
+    </UseTemplate>
+  </Template>
+
+</ModelBehaviors>

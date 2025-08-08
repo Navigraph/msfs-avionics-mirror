@@ -12,6 +12,9 @@ interface ArcCdiProps extends ComponentProps {
   /** An instance of the event bus. */
   bus: EventBus;
 
+  /** The index of the GPS receiver used by the CDI. */
+  gpsReceiverIndex: number;
+
   /** An instance of the FMS. */
   fms: Fms;
 }
@@ -66,7 +69,7 @@ export abstract class ArcCdi extends DisplayComponent<ArcCdiProps> {
     this.leftArrowVisible.sub(this.setElementVisibility(this.xtkLabelLeft), true);
     this.needleVisible.sub(this.setElementVisibility(this.needle), true);
 
-    sub.on('gps_system_state_changed_1').handle(state => {
+    sub.on(`gps_system_state_changed_${this.props.gpsReceiverIndex}`).handle(state => {
       this.gpsIsValid = state === GPSSystemState.SolutionAcquired || state === GPSSystemState.DiffSolutionAcquired;
       this.onWaypointBearingChanged(this.currentBearing);
       this.onXtkChanged(this.currentXtk);

@@ -333,7 +333,7 @@ class WTG1000_PFD extends BaseInstrument {
 
         this.pluginSystem.callPlugins(p => p.onMenuSystemInitialized?.());
 
-        FSComponent.render(<PrimaryHorizonDisplay bus={this.bus} hasRadioAltimeter={this.airframeOptions.hasRadioAltimeter} />, document.getElementById('HorizonContainer'));
+        FSComponent.render(<PrimaryHorizonDisplay bus={this.bus} fms={this.fms} flightPlanner={this.planner} hasRadioAltimeter={this.airframeOptions.hasRadioAltimeter} />, document.getElementById('HorizonContainer'));
 
         FSComponent.render(<HSI bus={this.bus} flightPlanner={this.planner} navIndicatorController={this.navIndicatorController} tas={this.tas} unitsSettingManager={UnitsUserSettings.getManager(this.bus)} />, document.getElementById('InstrumentsContainer'));
         FSComponent.render(<FlightDirector bus={this.bus} />, document.getElementById('InstrumentsContainer'));

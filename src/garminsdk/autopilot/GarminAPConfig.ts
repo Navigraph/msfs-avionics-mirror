@@ -94,6 +94,18 @@ export type GarminAPConfigDirectorOptions = {
   lowBankAngle?: number;
 
   /**
+   * The target pitch angle, in degrees, commanded by the TO director. Positive values indicate upward pitch. Defaults
+   * to `10`.
+   */
+  toPitchAngle?: number;
+
+  /**
+   * The target pitch angle, in degrees, commanded by the GA director. Positive values indicate upward pitch. Defaults
+   * to `7.5`.
+   */
+  gaPitchAngle?: number;
+
+  /**
    * The threshold difference between selected heading and current heading, in degrees, at which the heading director
    * unlocks its commanded turn direction and chooses a new optimal turn direction to establish on the selected
    * heading, potentially resulting in a turn reversal. Any value less than or equal to 180 degrees effectively
@@ -127,6 +139,9 @@ export type GarminAPConfigOptions = GarminAPConfigDirectorOptions & {
    * `navToNavGuidance` is undefined.
    */
   navToNavOptions?: Readonly<GarminNavToNavManager2Options>;
+
+  /** Whether to deactivate the autopilot when GA mode is armed in response to a TO/GA mode button press. Defaults to `true`. */
+  deactivateAutopilotOnGa?: boolean;
 }
 
 /**
@@ -148,6 +163,12 @@ export class GarminAPConfig implements GarminAPConfigInterface {
   /** The default maximum bank angle, in degrees, in Low Bank Mode. */
   public static readonly DEFAULT_LOW_BANK_ANGLE = 15;
 
+  /** The default target pitch angle, in degrees, commanded by the TO director. Positive values indicate upward pitch. */
+  public static readonly DEFAULT_TO_PITCH_ANGLE = 10;
+
+  /** The default target pitch angle, in degrees, commanded by the GA director. Positive values indicate upward pitch. */
+  public static readonly DEFAULT_GA_PITCH_ANGLE = 7.5;
+
   /** The default HDG director turn direction unlock threshold, in degrees. */
   public static readonly DEFAULT_HDG_DIRECTION_UNLOCK_THRESHOLD = 331;
 
@@ -157,6 +178,9 @@ export class GarminAPConfig implements GarminAPConfigInterface {
 
   /** @inheritDoc */
   public readonly cdiId: string;
+
+  /** @inheritDoc */
+  public readonly deactivateAutopilotOnGa: boolean;
 
   public autopilotDriverOptions: AutopilotDriverOptions;
 
@@ -184,6 +208,9 @@ export class GarminAPConfig implements GarminAPConfigInterface {
   private readonly locMaxBankAngle: number;
   private readonly lnavMaxBankAngle: number;
   private readonly lowBankAngle: number;
+
+  private readonly toPitchAngle: number;
+  private readonly gaPitchAngle: number;
 
   private readonly hdgTurnReversalThreshold: number;
 
@@ -248,6 +275,7 @@ export class GarminAPConfig implements GarminAPConfigInterface {
     options?: Readonly<GarminAPConfigOptions>
   ) {
     this.cdiId = options?.cdiId ?? '';
+    this.deactivateAutopilotOnGa = options?.deactivateAutopilotOnGa ?? true;
 
     if (arg2 instanceof FlightPlanner) {
       this.flightPlanner = arg2;
@@ -305,6 +333,9 @@ export class GarminAPConfig implements GarminAPConfigInterface {
     this.lnavMaxBankAngle = options?.lnavMaxBankAngle ?? GarminAPConfig.DEFAULT_MAX_BANK_ANGLE;
     this.lowBankAngle = options?.lowBankAngle ?? GarminAPConfig.DEFAULT_LOW_BANK_ANGLE;
     this.hdgTurnReversalThreshold = options?.hdgTurnReversalThreshold ?? GarminAPConfig.DEFAULT_HDG_DIRECTION_UNLOCK_THRESHOLD;
+
+    this.toPitchAngle = options?.toPitchAngle ?? GarminAPConfig.DEFAULT_TO_PITCH_ANGLE;
+    this.gaPitchAngle = options?.gaPitchAngle ?? GarminAPConfig.DEFAULT_GA_PITCH_ANGLE;
   }
 
   /** @inheritdoc */
@@ -372,6 +403,9 @@ export class GarminAPConfig implements GarminAPConfigInterface {
   public createVorDirector(apValues: APValues): APNavDirector {
     return new APNavDirector(this.bus, apValues, APLateralModes.VOR, {
       maxBankAngle: () => apValues.maxBankId.get() === 1 ? Math.min(this.vorMaxBankAngle, this.lowBankAngle) : this.vorMaxBankAngle,
+      canArm: GarminAPUtils.navCanArm,
+      canActivate: GarminAPUtils.navCanActivate,
+      canRemainActive: GarminAPUtils.navCanRemainActive,
       lateralInterceptCurve: GarminAPUtils.navIntercept
     });
   }
@@ -380,6 +414,9 @@ export class GarminAPConfig implements GarminAPConfigInterface {
   public createLocDirector(apValues: APValues): APNavDirector {
     return new APNavDirector(this.bus, apValues, APLateralModes.LOC, {
       maxBankAngle: () => apValues.maxBankId.get() === 1 ? Math.min(this.locMaxBankAngle, this.lowBankAngle) : this.locMaxBankAngle,
+      canArm: GarminAPUtils.navCanArm,
+      canActivate: GarminAPUtils.navCanActivate,
+      canRemainActive: GarminAPUtils.navCanRemainActive,
       lateralInterceptCurve: GarminAPUtils.navIntercept
     });
   }
@@ -388,6 +425,9 @@ export class GarminAPConfig implements GarminAPConfigInterface {
   public createBcDirector(apValues: APValues): APBackCourseDirector {
     return new APBackCourseDirector(this.bus, apValues, {
       maxBankAngle: () => apValues.maxBankId.get() === 1 ? Math.min(this.locMaxBankAngle, this.lowBankAngle) : this.locMaxBankAngle,
+      canArm: GarminAPUtils.backCourseCanArm,
+      canActivate: GarminAPUtils.backCourseCanActivate,
+      canRemainActive: GarminAPUtils.backCourseCanRemainActive,
       lateralInterceptCurve: (distanceToSource: number, deflection: number, xtk: number, tas: number) => GarminAPUtils.localizerIntercept(xtk, tas)
     });
   }
@@ -440,6 +480,7 @@ export class GarminAPConfig implements GarminAPConfigInterface {
   public createGpDirector(apValues: APValues): APGPDirector {
     return new APGPDirector(this.bus, apValues, {
       guidance: this.glidepathGuidance,
+      canArm: GarminAPUtils.glidepathCanArm.bind(undefined, apValues),
       canCapture: this.glidepathGuidance
         ? () => {
           return apValues.lateralActive.get() === APLateralModes.GPSS && this.glidepathGuidance!.get().canCapture;
@@ -450,19 +491,21 @@ export class GarminAPConfig implements GarminAPConfigInterface {
 
   /** @inheritdoc */
   public createGsDirector(apValues: APValues): APGSDirector {
-    return new APGSDirector(this.bus, apValues);
+    return new APGSDirector(this.bus, apValues, {
+      canArm: GarminAPUtils.glideslopeCanArm,
+      canActivate: GarminAPUtils.glideslopeCanActivate,
+      canRemainActive: GarminAPUtils.glideslopeCanRemainActive
+    });
   }
 
   /** @inheritdoc */
-  public createToVerticalDirector(): PlaneDirector | undefined {
-    //TODO: This value should be read in from the systems.cfg 'pitch_takeoff_ga' value
-
-    return new APTogaPitchDirector(10);
+  public createToVerticalDirector(apValues: APValues): PlaneDirector | undefined {
+    return new APTogaPitchDirector(apValues, { targetPitchAngle: this.toPitchAngle });
   }
 
   /** @inheritdoc */
-  public createGaVerticalDirector(): PlaneDirector | undefined {
-    return new APTogaPitchDirector(7.5);
+  public createGaVerticalDirector(apValues: APValues): PlaneDirector | undefined {
+    return new APTogaPitchDirector(apValues, { targetPitchAngle: this.gaPitchAngle });
   }
 
   /** @inheritdoc */

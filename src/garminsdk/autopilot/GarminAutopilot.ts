@@ -1,11 +1,12 @@
 import {
-  AdcEvents, AltitudeSelectManager, AltitudeSelectManagerOptions, APAltitudeModes, APEvents, APLateralModes, APStateManager,
-  APVerticalModes, Autopilot, ConsumerSubject, ConsumerValue, DirectorState, EventBus, FlightPlanner, MappedSubject,
-  MetricAltitudeSettingsManager, MinimumsMode, ObjectSubject, SetSubject, SimVarValueType, UnitType, VNavAltCaptureType,
-  VNavState
+  AdcEvents, AltitudeSelectManager, AltitudeSelectManagerOptions, APAltitudeModes, APEvents, APLateralModes,
+  APModePressEvent, APStateManager, APVerticalModes, Autopilot, ConsumerSubject, ConsumerValue, DirectorState,
+  EventBus, FlightPlanner, MappedSubject, MetricAltitudeSettingsManager, MinimumsMode, NavSourceType, ObjectSubject,
+  RadioUtils, SetSubject, SimVarValueType, Subject, UnitType, VNavAltCaptureType, VNavState
 } from '@microsoft/msfs-sdk';
 
 import { MinimumsDataProvider } from '../minimums/MinimumsDataProvider';
+import { GarminAPVars } from './data/GarminAPEvents';
 import { FmaData, FmaDataEvents, FmaVNavState } from './FmaData';
 import { GarminAPConfigInterface } from './GarminAPConfigInterface';
 import { GarminVNavManager2 } from './vnav/GarminVNavManager2';
@@ -92,6 +93,11 @@ export class GarminAutopilot extends Autopilot<GarminAPConfigInterface> {
 
   protected readonly supportMachSelect: boolean;
 
+  protected readonly isNavModeOn = Subject.create(false);
+  protected readonly isApproachModeOn = Subject.create(false);
+
+  protected isApproachModeCommandedOn = false;
+
   /**
    * Creates a new instance of GarminAutopilot.
    * @param bus The event bus.
@@ -100,7 +106,7 @@ export class GarminAutopilot extends Autopilot<GarminAPConfigInterface> {
    * @param stateManager This autopilot's state manager.
    * @param options Options with which to configure the new autopilot.
    */
-  constructor(
+  public constructor(
     bus: EventBus,
     flightPlanner: FlightPlanner,
     config: GarminAPConfigInterface,
@@ -135,6 +141,8 @@ export class GarminAutopilot extends Autopilot<GarminAPConfigInterface> {
         }
       }, true);
     }
+
+    this.monitorGarminEvents();
   }
 
   /**
@@ -161,6 +169,14 @@ export class GarminAutopilot extends Autopilot<GarminAPConfigInterface> {
         this.setVerticalArmed(APVerticalModes.NONE);
       };
     }
+  }
+
+  /**
+   * Monitors Garmin autopilot-specific events.
+   */
+  protected monitorGarminEvents(): void {
+    this.isNavModeOn.sub(isNavModeOn => { SimVar.SetSimVarValue(GarminAPVars.NavModeOn, SimVarValueType.Bool, isNavModeOn); }, true);
+    this.isApproachModeOn.sub(isApproachModeOn => { SimVar.SetSimVarValue(GarminAPVars.ApproachModeOn, SimVarValueType.Bool, isApproachModeOn); }, true);
   }
 
   /** @inheritDoc */
@@ -235,7 +251,58 @@ export class GarminAutopilot extends Autopilot<GarminAPConfigInterface> {
 
   /** @inheritDoc */
   protected onAfterUpdate(): void {
+    this.updateApproachModeState();
+    this.updateNavModeState();
     this.updateFma();
+  }
+
+  /**
+   * Updates this autopilot's NAV mode state.
+   */
+  protected updateNavModeState(): void {
+    const lateralArmed = this.apValues.lateralArmed.get();
+    const lateralActive = this.apValues.lateralActive.get();
+
+    if (
+      this.apValues.cdiSource.get().type === NavSourceType.Gps
+      && !!this.apValues.navToNavArmableLateralMode && this.apValues.navToNavArmableLateralMode() === lateralArmed
+      && lateralArmed !== APLateralModes.NONE
+    ) {
+      // If nav-to-nav is armed, then NAV mode is on if and only if GPSS is armed or active. Note that this is also the
+      // only time when nav mode and approach mode can be on simultaneously.
+      this.isNavModeOn.set(
+        lateralArmed === APLateralModes.GPSS
+        || lateralActive === APLateralModes.GPSS
+      );
+    } else {
+      // If nav-to-nav is not armed, then NAV mode is on if and only if approach mode is not on and one of the
+      // NAV-compatible lateral modes is armed or active.
+      this.isNavModeOn.set(
+        !this.isApproachModeOn.get()
+        && (
+          lateralArmed === APLateralModes.VOR
+          || lateralArmed === APLateralModes.LOC
+          || lateralArmed === APLateralModes.BC
+          || lateralArmed === APLateralModes.GPSS
+          || lateralArmed === APLateralModes.NAV
+          || lateralActive === APLateralModes.VOR
+          || lateralActive === APLateralModes.LOC
+          || lateralActive === APLateralModes.BC
+          || lateralActive === APLateralModes.GPSS
+          || lateralActive === APLateralModes.NAV
+        )
+      );
+    }
+  }
+
+  /**
+   * Updates this autopilot's approach mode state.
+   */
+  protected updateApproachModeState(): void {
+    if (this.isApproachModeOn.get()) {
+      // Check to see if the approach state should be reset to "off" due to automatic deactivation of modes.
+      this.reconcileApproachState();
+    }
   }
 
   /**
@@ -268,6 +335,185 @@ export class GarminAutopilot extends Autopilot<GarminAPConfigInterface> {
     if (this.needPublishFmaData) {
       this.needPublishFmaData = false;
       this.fmaDataPublisher.pub('fma_data', Object.assign({}, fmaData.get()), true, true);
+    }
+  }
+
+  /** @inheritDoc */
+  protected lateralPressed(data: APModePressEvent): void {
+    const mode = data.mode as APLateralModes;
+
+    if (
+      this.isApproachModeOn.get()
+      && mode === APLateralModes.NAV
+    ) {
+      if (data.set === false || data.set === undefined) {
+        if (this.apValues.cdiSource.get().type === NavSourceType.Gps && this.apValues.lateralArmed.get() === APLateralModes.LOC) {
+          // If LOC is armed for nav-to-nav, then pressing NAV should toggle the armed state of GPSS. If GPSS is
+          // toggled off, then LOC/GS stay armed. If GPSS is toggled on, then we need to deactivate approach mode
+          // (arming GPSS effectively replaces the armed LOC/GS modes).
+          if (!this.deactivateArmedOrActiveLateralMode(APLateralModes.GPSS)) {
+            this.deactivateApproachMode(false);
+            this.lateralModes.get(APLateralModes.GPSS)?.arm();
+          }
+        } else {
+          // In all cases where LOC is not armed for nav-to-nav, pressing NAV should deactivate the armed or active
+          // vertical approach mode while preserving the current armed/active lateral mode.
+          this.deactivateApproachMode(true);
+        }
+      }
+    } else {
+      super.lateralPressed(data);
+    }
+  }
+
+  /** @inheritDoc */
+  protected approachPressed(set?: boolean): void {
+    set ??= !this.isApproachModeOn.get();
+
+    if (set === this.isApproachModeOn.get()) {
+      return;
+    }
+
+    if (set) {
+      if (this.config.autoEngageFd !== false && !this.stateManager.isAnyFlightDirectorOn.get()) {
+        this.stateManager.setFlightDirector(true);
+      } else if (this.config.autoEngageFd === false && !this.stateManager.isAnyFlightDirectorOn.get() && !this.stateManager.apMasterOn.get()) {
+        return;
+      }
+      this.activateApproachMode();
+    } else {
+      this.deactivateApproachMode(false);
+    }
+  }
+
+  /**
+   * Activates approach mode. Activating approach mode will arm lateral and vertical modes based on the current CDI
+   * source and nav-to-nav guidance.
+   */
+  protected activateApproachMode(): void {
+    const cdiSource = this.apValues.cdiSource.get();
+    switch (cdiSource.type) {
+      case NavSourceType.Nav: {
+        if (cdiSource.index >= 1 && cdiSource.index <= 4) {
+          const frequency = SimVar.GetSimVarValue(`NAV ACTIVE FREQUENCY:${cdiSource.index}`, SimVarValueType.MHz);
+          if (RadioUtils.isLocalizerFrequency(frequency)) {
+            this.armModesForApproach(APLateralModes.LOC, APVerticalModes.GS);
+          } else {
+            // TODO: support VAPP mode
+          }
+
+          this.isApproachModeCommandedOn = true;
+          this.reconcileApproachState();
+        }
+        break;
+      }
+      case NavSourceType.Gps: {
+        if (this.apValues.approachIsActive.get() && this.apValues.approachHasGP.get()) {
+          // TODO: modes should be armed if RNAV approach is loaded regardless if the approach is active or if
+          // glidepath guidance is available.
+          this.armModesForApproach(APLateralModes.GPSS, APVerticalModes.GP);
+        } else if (this.navToNavManagerToUse) {
+          const armableLateralMode = this.navToNavManagerToUse.getArmableLateralMode();
+          const armableVerticalMode = this.navToNavManagerToUse.getArmableVerticalMode();
+          if (armableLateralMode !== APLateralModes.NONE) {
+            this.armModesForApproach(armableLateralMode, armableVerticalMode);
+          }
+        }
+
+        this.isApproachModeCommandedOn = true;
+        this.reconcileApproachState();
+        break;
+      }
+    }
+  }
+
+  /**
+   * Arms lateral and vertical approach modes. The vertical mode will only be armed if the lateral mode is successfully
+   * armed.
+   * @param lateralMode The lateral mode to arm.
+   * @param verticalMode The vertical mode to arm.
+   */
+  protected armModesForApproach(lateralMode: APLateralModes, verticalMode: APVerticalModes): void {
+    if (lateralMode === APLateralModes.NONE) {
+      return;
+    }
+
+    const lateralDirector = this.lateralModes.get(lateralMode);
+    if (!lateralDirector) {
+      return;
+    }
+
+    if (lateralDirector.state === DirectorState.Inactive) {
+      lateralDirector.arm();
+    }
+
+    // If we were unsuccessful in arming the lateral mode, abort now and don't try to arm the vertical mode.
+    if (lateralDirector.state === DirectorState.Inactive) {
+      return;
+    }
+
+    if (verticalMode === APVerticalModes.NONE) {
+      return;
+    }
+
+    const verticalDirector = this.verticalModes.get(verticalMode);
+    if (verticalDirector) {
+      verticalDirector.arm();
+    }
+  }
+
+  /**
+   * Deactivates approach mode. Deactivating approach mode will deactivate any armed or active lateral and vertical
+   * approach modes.
+   * @param preserveLateralMode Whether to preserve armed or active lateral modes. If true, then any armed or active
+   * lateral approach mode that is deactivated will be replaced with its non-approach counterpart, if one exists.
+   */
+  protected deactivateApproachMode(preserveLateralMode: boolean): void {
+    this.isApproachModeCommandedOn = false;
+
+    this.deactivateArmedOrActiveVerticalMode(APVerticalModes.GS);
+    this.deactivateArmedOrActiveVerticalMode(APVerticalModes.GP);
+
+    if (preserveLateralMode) {
+      // TODO: support switching VAPP -> VOR.
+    } else {
+      if (!this.deactivateArmedOrActiveLateralMode(APLateralModes.LOC)) {
+        // Only deactivate GPSS if LOC was not deactivated. We don't want to deactivate GPSS if LOC/GS was armed for
+        // nav-to-nav.
+        this.deactivateArmedOrActiveLateralMode(APLateralModes.GPSS);
+      }
+    }
+
+    this.isApproachModeOn.set(false);
+  }
+
+  /**
+   * Reconciles the nominal approach mode state with the state of this autopilot's directors.
+   */
+  protected reconcileApproachState(): void {
+    const verticalActive = this.apValues.verticalActive.get();
+    const lateralArmed = this.apValues.lateralArmed.get();
+    const lateralActive = this.apValues.lateralActive.get();
+
+    if (
+      this.verticalApproachArmed !== APVerticalModes.NONE
+      || verticalActive === APVerticalModes.GS
+      || verticalActive === APVerticalModes.GP
+    ) {
+      // Approach mode is active if one of the approach-specific lateral or vertical modes is armed or active.
+      this.isApproachModeCommandedOn = true;
+      this.isApproachModeOn.set(true);
+    } else if (
+      lateralActive === APLateralModes.LOC || lateralArmed === APLateralModes.LOC
+      || lateralActive === APLateralModes.BC || lateralArmed === APLateralModes.BC
+    ) {
+      // If an approach-specific mode is not armed or active and LOC or BC mode (which are optionally associated with
+      // approach mode) is armed or active, then approach mode is active if and only if approach mode is already
+      // commanded to be active.
+      this.isApproachModeOn.set(this.isApproachModeCommandedOn);
+    } else {
+      this.isApproachModeCommandedOn = false;
+      this.isApproachModeOn.set(false);
     }
   }
 }

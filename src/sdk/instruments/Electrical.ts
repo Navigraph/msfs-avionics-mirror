@@ -102,12 +102,18 @@ export interface BaseElectricalEvents {
 
   /** A value for a circuit switch. */
   'elec_circuit_switch_on': boolean
+
+  /** A value indicating if a COM circuit is on */
+  'elec_circuit_com_on': boolean
+
+  /** A value indicating if a NAV circuit is on */
+  'elec_circuit_nav_on': boolean
 }
 
 /** Indexed topics. */
 type IndexedTopics = 'elec_bus_main_v' | 'elec_bus_main_a' | 'elec_master_battery' | 'elec_circuit_avionics_on'
   | 'elec_bat_v' | 'elec_bat_a' | 'elec_ext_power_available' | 'elec_ext_power_on' | 'elec_apu_gen_active'
-  | 'elec_apu_gen_switch' | 'elec_eng_gen_switch' | 'elec_circuit_on' | 'elec_circuit_switch_on';
+  | 'elec_apu_gen_switch' | 'elec_eng_gen_switch' | 'elec_circuit_on' | 'elec_circuit_switch_on' | 'elec_circuit_com_on' | 'elec_circuit_nav_on';
 
 
 /** Indexed events. */
@@ -153,6 +159,8 @@ export class ElectricalPublisher extends SimVarPublisher<ElectricalEvents> {
     ['elec_eng_gen_switch', { name: 'GENERAL ENG MASTER ALTERNATOR:#index#', type: SimVarValueType.Bool, indexed: true }],
     ['elec_circuit_on', { name: 'CIRCUIT ON:#index#', type: SimVarValueType.Bool, indexed: true }],
     ['elec_circuit_switch_on', { name: 'CIRCUIT SWITCH ON:#index#', type: SimVarValueType.Bool, indexed: true }],
+    ['elec_circuit_com_on', { name: 'CIRCUIT COM ON:#index#', type: SimVarValueType.Bool, indexed: true }],
+    ['elec_circuit_nav_on', { name: 'CIRCUIT NAV ON:#index#', type: SimVarValueType.Bool, indexed: true }],
   ]);
 
   private flightStarted = false;

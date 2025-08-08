@@ -227,7 +227,7 @@ export class BingComponent extends DisplayComponent<BingComponentProps> {
     Coherent.call('SHOW_MAP_ISOLINES', this.uid, showIsolines);
   };
 
-  private setCurrentMapParamsTimer: NodeJS.Timer | null = null;
+  private setCurrentMapParamsTimer: NodeJS.Timeout | null = null;
 
   private positionRadiusInhibitFramesRemaining = 0;
   private isPositionRadiusPending = false;

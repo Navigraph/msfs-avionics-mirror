@@ -20,11 +20,13 @@ import './FPLPage.css';
 
 /** Props on the FPLPage component. */
 export interface FPLPageProps extends PageProps {
+  /** The index of the GPS receiver used by the page's parent instrument. */
+  gpsReceiverIndex: number;
+
   /**
    * Callback for when an airport is selected to be displayed on the WPT APT page
    */
-  onPageSelected: <T extends Page = Page>(v: number) => T | undefined,
-
+  onPageSelected: <T extends Page = Page>(v: number) => T | undefined;
 
   /** The FMS. */
   fms: Fms;
@@ -75,7 +77,7 @@ export class FPLPage extends Page<FPLPageProps> {
       }
     });
 
-    this.props.bus.getSubscriber<GPSSatComputerEvents>().on('gps_system_state_changed_1').handle(state => {
+    this.props.bus.getSubscriber<GPSSatComputerEvents>().on(`gps_system_state_changed_${this.props.gpsReceiverIndex}`).handle(state => {
       this.gpsIsValid = state === GPSSystemState.SolutionAcquired || state === GPSSystemState.DiffSolutionAcquired;
       if (this.props.fms.hasPrimaryFlightPlan()) {
         this.updateLegCalculations(this.props.fms.getPrimaryFlightPlan());

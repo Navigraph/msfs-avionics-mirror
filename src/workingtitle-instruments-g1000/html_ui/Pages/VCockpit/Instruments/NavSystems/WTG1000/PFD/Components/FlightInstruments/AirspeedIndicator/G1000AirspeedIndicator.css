@@ -2,8 +2,6 @@
   position: absolute;
   left: 154px;
   top: 82px;
-  /* width: 90px; */
-  /* height: 363px; */
 
   width: 87px;
   height: 390px;
@@ -70,15 +68,9 @@
 
   /* Reference speed bug vars */
 
-  --airspeed-refspeed-bug-manual-right: 0px;
-  --airspeed-refspeed-bug-manual-height: calc(var(--airspeed-ias-box-font-size) * 0.8);
-  --airspeed-refspeed-bug-manual-width: calc(var(--airspeed-ias-box-margin-right) + (100% - var(--airspeed-ias-box-margin-right)) * 0.16);
   --airspeed-refspeed-bug-manual-fill: cyan;
   --airspeed-refspeed-bug-manual-stroke: #505050;
 
-  --airspeed-refspeed-bug-fms-right: calc(var(--airspeed-ias-box-margin-right) + (100% - var(--airspeed-ias-box-margin-right)) * 0.0444);
-  --airspeed-refspeed-bug-fms-height: calc(var(--airspeed-ias-box-font-size) * 0.55);
-  --airspeed-refspeed-bug-fms-width: calc((100% - var(--airspeed-ias-box-margin-right)) * 0.15);
   --airspeed-refspeed-bug-fms-fill: magenta;
   --airspeed-refspeed-bug-fms-stroke: #505050;
 
@@ -401,6 +393,8 @@
   background: var(--airspeed-tape-overflow-background);
 }
 
+/* ---- IAS digital readout box ---- */
+
 .airspeed-ias-box {
   position: absolute;
   right: var(--airspeed-ias-box-margin-right);
@@ -486,6 +480,8 @@
   background: var(--airspeed-ias-box-scroller-mask-bg);
 }
 
+/* ---- Color ranges ---- */
+
 .airspeed-tape-color-range {
   right: 0%;
 }
@@ -518,16 +514,32 @@
   background: repeating-linear-gradient(135deg, red, red 6px, white 6px, white 12px);
 }
 
+/* ---- Trend vector ---- */
+
+.airspeed-trend {
+  left: 100%;
+  width: var(--airspeed-trend-width);
+  background: magenta;
+  border: 1px solid white;
+}
+
+/* ---- Reference speed bug ---- */
+
+.airspeed-refspeed-bug-container {
+  right: 0px;
+  width: 16px;
+}
+
 .airspeed-refspeed-bug-manual {
-  right: var(--airspeed-refspeed-bug-manual-right);
-  width: var(--airspeed-refspeed-bug-manual-width);
-  height: var(--airspeed-refspeed-bug-manual-height);
+  right: 0px;
+  width: 13px;
+  height: 21px;
 }
 
 .airspeed-refspeed-bug-fms {
-  right: var(--airspeed-refspeed-bug-fms-right);
-  width: var(--airspeed-refspeed-bug-fms-width);
-  height: var(--airspeed-refspeed-bug-fms-height);
+  right: 3px;
+  width: 12px;
+  height: 14px;
 }
 
 .airspeed-refspeed-bug-icon {
@@ -547,13 +559,6 @@
 .airspeed-refspeed-bug-icon-fms {
   fill: var(--airspeed-refspeed-bug-fms-fill);
   stroke: var(--airspeed-refspeed-bug-fms-stroke);
-}
-
-.airspeed-trend {
-  left: 100%;
-  width: var(--airspeed-trend-width);
-  background: magenta;
-  border: 1px solid white;
 }
 
 /* ---- V-speed bugs ---- */
@@ -658,6 +663,26 @@
 
 .airspeed-vspeed-legend-value {
   color: var(--airspeed-vspeed-legend-value-color);
+}
+
+/* ---- Approach cue bug ---- */
+
+.airspeed-approach-cue-bug-container {
+  left: calc(100% - 7px);
+  width: 14px;
+}
+
+.airspeed-approach-cue-bug {
+  left: 1px;
+  width: 12px;
+  height: 12px;
+}
+
+.airspeed-approach-cue-bug-icon {
+  fill: #00ff00;
+  stroke: black;
+  stroke-width: 0.5px;
+  overflow: visible;
 }
 
 /* ---- Failed state ---- */

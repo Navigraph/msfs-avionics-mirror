@@ -1,0 +1,29 @@
+{
+  "name": "@microsoft/msfs-sdk",
+  "version": "0.9.0",
+  "description": "HTML and Typescript SDK for MSFS Coherent based instruments and aircraft development.",
+  "main": "msfssdk.js",
+  "typings": "msfssdk.d.ts",
+  "scripts": {
+    "build": "npm run build:compile && npm run build:rollup",
+    "build:compile": "tsc",
+    "build:rollup": "rollup -c rollup.config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/msfs-avionics-mirror/"
+  },
+  "author": "Working Title Simulations",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "@types/node": "^18.11.18",
+    "@microsoft/msfs-types": "^1.14.6",
+    "rollup": "^2.79.1",
+    "rollup-plugin-dts": "^4.2.3",
+    "typescript": "5.3.3"
+  },
+  "publishConfig": {
+    "tag": "msfs2020-lts"
+  }
+}

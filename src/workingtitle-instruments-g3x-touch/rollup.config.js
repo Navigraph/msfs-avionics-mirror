@@ -1,11 +1,14 @@
 import css from 'rollup-plugin-import-css';
 import resolve from '@rollup/plugin-node-resolve';
 
+const packageName = 'workingtitle-instruments-g3xtouch';
+const htmlUiPath = 'html_ui/Pages/VCockpit/Instruments/NavSystems/G3XTouch';
+
 export default [
   {
-  input: 'build/workingtitle-instruments-g3x-touch/html_ui/Pages/VCockpit/Instruments/NavSystems/G3XTouch/index.js',
+  input: 'build/html_ui/index.js',
   output: {
-    file: 'dist/workingtitle-instruments-g3x-touch/html_ui/Pages/VCockpit/Instruments/NavSystems/G3XTouch/G3XTouch.js',
+    file: `dist/${packageName}/${htmlUiPath}/G3XTouch.js`,
     format: 'iife',
     name: 'g3xtouch',
     globals: {

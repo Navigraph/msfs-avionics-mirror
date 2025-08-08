@@ -346,7 +346,7 @@ export class NavMath {
    * Gets the total difference in degrees between two angles.
    * @param a The first angle.
    * @param b The second angle.
-   * @returns The difference between the two angles, in degrees.
+   * @returns The difference between the two angles, in degrees, in range -180°...+180°.
    */
   public static diffAngle(a: number, b: number): number {
     let diff = b - a;

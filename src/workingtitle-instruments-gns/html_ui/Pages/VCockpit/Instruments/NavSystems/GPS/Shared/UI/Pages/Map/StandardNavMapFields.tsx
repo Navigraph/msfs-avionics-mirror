@@ -15,13 +15,16 @@ import './StandardNavMapFields.css';
  */
 export interface StandardNavMapFieldsProps extends GNSUiControlProps {
   /** The event bus */
-  bus: EventBus,
+  bus: EventBus;
+
+  /** The index of the GPS receiver used by the data fields. */
+  gpsReceiverIndex: number;
 
   /** The FMS */
-  fms: Fms,
+  fms: Fms;
 
   /** The type of GNS unit. */
-  gnsType: GNSType
+  gnsType: GNSType;
 }
 
 /**
@@ -69,7 +72,7 @@ export class StandardNavMapFields extends GNSUiControl<StandardNavMapFieldsProps
   public onAfterRender(thisNode: VNode): void {
     super.onAfterRender(thisNode);
 
-    this.props.bus.getSubscriber<GPSSatComputerEvents>().on('gps_system_state_changed_1').handle(state => {
+    this.props.bus.getSubscriber<GPSSatComputerEvents>().on(`gps_system_state_changed_${this.props.gpsReceiverIndex}`).handle(state => {
       const valid = state === GPSSystemState.SolutionAcquired || state === GPSSystemState.DiffSolutionAcquired;
       this.gpsValidity.set(valid ? NavDataFieldGpsValidity.Valid : NavDataFieldGpsValidity.Invalid);
     });

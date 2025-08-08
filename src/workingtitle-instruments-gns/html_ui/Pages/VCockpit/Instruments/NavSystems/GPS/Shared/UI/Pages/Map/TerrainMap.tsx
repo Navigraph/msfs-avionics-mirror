@@ -23,8 +23,11 @@ type GNSStandardMapControllers = GNSMapControllers & {
  * Props on the ArcNavMap page.
  */
 interface TerrainMapProps extends PageProps {
+  /** The index of the GPS receiver used by the page's parent instrument. */
+  gpsReceiverIndex: number;
+
   /** The FMS */
-  fms: Fms,
+  fms: Fms;
 
   /** The GNS user settings provider. */
   settingsProvider: GNSSettingsProvider;
@@ -49,7 +52,7 @@ export class TerrainMap extends Page<TerrainMapProps> {
 
   private readonly StandardMap = GNSMapBuilder
     .withStandardMap(this.props.bus, this.props.fms, this.props.settingsProvider, this.props.gnsType, this.props.instrumentIndex, true)
-    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.settingsProvider, this.props.fms, true))
+    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.gpsReceiverIndex, this.props.settingsProvider, this.props.fms, true))
     .withProjectedSize(this.mapSize)
     .build<GNSMapModules, GNSMapLayers, GNSStandardMapControllers, GNSMapContextProps>('terrain-map-container');
 

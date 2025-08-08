@@ -59,8 +59,8 @@ export class GPSStatus extends Page<GPSStatusProps> {
     this.clockSub = this.props.bus.getSubscriber<ClockEvents>().on('realTime').atFrequency(1).handle(this.drawSatellites.bind(this));
 
     this.props.bus.getSubscriber<ClockEvents>().on('simTime').atFrequency(1).handle(this.onSimTimeChanged.bind(this));
-    this.props.bus.getSubscriber<GPSSatComputerEvents>().on('gps_sat_state_changed_1').handle(this.onGpsSatStateChanged.bind(this));
-    this.props.bus.getSubscriber<GPSSatComputerEvents>().on('gps_system_state_changed_1').handle(this.onGpsSystemStateChanged.bind(this));
+    this.props.bus.getSubscriber<GPSSatComputerEvents>().on(`gps_sat_state_changed_${this.props.sats.index}`).handle(this.onGpsSatStateChanged.bind(this));
+    this.props.bus.getSubscriber<GPSSatComputerEvents>().on(`gps_system_state_changed_${this.props.sats.index}`).handle(this.onGpsSystemStateChanged.bind(this));
     this.props.bus.getSubscriber<GNSSEvents>().on('gps-position').handle(this.onGpsPositionChanged.bind(this));
 
     this.props.bus.getSubscriber<PowerEvents>().on('instrument_powered').handle(this.onPowerStateChanged.bind(this));

@@ -129,6 +129,12 @@ interface EngineIndexedTopics {
   cylinder_head_temp_avg: number;
   /** The average engine turbine inlet temp (for all turbines). */
   recip_turbine_inlet_temp_avg: number;
+  /** The engine turbine inlet temperature, in degrees Celsius. */
+  turbine_inlet_temp: number;
+  /** Thrust produced in pounds, only applicable to jet engines */
+  jet_net_thrust: number;
+  /** Whether the engine is on fire. */
+  eng_fire: boolean;
 }
 
 /** Indexed topics. */
@@ -212,6 +218,9 @@ export class EISPublisher extends SimVarPublisher<EngineEvents> {
       ['reverse_thrust_engaged', { name: 'GENERAL ENG REVERSE THRUST ENGAGED', type: SimVarValueType.Bool }],
       ['cylinder_head_temp_avg', { name: 'ENG CYLINDER HEAD TEMPERATURE', type: SimVarValueType.Farenheit }],
       ['recip_turbine_inlet_temp_avg', { name: 'RECIP ENG TURBINE INLET TEMPERATURE', type: SimVarValueType.Farenheit }],
+      ['turbine_inlet_temp', { name: 'TURB ENG INLET TEMPERATURE', type: SimVarValueType.Celsius }],
+      ['jet_net_thrust', { name: 'TURB ENG JET THRUST', type: SimVarValueType.Pounds }],
+      ['eng_fire', { name: 'ENG ON FIRE', type: SimVarValueType.Bool }],
     ];
 
     const simvars = new Map<keyof EngineEvents, SimVarPublisherEntry<any>>(nonIndexedSimVars);

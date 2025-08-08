@@ -36,6 +36,8 @@ class WT430 extends BaseInstrument {
     templateId: 'AS430',
     navIndex: 1,
     comIndex: 1,
+    gpsReceiverIndex: 1,
+    gpsReceiverSync: false,
     isUsingNewCdiBehaviour: false,
     disableAutopilot: false,
     disableApNavArm: false,
@@ -142,6 +144,7 @@ class WT430 extends BaseInstrument {
 
   /**
    * Gets and Sets the options for this instrument from the panel.xml
+   * @throws Error if an invalid option is parsed.
    */
   private setOptions(): void {
     const elements = this.xmlConfig.querySelectorAll('PlaneHTMLConfig > Instrument');
@@ -166,8 +169,24 @@ class WT430 extends BaseInstrument {
       const externalSourceIndex = parseInt(node.querySelector('G3XExternalSourceIndex')?.textContent ?? '-1');
 
       this.options.isUsingNewCdiBehaviour = node.querySelector('NewCDIBehavior')?.textContent === 'True';
-      this.options.comIndex = parseInt(node.querySelector('ComIndex')?.textContent ?? '1') as ComRadioIndex;
-      this.options.navIndex = parseInt(node.querySelector('NavIndex')?.textContent ?? '1') as NavRadioIndex;
+
+      const comIndex = Number(node.querySelector('ComIndex')?.textContent ?? 1);
+      if (!(Number.isInteger(comIndex) && comIndex >= 1 && comIndex <= 4)) {
+        throw new Error('WT430: invalid ComIndex option. Must be 1, 2, or 3.');
+      }
+      this.options.comIndex = comIndex as ComRadioIndex;
+
+      const navIndex = Number(node.querySelector('NavIndex')?.textContent ?? 1);
+      if (!(Number.isInteger(navIndex) && navIndex >= 1 && navIndex <= 4)) {
+        throw new Error('WT430: invalid NavIndex option. Must be 1, 2, 3, or 4.');
+      }
+      this.options.navIndex = navIndex as NavRadioIndex;
+
+      const gpsReceiverIndex = Number(node.querySelector('GpsIndex')?.textContent ?? NaN);
+      this.options.gpsReceiverIndex = Number.isInteger(gpsReceiverIndex) && gpsReceiverIndex > 0 ? gpsReceiverIndex : this.options.navIndex;
+
+      this.options.gpsReceiverSync = node.querySelector('GpsSync')?.textContent === 'True';
+
       this.options.disableAutopilot = node.querySelector('DisableAutopilot')?.textContent === 'True';
       this.options.disableApNavArm = node.querySelector('DisableAPNavArm')?.textContent === 'True';
       this.options.apSupportsFlightDirector = node.querySelector('SupportAPFlightDirector')?.textContent === 'True';

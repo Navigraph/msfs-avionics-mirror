@@ -91,6 +91,12 @@ export type APValues = {
   /** The maximum Bank Angle the autopilot may command in absolute degrees. */
   readonly maxBankAngle: Subject<number>;
 
+  /** The maximum nose up pitch angle the autopilot may command in degrees. */
+  readonly maxNoseUpPitchAngle: Subject<number>;
+
+  /** The maximum nose down pitch angle the autopilot may command in degrees. */
+  readonly maxNoseDownPitchAngle: Subject<number>;
+
   /** The selected heading, in degrees. */
   readonly selectedHeading: Subject<number>;
 
@@ -398,6 +404,18 @@ export interface APConfig {
    **/
   defaultMaxBankAngle?: number;
 
+  /**
+   * The default maximum nose up pitch angle the autopilot may command in degrees.
+   * If not defined, then the maximum angle will be 15 degrees.
+   **/
+  defaultMaxNoseUpPitchAngle?: number;
+
+  /**
+   * The default maximum nose down pitch angle the autopilot may command in degrees.
+   * If not defined, then the maximum angle will be 15 degrees.
+   **/
+  defaultMaxNoseDownPitchAngle?: number;
+
   /** The altitude hold slot index to use. Defaults to 1 */
   altitudeHoldSlotIndex?: 1 | 2 | 3;
 
@@ -414,6 +432,9 @@ export interface APConfig {
    * Whether to only allow disarming (not deactivating) LNAV when receiving the `AP_NAV1_HOLD_OFF` event
    */
   onlyDisarmLnavOnOffEvent?: boolean;
+
+  /** Whether to deactivate the autopilot when GA mode is armed in response to a TO/GA mode button press. Defaults to `true`. */
+  readonly deactivateAutopilotOnGa?: boolean;
 
   /**
    * Whether to automatically engage the FD(s) with AP or mode button presses, defaults to true.
@@ -438,4 +459,9 @@ export interface APConfig {
    * Options for the Autopilot Driver
    */
   readonly autopilotDriverOptions?: Readonly<AutopilotDriverOptions>;
+
+  /**
+   * Whether to publish the active and armed autopilot modes as LVars. Defaults to false.
+   */
+  readonly publishAutopilotModesAsLVars?: boolean;
 }

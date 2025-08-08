@@ -51,6 +51,11 @@ export type APFLCDirectorOptions = {
    * and ambient pressure instead of the true mach number. Defaults to `false`.
    */
   useIndicatedMach?: boolean;
+
+  /**
+   * Allows to pass in the FLC computer to be used:
+   */
+  flcComputer?: GenericFlcComputer;
 };
 
 /**
@@ -122,7 +127,7 @@ export class APFLCDirector implements PlaneDirector {
     this.useIndicatedMach = options?.useIndicatedMach ?? false;
 
     this.state = DirectorState.Inactive;
-    this.flcComputer = new GenericFlcComputer({ kP: 2, kI: 0, kD: 0, maxOut: 90, minOut: -90 });
+    this.flcComputer = options?.flcComputer ?? new GenericFlcComputer({ kP: 2, kI: 0, kD: 0, maxOut: 90, minOut: -90 });
   }
 
   /**

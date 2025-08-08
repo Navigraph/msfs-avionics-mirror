@@ -8,7 +8,7 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "build/workingtitle-instruments-g3000/html_ui/Pages/VCockpit/Instruments/NavSystems/WTG3000",
+    "outDir": "build/html_ui",
     "declaration": true,
     "declarationMap": true,
     "removeComments": false,
@@ -23,18 +23,9 @@
     }
   },
   "exclude": [
-    "**/Gulpfile.ts",
     "**/build",
     "**/dist",
     "**/node_modules",
     "wtg3000common"
-  ],
-  "ts-node": {
-    "transpiler": "@sucrase/ts-node-plugin",
-    "transpileOnly": true,
-    "compilerOptions": {
-      "module": "commonjs"
-    },
-    "files": true
-  }
+  ]
 }

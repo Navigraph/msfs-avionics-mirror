@@ -91,8 +91,10 @@ export interface PlaneDirector {
    * conjunction with the angle of attack correction. Defaults to `false`.
    * @param rate The rate at which to drive the commanded pitch angle, in degrees per second. If not defined, a default
    * rate will be used.
+   * @param maxNoseDownPitch The maximum nose down pitch angle, defaults to the global AP pitch limit.
+   * @param maxNoseUpPitch The maximum nose up pitch angle, defaults to the global AP pitch limit.
    */
-  drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number) => void;
+  drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number, maxNoseDownPitch?: number, maxNoseUpPitch?: number) => void;
 
   /** The current director state. */
   state: DirectorState;

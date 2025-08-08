@@ -31,6 +31,9 @@ type GNSArcMapControllers = GNSMapControllers & {
  * Props on the ArcNavMap page.
  */
 interface ArcNavMapProps extends PageProps {
+  /** The index of the GPS receiver used by the page's parent instrument. */
+  gpsReceiverIndex: number;
+
   /** The GNS user settings provider. */
   settingsProvider: GNSSettingsProvider;
 
@@ -66,7 +69,7 @@ export class ArcNavMap extends Page<ArcNavMapProps> {
       this.props.instrumentIndex,
       this.props.trafficSystem,
       this.props.tcasDataProvider)
-    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.settingsProvider, this.props.fms, true))
+    .withController(GNSMapKeys.Controller, c => new GNSMapController(c, this.props.gpsReceiverIndex, this.props.settingsProvider, this.props.fms, true))
     .build<GNSMapModules, GNSMapLayers, GNSArcMapControllers, GNSMapContextProps>('arc-map-container');
 
   private readonly fieldContext: DataFieldContext = {
@@ -260,7 +263,7 @@ export class ArcNavMap extends Page<ArcNavMapProps> {
               <WaypointLeg ref={this.toWaypoint} class='arc-map-waypoints-to' isArcMap={true} />
             </div>
             <MapPageDataField context={this.fieldContext} type={fieldSettings.getSetting('arcmap_bottomLeft_field_type')} bus={this.props.bus} ref={this.fields[2]} />
-            <WT530Cdi bus={this.props.bus} fms={this.props.fms} />
+            <WT530Cdi bus={this.props.bus} gpsReceiverIndex={this.props.gpsReceiverIndex} fms={this.props.fms} />
             <MapPageDataField context={this.fieldContext} type={fieldSettings.getSetting('arcmap_bottomRight_field_type')} bus={this.props.bus} ref={this.fields[3]} />
           </div>
         </GNSUiControl>

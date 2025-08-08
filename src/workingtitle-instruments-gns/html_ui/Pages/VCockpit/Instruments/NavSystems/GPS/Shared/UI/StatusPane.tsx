@@ -11,6 +11,9 @@ interface StatusPaneProps extends ComponentProps {
   /** An instance of the event bus. */
   bus: EventBus;
 
+  /** The index of the GPS receiver used by the pane's parent instrument. */
+  gpsReceiverIndex: number;
+
   /** The index of the LNAV used by the pane's parent instrument. */
   lnavIndex: number;
 }
@@ -31,7 +34,7 @@ export class StatusPane extends DisplayComponent<StatusPaneProps> {
       .whenChanged()
       .handle(this.onCdiScaleChanged.bind(this));
 
-    this.props.bus.getSubscriber<GPSSatComputerEvents>().on('gps_system_state_changed_1').handle(s => {
+    this.props.bus.getSubscriber<GPSSatComputerEvents>().on(`gps_system_state_changed_${this.props.gpsReceiverIndex}`).handle(s => {
       if (s === GPSSystemState.Searching || s === GPSSystemState.Acquiring) {
         this.integEl.instance.classList.remove('hide-element');
       } else {

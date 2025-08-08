@@ -239,7 +239,7 @@ export class FmsUtils {
       UnitType.NMILE.convertTo(-finalLegDistance, UnitType.GA_RADIAN),
       FmsUtils.geoPointCache[0]
     );
-    finalLegIdent ??= ' FINAL';
+    finalLegIdent ??= 'FINAL';
 
     const fafLeg = FlightPlan.createLeg({
       type: LegType.CF,
@@ -1582,6 +1582,19 @@ export class FmsUtils {
   }
 
   /**
+   * Creates a new empty, default flight phase object.
+   * @returns A new empty, default flight phase object.
+   */
+  public static createEmptyFlightPhase(): FmsFlightPhase {
+    return {
+      isApproachActive: false,
+      isToFaf: false,
+      isPastFaf: false,
+      isInMissedApproach: false
+    };
+  }
+
+  /**
    * Checks whether two FMS flight phase objects are equal.
    * @param a The first FMS flight phase object to compare.
    * @param b The second FMS flight phase object to compare.
@@ -1592,6 +1605,24 @@ export class FmsUtils {
       && a.isToFaf === b.isToFaf
       && a.isPastFaf === b.isPastFaf
       && a.isInMissedApproach === b.isInMissedApproach;
+  }
+
+  /**
+   * Creates a new empty, default approach details object.
+   * @returns A new empty, default approach details object.
+   */
+  public static createEmptyApproachDetails(): ApproachDetails {
+    return {
+      isLoaded: false,
+      type: ApproachType.APPROACH_TYPE_UNKNOWN,
+      isRnpAr: false,
+      bestRnavType: RnavTypeFlags.None,
+      rnavTypeFlags: RnavTypeFlags.None,
+      isCircling: false,
+      isVtf: false,
+      referenceFacility: null,
+      runway: null
+    };
   }
 
   /**

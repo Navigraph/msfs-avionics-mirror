@@ -460,6 +460,22 @@ export class Vec3Math {
   }
 
   /**
+   * Sets the magnitude of a vector.
+   * @param v1 The vector to receive a new length.
+   * @param magnitude The length to apply.
+   * @param out The vector to write the results to.
+   * @returns The scaled vector.
+   */
+  public static setMagnitude(v1: ReadonlyFloat64Array, magnitude: number, out: Float64Array): Float64Array {
+    const magnitudeV1 = Vec3Math.abs(v1);
+    const factor = (magnitudeV1 === 0) ? NaN : magnitude / magnitudeV1;
+    out[0] = factor * v1[0];
+    out[1] = factor * v1[1];
+    out[2] = factor * v1[2];
+    return out;
+  }
+
+  /**
    * Normalizes the vector to a unit vector.
    * @param v1 The vector to normalize.
    * @param out The vector to write the results to.

@@ -1,6 +1,6 @@
 {
   "name": "workingtitle-instruments-gns",
-  "version": "1.2.4",
+  "version": "1.2.6",
   "description": "Working Title MSFS GNS430/530",
   "main": "index.ts",
   "scripts": {
@@ -19,13 +19,13 @@
   "author": "Working Title Simulations, LLC",
   "license": "Modified MIT",
   "devDependencies": {
-    "@microsoft/msfs-sdk": "0.5.0",
+    "@microsoft/msfs-sdk": "0.9.0",
     "@microsoft/msfs-types": "1.14.6",
-    "@microsoft/msfs-garminsdk": "0.3.0",
+    "@microsoft/msfs-garminsdk": "0.7.0",
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@types/node": "^18.11.18",
     "rollup": "^2.79.1",
     "rollup-plugin-import-css": "^3.1.0",
-    "typescript": "4.5.5"
+    "typescript": "5.3.3"
   }
 }

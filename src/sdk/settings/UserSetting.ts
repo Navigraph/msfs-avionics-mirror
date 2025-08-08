@@ -382,19 +382,16 @@ class SyncableUserSetting<T extends UserSettingValue> extends AbstractSubscribab
   private _value: T;
 
   // eslint-disable-next-line jsdoc/require-returns
-  /** This setting's current value. */
+  /**
+   * This setting's current value.
+   * @deprecated Please use `get()` and `set()` instead.
+   */
   public get value(): T {
     return this._value;
   }
   // eslint-disable-next-line jsdoc/require-jsdoc
   public set value(v: T) {
-    if (this._value === v) {
-      return;
-    }
-
-    this._value = v;
-    this.valueChangedCallback(v);
-    this.notify();
+    this.set(v);
   }
 
   /**
@@ -434,7 +431,13 @@ class SyncableUserSetting<T extends UserSettingValue> extends AbstractSubscribab
    * @param value The new value.
    */
   public set(value: T): void {
-    this.value = value;
+    if (this._value === value) {
+      return;
+    }
+
+    this._value = value;
+    this.valueChangedCallback(value);
+    this.notify();
   }
 
   /** @inheritdoc */

@@ -1,10 +1,13 @@
-import { FlightPlanLeg, LegType } from '../navigation/Facilities';
+import { FacilityType, FlightPlanLeg, ICAO, LegType } from '../navigation/Facilities';
 import { ArrayType, ArrayUtils } from '../utils/datastructures/ArrayUtils';
 
 /**
  * Utility class for working with flight plans.
  */
 export class FlightPlanUtils {
+  /** Array of "to fix" leg types. */
+  private static readonly TO_FIX_LEG_TYPES = [LegType.AF, LegType.CF, LegType.DF, LegType.IF, LegType.HF, LegType.RF, LegType.TF] as const;
+
   /** Array of "to altitude" leg types. */
   private static readonly ALTITUDE_LEG_TYPES = [LegType.CA, LegType.FA, LegType.VA] as const;
 
@@ -22,6 +25,16 @@ export class FlightPlanUtils {
 
   /** Array of discontinuity leg types. */
   private static readonly DISCO_LEG_TYPES = [LegType.Discontinuity, LegType.ThruDiscontinuity] as const;
+
+  /**
+   * Checks if a leg type is a "to fix" leg type. Note that while HM and HA legs may terminate at the hold fix, they
+   * are explicitly excluded from this check.
+   * @param legType The leg type to check.
+   * @returns Whether the leg type is a "to fix" leg type.
+   */
+  public static isToFixLeg(legType: LegType): legType is ArrayType<typeof FlightPlanUtils.TO_FIX_LEG_TYPES> {
+    return ArrayUtils.includes(FlightPlanUtils.TO_FIX_LEG_TYPES, legType);
+  }
 
   /**
    * Checks if a leg type is an "to altitude" leg type.
@@ -98,5 +111,28 @@ export class FlightPlanUtils {
       default:
         return undefined;
     }
+  }
+
+  /**
+   * Converts all runway ICAO references in a flight plan leg to the runway ICAO format used by the MSFS avionics
+   * SDK.
+   * @param leg The flight plan leg to change.
+   * @returns The specified flight plan leg, after all of its runway ICAO references have been changed to the format
+   * used by the MSFS avionics SDK.
+   */
+  public static convertLegRunwayIcaosToSdkFormat(leg: FlightPlanLeg): FlightPlanLeg {
+    if (ICAO.isFacility(leg.fixIcao, FacilityType.RWY)) {
+      leg.fixIcao = `${leg.fixIcao.charAt(0)}  ${leg.fixIcao.slice(3)}`;
+    }
+
+    if (ICAO.isFacility(leg.originIcao, FacilityType.RWY)) {
+      leg.originIcao = `${leg.originIcao.charAt(0)}  ${leg.originIcao.slice(3)}`;
+    }
+
+    if (ICAO.isFacility(leg.arcCenterFixIcao, FacilityType.RWY)) {
+      leg.arcCenterFixIcao = `${leg.arcCenterFixIcao.charAt(0)}  ${leg.arcCenterFixIcao.slice(3)}`;
+    }
+
+    return leg;
   }
 }
