@@ -8,6 +8,9 @@ Welcome to the Microsoft Flight Simulator avionics source code repository. At th
 - WT21
 - Epic 2/Apex
 - UNS-1 FMS
+- Avidyne IFD540/IFD550
+
+The repository also contains the avionics plugins for the Cessna Citation CJ4 (WT21) and the Cirrus SR22T (G1000 NXi).
 
 For the MSFS 2020 (V1) source, please use the `v1` branch.
 
