@@ -2,6 +2,17 @@ import { Config } from '../Config/Config';
 import { ConfigUtils } from '../Config/ConfigUtils';
 
 /**
+ * Global options for autopilot pitch commands.
+ */
+export type AutopilotGlobalPitchOptions = {
+  /** The global maximum supported nose up pitch angle, in degrees. */
+  maxNoseUpPitchAngle: number;
+
+  /** The global maximum supported nose down pitch angle, in degrees. */
+  maxNoseDownPitchAngle: number;
+};
+
+/**
  * Options for the autopilot ROL director.
  */
 export type AutopilotRollOptions = {
@@ -99,8 +110,14 @@ export class AutopilotConfig implements Config {
   private static readonly DEFAULT_MAX_BANK_ANGLE = 25;
   private static readonly DEFAULT_LOW_BANK_ANGLE = 15;
 
+  private static readonly DEFAULT_MAX_NOSE_UP_PITCH_ANGLE = 30;
+  private static readonly DEFAULT_MAX_NOSE_DOWN_PITCH_ANGLE = 30;
+
   private static readonly DEFAULT_TO_PITCH_ANGLE = 10;
   private static readonly DEFAULT_GA_PITCH_ANGLE = 7.5;
+
+  /** Global options for autopilot pitch commands. */
+  public readonly globalPitchOptions: AutopilotGlobalPitchOptions;
 
   /** Options for the autopilot ROL director. */
   public readonly rollOptions: AutopilotRollOptions;
@@ -142,6 +159,8 @@ export class AutopilotConfig implements Config {
    */
   constructor(baseInstrument: BaseInstrument, element: Element | undefined) {
     if (element === undefined) {
+      this.globalPitchOptions = this.parseGlobalPitchOptions(null);
+
       this.rollOptions = { minBankAngle: AutopilotConfig.DEFAULT_ROLL_MIN_BANK_ANGLE, maxBankAngle: AutopilotConfig.DEFAULT_MAX_BANK_ANGLE };
       this.hdgOptions = { maxBankAngle: AutopilotConfig.DEFAULT_MAX_BANK_ANGLE };
       this.vorOptions = { maxBankAngle: AutopilotConfig.DEFAULT_MAX_BANK_ANGLE };
@@ -158,6 +177,8 @@ export class AutopilotConfig implements Config {
       if (element.tagName !== 'Autopilot') {
         throw new Error(`Invalid AutopilotConfig definition: expected tag name 'Autopilot' but was '${element.tagName}'`);
       }
+
+      this.globalPitchOptions = this.parseGlobalPitchOptions(element.querySelector(':scope>GlobalPitch'));
 
       this.rollOptions = this.parseRollOptions(element.querySelector(':scope>ROL'));
       this.hdgOptions = this.parseHdgOptions(element.querySelector(':scope>HDG'));
@@ -185,6 +206,34 @@ export class AutopilotConfig implements Config {
         this.deactivateAutopilotOnGa = deactivateAutopilotOnGa;
       }
     }
+  }
+
+  /**
+   * Parses global pitch command options from a configuration document element.
+   * @param element A configuration document element.
+   * @returns The global pitch command options defined by the configuration document element.
+   */
+  private parseGlobalPitchOptions(element: Element | null): AutopilotGlobalPitchOptions {
+    if (element !== null) {
+      let maxNoseUpPitchAngle = ConfigUtils.parseNumber(element.getAttribute('max-nose-up-pitch'), AutopilotConfig.DEFAULT_MAX_NOSE_UP_PITCH_ANGLE);
+      if (maxNoseUpPitchAngle === undefined || maxNoseUpPitchAngle <= 0) {
+        console.warn('Invalid AutopilotConfig definition: unrecognized "max-nose-up-pitch" option (expected a non-negative number)');
+        maxNoseUpPitchAngle = AutopilotConfig.DEFAULT_MAX_NOSE_UP_PITCH_ANGLE;
+      }
+
+      let maxNoseDownPitchAngle = ConfigUtils.parseNumber(element.getAttribute('max-nose-down-pitch'), AutopilotConfig.DEFAULT_MAX_NOSE_DOWN_PITCH_ANGLE);
+      if (maxNoseDownPitchAngle === undefined || maxNoseDownPitchAngle <= 0) {
+        console.warn('Invalid AutopilotConfig definition: unrecognized "max-nose-down-pitch" option (expected a non-negative number)');
+        maxNoseDownPitchAngle = AutopilotConfig.DEFAULT_MAX_NOSE_DOWN_PITCH_ANGLE;
+      }
+
+      return { maxNoseUpPitchAngle, maxNoseDownPitchAngle };
+    }
+
+    return {
+      maxNoseUpPitchAngle: AutopilotConfig.DEFAULT_MAX_NOSE_UP_PITCH_ANGLE,
+      maxNoseDownPitchAngle: AutopilotConfig.DEFAULT_MAX_NOSE_DOWN_PITCH_ANGLE
+    };
   }
 
   /**

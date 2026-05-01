@@ -13,6 +13,14 @@ import { MapCanvasLayer, MapCanvasLayerCanvasInstance, MapCanvasLayerCanvasInsta
 export interface MapCachedCanvasLayerProps<M> extends MapLayerProps<M> {
   /** The factor by which the canvas should be overdrawn. Values less than 1 will be clamped to 1. */
   overdrawFactor: number;
+
+  /**
+   * Whether the layer should automatically collapse its canvas elements (the display canvas and the buffer canvas, if
+   * it exists) to zero size (0px by 0px) when the map is asleep. Collapsing the canvas elements will free memory used
+   * by the canvas textures. It will also clear everything drawn to the canvases, reset their context states, and
+   * invalidate them. Defaults to `false`.
+   */
+  collapseOnSleep?: boolean;
 }
 
 /**
@@ -21,8 +29,10 @@ export interface MapCachedCanvasLayerProps<M> extends MapLayerProps<M> {
 export interface MapCachedCanvasLayerReference {
   /** The map center of this reference. */
   readonly center: GeoPointReadOnly;
+
   /** The projection scale factor of this reference. */
   readonly scaleFactor: number;
+
   /** The rotation angle, in radians, of this reference. */
   readonly rotation: number;
 }
@@ -31,24 +41,15 @@ export interface MapCachedCanvasLayerReference {
  * Implementation of MapCachedCanvasLayerReference.
  */
 class MapCachedCanvasLayerReferenceClass implements MapCachedCanvasLayerReference {
-  private _center = new GeoPoint(0, 0);
-  private _scaleFactor = 1;
-  private _rotation = 0;
+  private readonly _center = new GeoPoint(0, 0);
+  /** @inheritDoc */
+  public readonly center = this._center.readonly;
 
-  /** @inheritdoc */
-  public get center(): GeoPointReadOnly {
-    return this._center.readonly;
-  }
+  /** @inheritDoc */
+  public readonly scaleFactor = 1;
 
-  /** @inheritdoc */
-  public get scaleFactor(): number {
-    return this._scaleFactor;
-  }
-
-  /** @inheritdoc */
-  public get rotation(): number {
-    return this._rotation;
-  }
+  /** @inheritDoc */
+  public readonly rotation = 0;
 
   /**
    * Syncs this reference with the current state of a map projection.
@@ -56,8 +57,8 @@ class MapCachedCanvasLayerReferenceClass implements MapCachedCanvasLayerReferenc
    */
   public syncWithMapProjection(mapProjection: MapProjection): void {
     this._center.set(mapProjection.getCenter());
-    this._scaleFactor = mapProjection.getScaleFactor();
-    this._rotation = mapProjection.getRotation();
+    (this.scaleFactor as number) = mapProjection.getScaleFactor();
+    (this.rotation as number) = mapProjection.getRotation();
   }
 
   /**
@@ -66,8 +67,8 @@ class MapCachedCanvasLayerReferenceClass implements MapCachedCanvasLayerReferenc
    */
   public syncWithReference(reference: MapCachedCanvasLayerReference): void {
     this._center.set(reference.center);
-    this._scaleFactor = reference.scaleFactor;
-    this._rotation = reference.rotation;
+    (this.scaleFactor as number) = reference.scaleFactor;
+    (this.rotation as number) = reference.rotation;
   }
 }
 
@@ -77,15 +78,19 @@ class MapCachedCanvasLayerReferenceClass implements MapCachedCanvasLayerReferenc
 export interface MapCachedCanvasLayerTransform {
   /** The scaling factor of this transform. */
   readonly scale: number;
+
   /** The rotation angle, in radians, of this transform. */
   readonly rotation: number;
+
   /** The translation, in pixels, of this transform. */
   readonly translation: Float64Array;
+
   /**
    * The total margin, in pixels, available for translation without invalidating the canvas with this transform's
    * scale factor taken into account.
    */
   readonly margin: number;
+
   /**
    * The remaining margin, in pixels, available for translation without invalidating the canvas given this transform's
    * current translation and scale factor.
@@ -97,36 +102,20 @@ export interface MapCachedCanvasLayerTransform {
  * Implementation of MapCachedCanvasLayerTransform.
  */
 class MapCachedCanvasLayerTransformClass implements MapCachedCanvasLayerTransform {
-  private _scale = 0;
-  private _rotation = 0;
-  private _translation = new Float64Array(2);
-  private _margin = 0;
-  private _marginRemaining = 0;
+  /** @inheritDoc */
+  public readonly scale = 0;
 
-  /** @inheritdoc */
-  public get scale(): number {
-    return this._scale;
-  }
+  /** @inheritDoc */
+  public readonly rotation = 0;
 
-  /** @inheritdoc */
-  public get rotation(): number {
-    return this._rotation;
-  }
+  /** @inheritDoc */
+  public readonly translation = new Float64Array(2);
 
-  /** @inheritdoc */
-  public get translation(): Float64Array {
-    return this._translation;
-  }
+  /** @inheritDoc */
+  public readonly margin = 0;
 
-  /** @inheritdoc */
-  public get margin(): number {
-    return this._margin;
-  }
-
-  /** @inheritdoc */
-  public get marginRemaining(): number {
-    return this._marginRemaining;
-  }
+  /** @inheritDoc */
+  public readonly marginRemaining = 0;
 
   /**
    * Updates this transform given the current map projection and a reference.
@@ -135,13 +124,13 @@ class MapCachedCanvasLayerTransformClass implements MapCachedCanvasLayerTransfor
    * @param referenceMargin The reference margin, in pixels.
    */
   public update(mapProjection: MapProjection, reference: MapCachedCanvasLayerReference, referenceMargin: number): void {
-    this._scale = mapProjection.getScaleFactor() / reference.scaleFactor;
-    this._rotation = mapProjection.getRotation() - reference.rotation;
+    (this.scale as number) = mapProjection.getScaleFactor() / reference.scaleFactor;
+    (this.rotation as number) = mapProjection.getRotation() - reference.rotation;
 
-    mapProjection.project(reference.center, this._translation);
-    Vec2Math.sub(this._translation, mapProjection.getCenterProjected(), this._translation);
-    this._margin = referenceMargin * this._scale;
-    this._marginRemaining = this._margin - Math.max(Math.abs(this._translation[0]), Math.abs(this._translation[1]));
+    mapProjection.project(reference.center, this.translation);
+    Vec2Math.sub(this.translation, mapProjection.getCenterProjected(), this.translation);
+    (this.margin as number) = referenceMargin * this.scale;
+    (this.marginRemaining as number) = this.margin - Math.max(Math.abs(this.translation[0]), Math.abs(this.translation[1]));
   }
 
   /**
@@ -149,10 +138,10 @@ class MapCachedCanvasLayerTransformClass implements MapCachedCanvasLayerTransfor
    * @param other The other transform.
    */
   public copyFrom(other: MapCachedCanvasLayerTransform): void {
-    this._scale = other.scale;
-    this._rotation = other.rotation;
-    this._translation.set(other.translation);
-    this._margin = other.margin;
+    (this.scale as number) = other.scale;
+    (this.rotation as number) = other.rotation;
+    this.translation.set(other.translation);
+    (this.margin as number) = other.margin;
   }
 }
 
@@ -231,32 +220,32 @@ export class MapCachedCanvasLayerCanvasInstanceClass extends MapCanvasLayerCanva
     this.canvasTransform.sub(transform => { this.canvas.style.transform = transform; }, true);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public get reference(): MapCachedCanvasLayerReference {
     return this._reference;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public get transform(): MapCachedCanvasLayerTransform {
     return this._transform;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public get isInvalid(): boolean {
     return this._isInvalid;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public get geoProjection(): GeoProjection {
     return this._geoProjection;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public syncWithMapProjection(mapProjection: MapProjection): void {
     const projectedCenter = Vec2Math.set(this.canvas.width / 2, this.canvas.height / 2, MapCachedCanvasLayerCanvasInstanceClass.tempVec2_1);
     this._reference.syncWithMapProjection(mapProjection);
     this._geoProjection.copyParametersFrom(mapProjection.getGeoProjection()).setTranslation(projectedCenter);
-    this._transform.update(mapProjection, this.reference, this.getReferenceMargin());
+    this._transform.update(mapProjection, this._reference, this.getReferenceMargin());
     this._isInvalid = false;
 
     if (this.isDisplayed) {
@@ -264,7 +253,7 @@ export class MapCachedCanvasLayerCanvasInstanceClass extends MapCanvasLayerCanva
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public syncWithCanvasInstance(other: MapCachedCanvasLayerCanvasInstance): void {
     this._reference.syncWithReference(other.reference);
     this._geoProjection.copyParametersFrom(other.geoProjection);
@@ -310,7 +299,7 @@ export class MapCachedCanvasLayerCanvasInstanceClass extends MapCanvasLayerCanva
     this.canvasTransform.resolve();
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public invalidate(): void {
     this._isInvalid = true;
     this.clear();
@@ -320,12 +309,18 @@ export class MapCachedCanvasLayerCanvasInstanceClass extends MapCanvasLayerCanva
 /**
  * A canvas map layer whose image can be cached and transformed as the map projection changes.
  */
-export class MapCachedCanvasLayer<P extends MapCachedCanvasLayerProps<any> = MapCachedCanvasLayerProps<any>> extends MapCanvasLayer<P, MapCachedCanvasLayerCanvasInstance> {
+export class MapCachedCanvasLayer<P extends MapCachedCanvasLayerProps<any> = MapCachedCanvasLayerProps<any>>
+  extends MapCanvasLayer<P, MapCachedCanvasLayerCanvasInstance> {
+
+  private readonly collapseOnSleep = !!this.props.collapseOnSleep;
+
   private size = 0;
   private referenceMargin = 0;
   private needUpdateTransforms = false;
 
-  /** @inheritdoc */
+  protected isAwake = true;
+
+  /** @inheritDoc */
   constructor(props: P) {
     super(props);
 
@@ -349,7 +344,7 @@ export class MapCachedCanvasLayer<P extends MapCachedCanvasLayerProps<any> = Map
     return this.referenceMargin;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     super.onAttached();
 
@@ -357,7 +352,7 @@ export class MapCachedCanvasLayer<P extends MapCachedCanvasLayerProps<any> = Map
     this.needUpdateTransforms = true;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   protected createCanvasInstance(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, isDisplayed: boolean): MapCachedCanvasLayerCanvasInstanceClass {
     return new MapCachedCanvasLayerCanvasInstanceClass(canvas, context, isDisplayed, this.getReferenceMargin.bind(this));
   }
@@ -371,11 +366,10 @@ export class MapCachedCanvasLayer<P extends MapCachedCanvasLayerProps<any> = Map
     const projectedHeight = projectedSize[1];
     const diag = Math.hypot(projectedWidth, projectedHeight);
 
-    this.size = diag * this.props.overdrawFactor;
+    this.size = this.collapseOnSleep && !this.isAwake ? 0 : Math.ceil(diag * this.props.overdrawFactor);
     this.referenceMargin = (this.size - diag) / 2;
 
-    this.setWidth(this.size);
-    this.setHeight(this.size);
+    this.setSize(this.size, this.size);
 
     const posX = (projectedWidth - this.size) / 2;
     const posY = (projectedHeight - this.size) / 2;
@@ -385,9 +379,33 @@ export class MapCachedCanvasLayer<P extends MapCachedCanvasLayerProps<any> = Map
     displayCanvas.style.top = `${posY}px`;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.isAwake = true;
+
+    if (this.collapseOnSleep) {
+      this.updateFromProjectedSize(this.props.mapProjection.getProjectedSize());
+      this.display.invalidate();
+      this.tryGetBuffer()?.invalidate();
+
+      this.needUpdateTransforms = true;
+    }
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.isAwake = false;
+
+    if (this.collapseOnSleep) {
+      this.updateFromProjectedSize(this.props.mapProjection.getProjectedSize());
+      this.display.invalidate();
+      this.tryGetBuffer()?.invalidate();
+    }
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
-    if (BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
+    if ((!this.collapseOnSleep || this.isAwake) && BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
       this.updateFromProjectedSize(mapProjection.getProjectedSize());
       this.display.invalidate();
       this.tryGetBuffer()?.invalidate();
@@ -396,7 +414,7 @@ export class MapCachedCanvasLayer<P extends MapCachedCanvasLayerProps<any> = Map
     this.needUpdateTransforms = true;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     super.onUpdated(time, elapsed);
 

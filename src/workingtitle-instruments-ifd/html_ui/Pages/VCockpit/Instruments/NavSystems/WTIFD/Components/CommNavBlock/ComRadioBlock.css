@@ -1,0 +1,18 @@
+#primary-com-vloc {
+  border-bottom: none;
+  border-top: none;
+}
+
+#com-radio-block {
+  position: relative;
+}
+
+#com-radio-block .wt-ifd-dual-frequency-container {
+  display: flex;
+  flex-direction: column;
+  border-radius: 2px;
+  height: 92px;
+  width: 131px;
+  box-shadow: 0 0 0 3px var(--wtdyne-color-blue);
+  margin-bottom: 2px;
+}

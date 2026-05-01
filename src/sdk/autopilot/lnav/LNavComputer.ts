@@ -20,7 +20,7 @@ import { Accessible } from '../../sub/Accessible';
 import { Subject } from '../../sub/Subject';
 import { Subscribable } from '../../sub/Subscribable';
 import { DefaultLNavComputerDataProvider } from './DefaultLNavComputerDataProvider';
-import { LNavControlEvents } from './LNavControlEvents';
+import { LNavControlEvents, LNavResetTrackedVectorOption } from './LNavControlEvents';
 import { BaseLNavEvents, LNavEvents } from './LNavEvents';
 import { LNavEventBusTopicPublisher, LNavOverrideModule } from './LNavOverrideModule';
 import { LNavState, LNavSteerCommand, LNavTransitionMode } from './LNavTypes';
@@ -225,6 +225,7 @@ export class LNavComputer {
     isSuspended: false,
     inhibitedSuspendLegIndex: -1,
     resetVectorsOnSuspendEnd: false,
+    isVectorSequencingLocked: false,
     isMissedApproachActive: false
   };
 
@@ -235,6 +236,7 @@ export class LNavComputer {
     isSuspended: false,
     inhibitedSuspendLegIndex: -1,
     resetVectorsOnSuspendEnd: false,
+    isVectorSequencingLocked: false,
     isMissedApproachActive: false
   };
 
@@ -308,19 +310,14 @@ export class LNavComputer {
       'lnav_course_to_steer': new LNavTopicPublisher<'lnav_course_to_steer'>(this.publisher, `lnav_course_to_steer${eventBusTopicSuffix}`, null),
       'lnav_is_steer_heading': new LNavTopicPublisher<'lnav_is_steer_heading'>(this.publisher, `lnav_is_steer_heading${eventBusTopicSuffix}`, false),
       'lnav_is_suspended': new LNavTopicPublisher<'lnav_is_suspended'>(this.publisher, `lnav_is_suspended${eventBusTopicSuffix}`, false),
+      'lnav_is_vector_sequencing_locked': new LNavTopicPublisher<'lnav_is_vector_sequencing_locked'>(this.publisher, `lnav_is_vector_sequencing_locked${eventBusTopicSuffix}`, false),
       'lnav_leg_distance_along': new LNavTopicPublisher<'lnav_leg_distance_along'>(this.publisher, `lnav_leg_distance_along${eventBusTopicSuffix}`, 0),
       'lnav_leg_distance_remaining': new LNavTopicPublisher<'lnav_leg_distance_remaining'>(this.publisher, `lnav_leg_distance_remaining${eventBusTopicSuffix}`, 0),
       'lnav_vector_distance_along': new LNavTopicPublisher<'lnav_vector_distance_along'>(this.publisher, `lnav_vector_distance_along${eventBusTopicSuffix}`, 0),
       'lnav_vector_distance_remaining': new LNavTopicPublisher<'lnav_vector_distance_remaining'>(this.publisher, `lnav_vector_distance_remaining${eventBusTopicSuffix}`, 0),
       'lnav_vector_anticipation_distance': new LNavTopicPublisher<'lnav_vector_anticipation_distance'>(this.publisher, `lnav_vector_anticipation_distance${eventBusTopicSuffix}`, 0),
       'lnav_along_track_speed': new LNavTopicPublisher<'lnav_along_track_speed'>(this.publisher, `lnav_along_track_speed${eventBusTopicSuffix}`, 0),
-      'lnav_tracking_state': new LNavTopicPublisher<'lnav_tracking_state'>(this.publisher, `lnav_tracking_state${eventBusTopicSuffix}`, {
-        isTracking: false,
-        globalLegIndex: 0,
-        transitionMode: LNavTransitionMode.None,
-        vectorIndex: 0,
-        isSuspended: false
-      }),
+      'lnav_tracking_state': new LNavTopicPublisher<'lnav_tracking_state'>(this.publisher, `lnav_tracking_state${eventBusTopicSuffix}`, LNavUtils.createEmptyLNavTrackingState()),
       'lnav_is_awaiting_calc': new LNavTopicPublisher<'lnav_is_awaiting_calc'>(this.publisher, `lnav_is_awaiting_calc${eventBusTopicSuffix}`, false),
     };
 
@@ -346,18 +343,11 @@ export class LNavComputer {
 
     this.interceptFunc = options?.intercept;
 
-    sub.on(`suspend_sequencing${eventBusTopicSuffix}`).handle(suspend => {
-      const flightPlan = this.flightPlanner.hasActiveFlightPlan() ? this.flightPlanner.getActiveFlightPlan() : undefined;
+    sub.on(`suspend_sequencing${eventBusTopicSuffix}`).handle(this.onSetSuspendSequencing.bind(this));
 
-      if (flightPlan) {
-        // We are receiving an explicit command to suspend, so clear any suspend inhibits.
-        if (suspend) {
-          this.currentState.inhibitedSuspendLegIndex = -1;
-        }
+    sub.on(`lnav_set_vector_sequencing_lock${eventBusTopicSuffix}`).handle(this.onSetVectorSequencingLock.bind(this));
 
-        this.trySetSuspended(flightPlan, this.currentState, suspend, this.currentState, false, false);
-      }
-    });
+    sub.on(`lnav_reset_tracked_vector${eventBusTopicSuffix}`).handle(this.onResetTrackedVector.bind(this));
 
     sub.on(`activate_missed_approach${eventBusTopicSuffix}`).handle((v) => {
       this.currentState.isMissedApproachActive = v;
@@ -388,6 +378,60 @@ export class LNavComputer {
     });
 
     this.republishEventBusTopics();
+  }
+
+  /**
+   * Responds to when a command to set whether to suspend leg sequencing is received.
+   * @param suspend Whether to suspend leg sequencing.
+   */
+  private onSetSuspendSequencing(suspend: boolean): void {
+    const flightPlan = this.flightPlanner.hasActiveFlightPlan() ? this.flightPlanner.getActiveFlightPlan() : undefined;
+
+    if (flightPlan) {
+      // We are receiving an explicit command to suspend, so clear any suspend inhibits.
+      if (suspend) {
+        this.currentState.inhibitedSuspendLegIndex = -1;
+      }
+
+      this.trySetSuspended(flightPlan, this.currentState, suspend, this.currentState, false, false);
+    }
+  }
+
+  /**
+   * Responds to when a command to set whether to lock vector sequencing is received.
+   * @param lock Whether to lock vector sequencing.
+   */
+  private onSetVectorSequencingLock(lock: boolean): void {
+    this.currentState.isVectorSequencingLocked = lock;
+  }
+
+  /**
+   * Responds to when a command to reset the tracked vector is received.
+   * @param option The option that defines how to reset the tracked vector.
+   */
+  private onResetTrackedVector(option: LNavResetTrackedVectorOption): void {
+    switch (option) {
+      case LNavResetTrackedVectorOption.Ingress:
+        this.currentState.transitionMode = LNavTransitionMode.Ingress;
+        break;
+      case LNavResetTrackedVectorOption.Base:
+        if (this.currentState.isSuspended) {
+          this.currentState.transitionMode = LNavTransitionMode.None;
+        } else {
+          this.currentState.transitionMode = LNavTransitionMode.Unsuspend;
+        }
+        break;
+      case LNavResetTrackedVectorOption.Egress:
+        if (this.currentState.isSuspended) {
+          return;
+        }
+        this.currentState.transitionMode = LNavTransitionMode.Egress;
+        break;
+    }
+
+    this.currentState.vectorIndex = 0;
+
+    this.trackedHeadingVector = undefined;
   }
 
   /**
@@ -521,6 +565,7 @@ export class LNavComputer {
 
     this.eventBusTopicPublishers['lnav_is_tracking'].publish(isTracking);
     this.eventBusTopicPublishers['lnav_is_suspended'].publish(this.currentState.isSuspended);
+    this.eventBusTopicPublishers['lnav_is_vector_sequencing_locked'].publish(this.currentState.isVectorSequencingLocked);
 
     if (isTracking) {
       const trackingStatePublisher = this.eventBusTopicPublishers['lnav_tracking_state'];
@@ -531,13 +576,15 @@ export class LNavComputer {
         || trackingState.transitionMode !== this.currentState.transitionMode
         || trackingState.vectorIndex !== this.currentState.vectorIndex
         || trackingState.isSuspended !== this.currentState.isSuspended
+        || trackingState.isVectorSequencingLocked !== this.currentState.isVectorSequencingLocked
       ) {
         trackingStatePublisher.publish({
           isTracking: isTracking,
           globalLegIndex: this.currentState.globalLegIndex,
           transitionMode: this.currentState.transitionMode,
           vectorIndex: this.currentState.vectorIndex,
-          isSuspended: this.currentState.isSuspended
+          isSuspended: this.currentState.isSuspended,
+          isVectorSequencingLocked: this.currentState.isVectorSequencingLocked,
         });
       }
 
@@ -571,13 +618,15 @@ export class LNavComputer {
         || trackingState.transitionMode !== LNavTransitionMode.None
         || trackingState.vectorIndex !== 0
         || trackingState.isSuspended !== this.currentState.isSuspended
+        || trackingState.isVectorSequencingLocked !== this.currentState.isVectorSequencingLocked
       ) {
         trackingStatePublisher.publish({
           isTracking: false,
           globalLegIndex: 0,
           transitionMode: LNavTransitionMode.None,
           vectorIndex: 0,
-          isSuspended: this.currentState.isSuspended
+          isSuspended: this.currentState.isSuspended,
+          isVectorSequencingLocked: this.currentState.isVectorSequencingLocked,
         });
       }
 
@@ -1074,7 +1123,13 @@ export class LNavComputer {
     let transitionMode = state.transitionMode;
     let isSuspended = state.isSuspended;
     let vectors = leg.calculated ? LNavUtils.getVectorsForTransitionMode(leg.calculated, transitionMode, isSuspended) : undefined;
-    let vectorIndex = state.vectorIndex + 1;
+    let vectorIndex = state.isVectorSequencingLocked
+      // If vector sequencing is locked, then we want to stay at the current vector if possible and only advance if the
+      // current vector is not valid or trackable. Therefore, we will start at the current vector and let the code
+      // below handle advancing to the next valid and trackable vector, if necessary.
+      ? state.vectorIndex
+      // If vector sequencing is not locked, then we want to advance past the current vector.
+      : state.vectorIndex + 1;
     let vectorEndIndex = vectors?.length ?? 0;
     let didAdvance = false;
     let isDone = false;
@@ -1195,7 +1250,7 @@ export class LNavComputer {
   private advanceToNextLeg(plan: FlightPlan, state: Readonly<LNavState>, out: LNavState): LNavState {
     this.applyEndOfLegSuspends(plan, state, out);
 
-    if (!out.isSuspended) {
+    if (!out.isSuspended && !out.isVectorSequencingLocked) {
       if (out.globalLegIndex + 1 >= plan.length) {
         out.transitionMode = LNavTransitionMode.None;
         out.vectorIndex = Math.max(0, (plan.tryGetLeg(out.globalLegIndex)?.calculated?.flightPath.length ?? 0) - 1);
@@ -1530,6 +1585,7 @@ export class LNavComputer {
     target.isSuspended = source.isSuspended;
     target.inhibitedSuspendLegIndex = source.inhibitedSuspendLegIndex;
     target.resetVectorsOnSuspendEnd = source.resetVectorsOnSuspendEnd;
+    target.isVectorSequencingLocked = source.isVectorSequencingLocked;
     target.isMissedApproachActive = source.isMissedApproachActive;
 
     return target;

@@ -1,4 +1,5 @@
-import { ReadonlyFloat64Array, Vec2Math } from '../../math';
+import { ReadonlyFloat64Array, Vec2Math } from '../../math/VecMath';
+import { ReadonlySubEvent, SubEvent } from '../../sub/SubEvent';
 import { Subscribable } from '../../sub/Subscribable';
 import { SubscribableUtils } from '../../sub/SubscribableUtils';
 import { MapProjection } from './MapProjection';
@@ -51,6 +52,22 @@ export class MapBlankWaypointIcon<T extends MapWaypoint> implements MapWaypointI
 }
 
 /**
+ * Data describing a drawing operation for an {@link AbstractMapWaypointIcon}.
+ * @see {@link AbstractMapWaypointIcon.onDraw}
+ * @see {@link AbstractMapWaypointIcon.getLastDrawData | AbstractMapWaypointIcon.getLastDrawData()}
+ */
+export type AbstractMapWaypointIconDrawData = {
+  /** The projected position of the icon's waypoint that was used to the draw the icon, as `[x, y]` in pixels. */
+  readonly waypointProjectedPos: ReadonlyFloat64Array;
+
+  /** The top-left corner of the drawn icon, as `[x, y]` in pixels. */
+  readonly topLeft: ReadonlyFloat64Array;
+
+  /** The size of the drawn icon, as `[width, height]` in pixels. */
+  readonly size: ReadonlyFloat64Array;
+};
+
+/**
  * Initialization options for an AbstractMapWaypointIcon.
  */
 export type AbstractMapWaypointIconOptions = {
@@ -71,7 +88,7 @@ export type AbstractMapWaypointIconOptions = {
  * An abstract implementation of MapWaypointIcon which supports an arbitrary anchor point and offset.
  */
 export abstract class AbstractMapWaypointIcon<T extends MapWaypoint> implements MapWaypointIcon<T> {
-  protected static readonly tempVec2 = new Float64Array(2);
+  protected static readonly tempVec2 = Vec2Math.create();
 
   /** @inheritdoc */
   public readonly priority: Subscribable<number>;
@@ -89,14 +106,29 @@ export abstract class AbstractMapWaypointIcon<T extends MapWaypoint> implements 
   public readonly offset: Subscribable<ReadonlyFloat64Array>;
 
   /**
-   * Constructor.
+   * An event that notifies subscribers when this icon is drawn (when {@link draw | draw()} is called). The sender of
+   * the event is this icon. The event data describes the draw operation that triggered the event.
+   * 
+   * The data object passed to event handlers is only guaranteed to be valid at the moment the handler is called. If a
+   * handler needs to retain the data past this moment, then it is recommended that a copy of the data be made.
+   */
+  public readonly onDraw = new SubEvent() as ReadonlySubEvent<this, AbstractMapWaypointIconDrawData>;
+
+  protected readonly drawData = {
+    waypointProjectedPos: Vec2Math.create(NaN, NaN),
+    topLeft: Vec2Math.create(NaN, NaN),
+    size: Vec2Math.create(NaN, NaN),
+  } satisfies AbstractMapWaypointIconDrawData;
+
+  /**
+   * Creates a new instance of AbstractMapWaypointIcon.
    * @param waypoint The waypoint associated with this icon.
    * @param priority The render priority of this icon, or a subscribable which provides it. Icons with higher
    * priorities should be rendered above those with lower priorities.
    * @param size The size of this icon, as `[width, height]` in pixels, or a subscribable which provides it.
    * @param options Options with which to initialize this icon.
    */
-  constructor(
+  public constructor(
     public readonly waypoint: T,
     priority: number | Subscribable<number>,
     size: ReadonlyFloat64Array | Subscribable<ReadonlyFloat64Array>,
@@ -109,16 +141,34 @@ export abstract class AbstractMapWaypointIcon<T extends MapWaypoint> implements 
     this.offset = SubscribableUtils.toSubscribable(options?.offset ?? Vec2Math.create(), true);
   }
 
-  /** @inheritdoc */
+  /**
+   * Gets data describing this icon's last executed drawing operation (the last time that {@link draw | draw()} was
+   * called). If the icon has not been drawn yet, then the data will report `NaN` values.
+   * @returns Data describing this icon's last executed drawing operation. The returned data object passed is only
+   * guaranteed to be valid at the moment it is returned. If you need to retain the data past this moment, then it is
+   * recommended that a copy of the data be made.
+   */
+  public getLastDrawData(): AbstractMapWaypointIconDrawData {
+    return this.drawData;
+  }
+
+  /** @inheritDoc */
   public draw(context: CanvasRenderingContext2D, mapProjection: MapProjection): void {
     const size = this.size.get();
     const offset = this.offset.get();
     const anchor = this.anchor.get();
 
-    const projected = mapProjection.project(this.waypoint.location.get(), MapWaypointImageIcon.tempVec2);
+    const projected = mapProjection.project(this.waypoint.location.get(), this.drawData.waypointProjectedPos);
+
     const left = projected[0] + offset[0] - anchor[0] * size[0];
     const top = projected[1] + offset[1] - anchor[1] * size[1];
+    Vec2Math.set(left, top, this.drawData.topLeft);
+
+    Vec2Math.copy(size, this.drawData.size);
+
     this.drawIconAt(context, mapProjection, left, top);
+
+    (this.onDraw as SubEvent<this, AbstractMapWaypointIconDrawData>).notify(this, this.drawData);
   }
 
   /**

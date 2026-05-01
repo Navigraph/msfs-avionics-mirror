@@ -10,6 +10,7 @@ import { ReadonlyFloat64Array, Vec3Math } from '../../../math/VecMath';
 import { ArrayUtils } from '../../../utils/datastructures/ArrayUtils';
 import { LegDefinition } from '../../FlightPlanning';
 import { FlightPathCalculatorFacilityCache } from '../FlightPathCalculatorFacilityCache';
+import { FlightPathLegCalculationOptions } from '../FlightPathLegCalculator';
 import { FlightPathState } from '../FlightPathState';
 import { FlightPathUtils } from '../FlightPathUtils';
 import { FlightPathVector, FlightPathVectorFlags } from '../FlightPathVector';
@@ -144,7 +145,8 @@ export abstract class CircleInterceptLegCalculator extends AbstractFlightPathLeg
     legs: LegDefinition[],
     calculateIndex: number,
     activeLegIndex: number,
-    state: FlightPathState
+    state: FlightPathState,
+    options: Readonly<FlightPathLegCalculationOptions>
   ): void {
     const leg = legs[calculateIndex];
     const vectors = leg.calculated!.flightPath;
@@ -171,7 +173,7 @@ export abstract class CircleInterceptLegCalculator extends AbstractFlightPathLeg
     let startAtPlanePos = false;
     let retainOldVectors = false;
 
-    if (isActiveLeg && interceptCourseInfo.heading !== null && state.planePosition.isValid()) {
+    if (!options.disableCalculateFromPpos && isActiveLeg && interceptCourseInfo.heading !== null && state.planePosition.isValid()) {
       // If the leg to calculate is the active leg and a fly-heading leg and we know the airplane's current position,
       // then we should start the leg path at the airplane's current position. The exception to this is if non-fallback
       // vectors have been previously calculated and include an initial turn and the airplane's current position is

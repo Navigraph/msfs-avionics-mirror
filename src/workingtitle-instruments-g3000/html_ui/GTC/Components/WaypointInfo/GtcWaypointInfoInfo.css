@@ -1,0 +1,72 @@
+.wpt-info-info {
+  position: relative;
+  white-space: pre;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: stretch;
+}
+
+.wpt-info-info-section-bottom-separator {
+  border-bottom: solid 2px #808080;
+}
+
+.wpt-info-info-field {
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.wpt-info-info-gps-field {
+  color: var(--wpt-info-page-gps-color);
+}
+
+.wpt-info-info-field-title {
+  margin-bottom: var(--wpt-info-info-field-title-margin-bottom);
+  font-size: 0.8em;
+  color: var(--g3000-color-white);
+}
+
+.wpt-info-info-city-region {
+  height: var(--wpt-info-info-city-region-height);
+  padding-left: var(--wpt-info-info-city-region-padding-left);
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.wpt-info-info-pos {
+  height: var(--wpt-info-info-pos-height);
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+}
+
+.wpt-info-info-coords {
+  width: var(--wpt-info-info-coords-width);
+  margin-left: var(--wpt-info-info-coords-margin-left);
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.wpt-info-info-brg {
+  width: var(--wpt-info-info-brg-width);
+}
+
+.wpt-info-info-brg-value {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.wpt-info-info-brg-value .bearing-arrow {
+  margin-left: var(--wpt-info-info-brg-arrow-margin-left);
+}
+
+.wpt-info-info-dis {
+  width: var(--wpt-info-info-dis-width);
+}

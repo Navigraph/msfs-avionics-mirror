@@ -1,0 +1,7 @@
+.touch-tab-group {
+  width: 100%;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: center;
+}

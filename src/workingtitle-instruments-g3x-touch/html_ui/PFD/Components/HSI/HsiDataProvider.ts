@@ -9,9 +9,9 @@ import {
   LNavDataEvents, ObsSuspModes
 } from '@microsoft/msfs-garminsdk';
 
-import { G3XFplSourceDataProvider } from '../../../Shared/FlightPlan/G3XFplSourceDataProvider';
+import { G3XFplSourceDataProvider, G3XFplSourceDataProviderSourceDef } from '../../../Shared/FlightPlan/G3XFplSourceDataProvider';
 import { G3XFplSource } from '../../../Shared/FlightPlan/G3XFplSourceTypes';
-import { G3XTouchNavIndicator } from '../../../Shared/NavReference/G3XTouchNavReference';
+import { G3XTouchNavIndicator, G3XTouchNavSources } from '../../../Shared/NavReference/G3XTouchNavReference';
 import { PfdHsiOrientationSettingMode, PfdHsiUserSettingTypes } from '../../../Shared/Settings/PfdUserSettings';
 import { HsiOrientationMode } from './HsiTypes';
 
@@ -34,6 +34,9 @@ export interface HsiDataProvider {
   /** The magnetic variation at the plane's current position, in degrees. */
   readonly magVar: Subscribable<number>;
 
+  /** A collection of all nav sources. */
+  readonly navSources: G3XTouchNavSources;
+
   /** The nav indicator for the active nav source. */
   readonly activeNavIndicator: G3XTouchNavIndicator;
 
@@ -52,11 +55,23 @@ export interface HsiDataProvider {
   /** The current LNAV OBS/suspend mode. */
   readonly obsSuspMode: Subscribable<ObsSuspModes>;
 
+  /** Whether OBS mode can be activated. */
+  readonly isObsAvailable: Subscribable<boolean>;
+
   /** The current magnetic OBS course, in degrees. */
   readonly obsCourse: Subscribable<number>;
 
   /** The number of supported external flight plan sources. */
   readonly externalFplSourceCount: 0 | 1 | 2;
+
+  /** The definition describing the internal flight plan source. */
+  readonly internalSourceDef: Readonly<G3XFplSourceDataProviderSourceDef>;
+
+  /**
+   * Definitions describing the external flight plan sources. The index of each definition corresponds to the index
+   * of the source's parent external navigator.
+   */
+  readonly externalSourceDefs: readonly (Readonly<G3XFplSourceDataProviderSourceDef> | undefined)[];
 
   /** The current flight plan source. */
   readonly fplSource: Subscribable<G3XFplSource>;
@@ -131,10 +146,16 @@ export class DefaultHsiDataProvider implements HsiDataProvider {
   /** @inheritDoc */
   public readonly obsSuspMode = this.obsSuspDataProvider.mode;
   /** @inheritDoc */
+  public readonly isObsAvailable = this.obsSuspDataProvider.isObsAvailable;
+  /** @inheritDoc */
   public readonly obsCourse = this.obsSuspDataProvider.obsCourse;
 
   /** @inheritDoc */
   public readonly externalFplSourceCount = this.fplSourceDataProvider.externalSourceCount;
+  /** @inheritDoc */
+  public readonly internalSourceDef = this.fplSourceDataProvider.internalSourceDef;
+  /** @inheritDoc */
+  public readonly externalSourceDefs = this.fplSourceDataProvider.externalSourceDefs;
   /** @inheritDoc */
   public readonly fplSource = this.fplSourceDataProvider.source;
 
@@ -178,6 +199,7 @@ export class DefaultHsiDataProvider implements HsiDataProvider {
    * @param bus The event bus.
    * @param ahrsIndex The index of the AHRS from which to source data.
    * @param fmsPosIndex The index of the FMS geo-positioning system from which to source data.
+   * @param navSources A collection of all navigation sources.
    * @param activeNavIndicator The nav indicator for the active nav source.
    * @param bearing1Indicator The nav indicator for bearing pointer 1.
    * @param bearing2Indicator The nav indicator for bearing pointer 2.
@@ -189,6 +211,7 @@ export class DefaultHsiDataProvider implements HsiDataProvider {
     private readonly bus: EventBus,
     ahrsIndex: number | Subscribable<number>,
     fmsPosIndex: number | Subscribable<number>,
+    public readonly navSources: G3XTouchNavSources,
     public readonly activeNavIndicator: G3XTouchNavIndicator,
     public readonly bearing1Indicator: G3XTouchNavIndicator,
     public readonly bearing2Indicator: G3XTouchNavIndicator,

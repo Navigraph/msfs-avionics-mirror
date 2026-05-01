@@ -1,0 +1,52 @@
+.ifd-nrst-tab {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.nearest-container {
+  margin-left: 25px;
+}
+
+.ifd-nrst-tab .nearest-title {
+  text-align: center;
+  padding: 3px 0px;
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+.ifd-nrst-tab .nearest-title span {
+  font-size: 20px;
+  font-family: "Arial Bold", sans-serif;
+  padding: 0px 2px;
+}
+
+.ifd-nrst-tab .ifd-list {
+  margin-left: 7px;
+}
+
+.ifd-nrst-tab .ref {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Handle Nearest Sidebar */
+.ifd-sidebar-sidebar .nearest-title {
+  margin-left: -24px;
+  width: 137px;
+}
+
+.ifd-sidebar-sidebar .nearest-title .nearest-title-prefix {
+  display: none;
+}
+
+.ifd-nrst-tab .ifd-sidebar-sidebar .ifd-list {
+  margin-left: -22px;
+  width: 135px;
+}

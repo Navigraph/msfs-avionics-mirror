@@ -1,0 +1,13 @@
+.int-info-page2 .int-info {
+  position: absolute;
+}
+
+.gtc-horizontal .int-info-page2 .int-info {
+  left: calc(50% - 685px / 2);
+  top: 55px;
+}
+
+.gtc-vertical .int-info-page2 .int-info {
+  left: calc(50% - 365px / 2);
+  top: 27px;
+}

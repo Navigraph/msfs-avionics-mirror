@@ -9,14 +9,19 @@ import {
 import { WaypointIconImageCache } from '../../../graphics/img/WaypointIconImageCache';
 import { MapUserSettingTypes } from '../../../settings/MapUserSettings';
 import { UnitsDistanceSettingMode, UnitsUserSettingManager } from '../../../settings/UnitsUserSettings';
+import { NextGenMapWaypointIconColliderFactory } from '../colliders/NextGenMapIconWaypointColliderFactory';
 import { ProcMapFlightPathPlanRenderer } from '../flightplan';
 import { GarminMapBuilder, RangeRingOptions } from '../GarminMapBuilder';
 import { GarminMapKeys } from '../GarminMapKeys';
 import { MapBannerIndicator, MapOrientationIndicator } from '../indicators';
 import { MapDeadReckoningLayer, MapPointerInfoLayerSize } from '../layers';
 import { MapUtils } from '../MapUtils';
+import { MapWaypointDisplayBuilder } from '../MapWaypointDisplayBuilder';
 import { NextGenMapWaypointStyles } from '../MapWaypointStyles';
-import { MapFlightPlanFocusModule, MapOrientation, MapOrientationModule, MapPointerModule, MapTerrainMode, MapTerrainModule, MapUnitsModule } from '../modules';
+import {
+  MapFlightPlanFocusModule, MapOrientation, MapOrientationModule, MapPointerModule, MapTerrainMode, MapTerrainModule,
+  MapUnitsModule
+} from '../modules';
 import { NextGenGarminMapUtils } from '../NextGenGarminMapUtils';
 
 /**
@@ -104,6 +109,9 @@ export type NextGenProcMapOptions = {
    * to `17` (25 NM/50 KM with standard range arrays).
    */
   defaultFocusRangeIndex?: number;
+
+  /** Whether to include support for hovered waypoints. Defaults to `true`. */
+  supportWaypointHover?: boolean;
 
   /** Styling options for the range ring. */
   rangeRingOptions: RangeRingOptions;
@@ -209,6 +217,8 @@ export class NextGenProcMapBuilder {
 
     options.supportDataIntegrity ??= true;
 
+    options.supportWaypointHover ??= true;
+
     options.useDeclutterUserSetting ??= true;
 
     options.useTerrainUserSettings ??= false;
@@ -295,7 +305,23 @@ export class NextGenProcMapBuilder {
             );
         }
       )
-      .with(GarminMapBuilder.flightPlanFocus, options.nominalFocusMargins, options.defaultFocusRangeIndex)
+      .with(GarminMapBuilder.flightPlanFocus, options.nominalFocusMargins, options.defaultFocusRangeIndex);
+
+    if (options.supportWaypointHover) {
+      mapBuilder
+        .with(GarminMapBuilder.waypointColliders, new NextGenMapWaypointIconColliderFactory({ scale: options.waypointStyleScale }))
+        .with(GarminMapBuilder.waypointHover,
+          (builder: MapWaypointDisplayBuilder) => {
+            builder.withHoverStyles(
+              options.waypointIconImageCache,
+              NextGenMapWaypointStyles.hoverIconStyles(6, options.waypointStyleScale),
+              NextGenMapWaypointStyles.hoverLabelStyles(6, options.waypointStyleFontType, options.waypointStyleScale)
+            );
+          }
+        );
+    }
+    
+    mapBuilder
       .with(GarminMapBuilder.rangeRing, options.rangeRingOptions)
       .with(GarminMapBuilder.crosshair);
 

@@ -1,0 +1,35 @@
+.datablock.datablock-gps-cdi .gps-cdi-container {
+  position: relative;
+  width: 100px;
+  height: 20px;
+  border: 1px solid var(--wtdyne-color-gray-3);
+  border-radius: 5px;
+  margin-top: 5px;
+  margin-left: 15px;
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+
+.datablock.datablock-gps-cdi .gps-cdi-scale {
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 100px;
+}
+
+.datablock.datablock-gps-cdi .gps-cdi-needle {
+  position: absolute;
+  top: 0;
+  left: 41px;
+  width: 18px;
+}
+
+.datablock.datablock-gps-cdi .gps-cdi-needle path {
+  fill: var(--wtdyne-color-light-cyan);
+  stroke: var(--wtdyne-color-gray-5);
+  stroke-width: 0.5px;
+}
+
+.datablock.datablock-gps-cdi .gps-cdi-needle.full-deflection path {
+  fill: var(--wtdyne-color-yellow);
+}

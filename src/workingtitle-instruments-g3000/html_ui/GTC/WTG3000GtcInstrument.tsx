@@ -33,19 +33,22 @@ import {
 } from './GtcService';
 import { GtcDefaultPositionHeadingDataProvider, GtcUserWaypointEditController } from './Navigation';
 import {
-  GtcAdvancedVnavProfilePage, GtcAirportInfoPage, GtcApproachPage, GtcArrivalPage, GtcAudioRadiosPopup,
+  GtcAdvancedVnavProfilePage, GtcAirportInfoPage2, GtcApproachPage, GtcArrivalPage, GtcAudioRadiosPopup,
   GtcAvionicsSettingsPage, GtcChartsPage, GtcChecklistPage, GtcConnextWeatherSettingsPage, GtcDeparturePage,
   GtcDirectToPage, GtcFlapSpeedsPage, GtcFlightPlanPage, GtcHoldPage, GtcInitialFuelPage, GtcInitializationPage,
-  GtcIntersectionInfoPage, GtcLandingDataPage, GtcMapSettingsPage, GtcMfdHomePage, GtcMinimumsPage, GtcNavComHome,
-  GtcNdbInfoPage, GtcNearestAirportPage, GtcNearestDirectoryPage, GtcNearestIntersectionPage, GtcNearestNdbPage,
+  GtcIntersectionInfoPage2, GtcLandingDataPage, GtcMapSettingsPage, GtcMfdHomePage, GtcMinimumsPage, GtcNavComHome,
+  GtcNdbInfoPage2, GtcNearestAirportPage, GtcNearestDirectoryPage, GtcNearestIntersectionPage, GtcNearestNdbPage,
   GtcNearestUserWaypointPage, GtcNearestVorPage, GtcNearestWeatherPage, GtcPerfPage, GtcPfdHomePage,
   GtcPfdMapSettingsPage, GtcPfdSettingsPage, GtcProceduresPage, GtcSetupPage, GtcSpeedBugsPage, GtcTakeoffDataPage,
   GtcTerrainSettingsPage, GtcTimerPage, GtcToldFactorDialog, GtcTrafficSettingsPage, GtcTransponderDialog,
-  GtcTransponderModePopup, GtcUserWaypointInfoPage, GtcUtilitiesPage, GtcVnavProfilePage, GtcVorInfoPage,
+  GtcTransponderModePopup, GtcUserWaypointInfoPage2, GtcUtilitiesPage, GtcVnavProfilePage, GtcVorInfoPage2,
   GtcWaypointInfoDirectoryPage, GtcWeatherRadarSettingsPage, GtcWeatherSelectionPage, GtcWeightBalanceConfigPage,
   GtcWeightBalancePage, GtcWeightFuelPage,
 } from './Pages';
-import { GtcChartsOptionsPopup, GtcChartsPanZoomControlPopup, GtcMapPointerControlPopup } from './Popups';
+import {
+  GtcAirportInfoPopup, GtcChartsOptionsPopup, GtcChartsPanZoomControlPopup, GtcDirectToPopup, GtcIntersectionInfoPopup,
+  GtcMapPointerControlPopup, GtcNdbInfoPopup, GtcUserWaypointInfoPopup, GtcVorInfoPopup
+} from './Popups';
 
 import './WTG3000_GTC.css';
 
@@ -534,6 +537,22 @@ export class WTG3000GtcInstrument extends WTG3000FsInstrument {
         );
       }
     );
+    this.gtcService.registerView(
+      GtcViewLifecyclePolicy.Transient,
+      GtcViewKeys.DirectToPopup, 'MFD',
+      (gtcService, controlMode, displayPaneIndex) => {
+        return (
+          <GtcDirectToPopup
+            gtcService={gtcService}
+            controlMode={controlMode}
+            displayPaneIndex={displayPaneIndex}
+            fms={this.fms}
+            posHeadingDataProvider={context.posHeadingDataProvider1Hz}
+            flightPlanStore={this.flightPlanStore!}
+          />
+        );
+      }
+    );
 
     this.gtcService.registerView(
       GtcViewLifecyclePolicy.Static,
@@ -940,7 +959,7 @@ export class WTG3000GtcInstrument extends WTG3000FsInstrument {
       GtcViewKeys.AirportInfo, 'MFD',
       (gtcService, controlMode, displayPaneIndex) => {
         return (
-          <GtcAirportInfoPage
+          <GtcAirportInfoPage2
             gtcService={gtcService}
             controlMode={controlMode}
             displayPaneIndex={displayPaneIndex}
@@ -948,18 +967,16 @@ export class WTG3000GtcInstrument extends WTG3000FsInstrument {
             posHeadingDataProvider={context.posHeadingDataProvider}
             fms={this.fms}
             flightPlanStore={this.flightPlanStore!}
-            allowRnpAr={this.config.fms.approach.supportRnpAr}
           />
         );
       }
     );
-
     this.gtcService.registerView(
       GtcViewLifecyclePolicy.Persistent,
       GtcViewKeys.IntersectionInfo, 'MFD',
       (gtcService, controlMode, displayPaneIndex) => {
         return (
-          <GtcIntersectionInfoPage
+          <GtcIntersectionInfoPage2
             gtcService={gtcService}
             controlMode={controlMode}
             displayPaneIndex={displayPaneIndex}
@@ -970,13 +987,12 @@ export class WTG3000GtcInstrument extends WTG3000FsInstrument {
         );
       }
     );
-
     this.gtcService.registerView(
       GtcViewLifecyclePolicy.Persistent,
       GtcViewKeys.VorInfo, 'MFD',
       (gtcService, controlMode, displayPaneIndex) => {
         return (
-          <GtcVorInfoPage
+          <GtcVorInfoPage2
             gtcService={gtcService}
             controlMode={controlMode}
             displayPaneIndex={displayPaneIndex}
@@ -987,13 +1003,12 @@ export class WTG3000GtcInstrument extends WTG3000FsInstrument {
         );
       }
     );
-
     this.gtcService.registerView(
       GtcViewLifecyclePolicy.Persistent,
       GtcViewKeys.NdbInfo, 'MFD',
       (gtcService, controlMode, displayPaneIndex) => {
         return (
-          <GtcNdbInfoPage
+          <GtcNdbInfoPage2
             gtcService={gtcService}
             controlMode={controlMode}
             displayPaneIndex={displayPaneIndex}
@@ -1004,13 +1019,12 @@ export class WTG3000GtcInstrument extends WTG3000FsInstrument {
         );
       }
     );
-
     this.gtcService.registerView(
       GtcViewLifecyclePolicy.Persistent,
       GtcViewKeys.UserWaypointInfo, 'MFD',
       (gtcService, controlMode, displayPaneIndex) => {
         return (
-          <GtcUserWaypointInfoPage
+          <GtcUserWaypointInfoPage2
             gtcService={gtcService}
             controlMode={controlMode}
             displayPaneIndex={displayPaneIndex}
@@ -1019,6 +1033,82 @@ export class WTG3000GtcInstrument extends WTG3000FsInstrument {
             controller={context.userWptEditController}
             userWaypoints={context.existingUserWptArray}
             selectedUserWaypoint={context.wptInfoSelectedUserWpt}
+          />
+        );
+      }
+    );
+
+    this.gtcService.registerView(
+      GtcViewLifecyclePolicy.Transient,
+      GtcViewKeys.AirportInfoPopup, 'MFD',
+      (gtcService, controlMode, displayPaneIndex) => {
+        return (
+          <GtcAirportInfoPopup
+            gtcService={gtcService}
+            controlMode={controlMode}
+            displayPaneIndex={displayPaneIndex}
+            facLoader={this.facLoader}
+            posHeadingDataProvider={context.posHeadingDataProvider}
+          />
+        );
+      }
+    );
+    this.gtcService.registerView(
+      GtcViewLifecyclePolicy.Transient,
+      GtcViewKeys.IntersectionInfoPopup, 'MFD',
+      (gtcService, controlMode, displayPaneIndex) => {
+        return (
+          <GtcIntersectionInfoPopup
+            gtcService={gtcService}
+            controlMode={controlMode}
+            displayPaneIndex={displayPaneIndex}
+            facLoader={this.facLoader}
+            posHeadingDataProvider={context.posHeadingDataProvider}
+          />
+        );
+      }
+    );
+    this.gtcService.registerView(
+      GtcViewLifecyclePolicy.Transient,
+      GtcViewKeys.VorInfoPopup, 'MFD',
+      (gtcService, controlMode, displayPaneIndex) => {
+        return (
+          <GtcVorInfoPopup
+            gtcService={gtcService}
+            controlMode={controlMode}
+            displayPaneIndex={displayPaneIndex}
+            facLoader={this.facLoader}
+            posHeadingDataProvider={context.posHeadingDataProvider}
+          />
+        );
+      }
+    );
+    this.gtcService.registerView(
+      GtcViewLifecyclePolicy.Transient,
+      GtcViewKeys.NdbInfoPopup, 'MFD',
+      (gtcService, controlMode, displayPaneIndex) => {
+        return (
+          <GtcNdbInfoPopup
+            gtcService={gtcService}
+            controlMode={controlMode}
+            displayPaneIndex={displayPaneIndex}
+            facLoader={this.facLoader}
+            posHeadingDataProvider={context.posHeadingDataProvider}
+          />
+        );
+      }
+    );
+    this.gtcService.registerView(
+      GtcViewLifecyclePolicy.Transient,
+      GtcViewKeys.UserWaypointInfoPopup, 'MFD',
+      (gtcService, controlMode, displayPaneIndex) => {
+        return (
+          <GtcUserWaypointInfoPopup
+            gtcService={gtcService}
+            controlMode={controlMode}
+            displayPaneIndex={displayPaneIndex}
+            facLoader={this.facLoader}
+            posHeadingDataProvider={context.posHeadingDataProvider}
           />
         );
       }
@@ -1118,7 +1208,16 @@ export class WTG3000GtcInstrument extends WTG3000FsInstrument {
     this.gtcService.registerView(
       GtcViewLifecyclePolicy.Static,
       GtcViewKeys.MapPointerControl, 'MFD',
-      (gtcService, controlMode, displayPaneIndex) => <GtcMapPointerControlPopup gtcService={gtcService} controlMode={controlMode} displayPaneIndex={displayPaneIndex} />
+      (gtcService, controlMode, displayPaneIndex) => {
+        return (
+          <GtcMapPointerControlPopup
+            gtcService={gtcService}
+            controlMode={controlMode}
+            displayPaneIndex={displayPaneIndex}
+            facLoader={this.facLoader}
+          />
+        );
+      }
     );
     this.gtcService.registerView(
       GtcViewLifecyclePolicy.Transient,

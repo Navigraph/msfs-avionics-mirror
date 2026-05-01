@@ -1,0 +1,103 @@
+.leg-block-selection-menu {
+  --leg-block-blue-1: #6699cc;
+  --leg-block-blue-2: #006298;
+  --leg-block-blue-3: #003466;
+  --leg-block-blue-4: #010167;
+
+  --leg-block-light-gray: #666666;
+  --leg-block-gray: #333333;
+  --leg-block-light-magenta: #990099;
+  --leg-block-magenta: #660066;
+
+  --selection-menu-width: 202px;
+
+  display: flex;
+  flex-direction: column;
+  width: var(--selection-menu-width);
+  z-index: 10;
+  font-size: 16px;
+  font-family: "Arial Bold";
+  color: var(--wtdyne-color-mint);
+}
+
+.leg-block-selection-menu.with-approaches {
+  --selection-menu-width: 228px;
+}
+
+.leg-block-selection-menu-options {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--leg-block-blue-3);
+  border-radius: 12px;
+  color: var(--wtdyne-color-white);
+  padding: 10px;
+  scrollbar-width: 10px;
+  white-space: normal;
+  word-break: break-word;
+  box-shadow: inset 0.25em 0.25em 0.2em 0 rgba(255, 255, 255, 0.5), inset -0.25em -0.25em 0.2em 0 rgba(0, 0, 0, 0.6);
+}
+
+.leg-block-selection-menu-options .ifd-list {
+  overflow: visible;
+}
+
+.leg-block-selection-menu-option {
+  border-radius: 7px;
+  padding: 5px;
+  font-size: 20px;
+  line-height: 1.1;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.leg-block-selection-menu-option-selected {
+  background-color: var(--wtdyne-color-cyan);
+  color: var(--wtdyne-color-black);
+}
+
+.leg-block-selection-menu-option-text {
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.leg-block-selection-menu-option-annotation {
+  white-space: normal;
+  word-break: break-word;
+  font-size: 0.7em;
+}
+
+.leg-block-selection-menu-group-title {
+  background-color: var(--leg-block-blue-1);
+  border-radius: 2px;
+  border-top-left-radius: 12px;
+  padding: 4px;
+  padding-top: 10px;
+  padding-left: 15px;
+  color: var(--wtdyne-color-black);
+  box-shadow: inset 0.2em 0.2em 0.2em 0 rgba(255, 255, 255, 0.5), inset -0.1em -0.1em 0.1em 0 rgba(0, 0, 0, 0.6);
+  margin-left: -10px;
+  margin-top: -10px;
+}
+
+.leg-block-selection-menu-group-title-text {
+  display: block;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.leg-block-selection-menu-option {
+  border-radius: 5px;
+  padding-left: 4px;
+  padding-top: 7px;
+  padding-bottom: 3px;
+  font-size: 20px;
+  line-height: 1.1;
+}

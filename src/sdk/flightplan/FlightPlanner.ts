@@ -381,7 +381,7 @@ export type FlightPlannerOptions = {
   calculator: FlightPathCalculator;
 
   /** A function which generates flight plan leg names for the planner's flight plans. */
-  getLegName?: (leg: FlightPlanLeg) => string | undefined
+  getLegName?: (leg: FlightPlanLeg, flags: number) => string | undefined
 };
 
 // ------ INTERNAL SYNC EVENTS ------
@@ -642,7 +642,7 @@ export class FlightPlanner<ID extends string = any> {
     return this._activePlanIndex;
   }
 
-  private readonly getLegNameFunc: (leg: FlightPlanLeg) => string | undefined;
+  private readonly getLegNameFunc: (leg: FlightPlanLeg, flags: number) => string | undefined;
 
   /**
    * Creates an instance of the FlightPlanner.
@@ -1370,7 +1370,7 @@ export class FlightPlanner<ID extends string = any> {
       return;
     }
 
-    const localLeg = plan.tryGetLeg(data.segmentIndex, data.segmentIndex);
+    const localLeg = plan.tryGetLeg(data.segmentIndex, data.legIndex);
 
     if (!localLeg) {
       return;
@@ -1403,7 +1403,7 @@ export class FlightPlanner<ID extends string = any> {
       return;
     }
 
-    const localLeg = plan.tryGetLeg(data.segmentIndex, data.segmentIndex);
+    const localLeg = plan.tryGetLeg(data.segmentIndex, data.legIndex);
 
     if (!localLeg) {
       return;
@@ -1728,13 +1728,13 @@ export class FlightPlanner<ID extends string = any> {
   public static getPlanner(
     bus: EventBus,
     calculator: FlightPathCalculator,
-    getLegName?: ((leg: FlightPlanLeg) => string | undefined)
+    getLegName?: ((leg: FlightPlanLeg, flags: number) => string | undefined)
   ): FlightPlanner<''>;
   // eslint-disable-next-line jsdoc/require-jsdoc
   public static getPlanner(
     arg1: string | EventBus,
     arg2: EventBus | FlightPathCalculator,
-    arg3?: Readonly<FlightPlannerOptions> | ((leg: FlightPlanLeg) => string | undefined)
+    arg3?: Readonly<FlightPlannerOptions> | ((leg: FlightPlanLeg, flags: number) => string | undefined)
   ): FlightPlanner<any> {
     let id: string;
     let bus: EventBus;

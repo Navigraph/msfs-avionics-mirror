@@ -524,9 +524,11 @@ export class Epic2UpperMfdInstrument extends Epic2FsInstrument {
       }
 
       if (p.getAutothrottleOptions !== undefined) {
-        autothrottleOptions = p.getAutothrottleOptions();
-      } else {
-        console.warn('Multiple plugins attempted to provide Autothrottle Options!!');
+        if (autothrottleOptions === undefined) {
+          autothrottleOptions = p.getAutothrottleOptions();
+        } else {
+          console.warn('Multiple plugins attempted to provide Autothrottle Options!!');
+        }
       }
     });
 

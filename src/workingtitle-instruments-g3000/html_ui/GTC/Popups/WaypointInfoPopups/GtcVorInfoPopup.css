@@ -1,0 +1,18 @@
+.gtc-horizontal .vor-info-popup {
+  --vor-info-popup-info-left: calc(50% - 685px / 2);
+  --vor-info-popup-info-top: 53px;
+}
+
+.gtc-vertical .vor-info-popup {
+  --vor-info-popup-info-left: calc(50% - 365px / 2);
+  --vor-info-popup-info-top: 25px;
+}
+
+.vor-info-popup .vor-info {
+  position: absolute;
+}
+
+.vor-info-popup .vor-info {
+  left: var(--vor-info-popup-info-left);
+  top: var(--vor-info-popup-info-top);
+}

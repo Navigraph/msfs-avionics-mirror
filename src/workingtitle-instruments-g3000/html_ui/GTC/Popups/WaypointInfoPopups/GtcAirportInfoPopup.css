@@ -1,0 +1,17 @@
+.gtc-horizontal .airport-info-popup {
+  --airport-info-popup-info-top: 48px;
+}
+
+.gtc-vertical .airport-info-popup {
+  --airport-info-popup-info-top: 25px;
+}
+
+.airport-info-popup .airport-info {
+  position: absolute;
+  left: 0px;
+  width: 100%;
+}
+
+.airport-info-popup .airport-info {
+  top: var(--airport-info-popup-info-top);
+}

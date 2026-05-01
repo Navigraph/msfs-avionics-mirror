@@ -15,6 +15,7 @@ export * from './NumberPad';
 export * from './StatusBar';
 export * from './TabbedContainer';
 export * from './Timer';
+export * from './TouchBackground';
 export * from './TouchButton';
 export * from './TouchSlider';
 export * from './Waypoint';

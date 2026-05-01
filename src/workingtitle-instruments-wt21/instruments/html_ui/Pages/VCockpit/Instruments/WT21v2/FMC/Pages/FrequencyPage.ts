@@ -1,12 +1,14 @@
 import {
-  AirportFacility, DisplayField, FacilityFrequency, FacilityFrequencyType, FacilityType, FacilityUtils, FlightPlannerEvents, FmcRenderTemplate,
-  FmcRenderTemplateRow, GeoPoint, GeoPointSubject, GNSSEvents, ICAO, LineSelectKeyEvent, MappedSubject, OriginDestChangeType, PageLinkField, Subject,
-  TextInputField
+  AirportFacility, AirportFacilityDataFlags, FacilityFrequency, FacilityFrequencyType, FacilitySearchType, FacilityType, FlightPlannerEvents,
+  FmcRenderTemplate, FmcRenderTemplateRow, GeoPoint, GeoPointSubject, GNSSEvents, IcaoValue, LineSelectKeyEvent, MappedSubject, MutableSubscribable,
+  OriginDestChangeType, PageLinkField, Subject, TextInputField,
 } from '@microsoft/msfs-sdk';
 
 import { WT21FmsUtils } from '@microsoft/msfs-wt21-shared';
 
 import { WT21FmcPage } from '../WT21FmcPage';
+import { WTLineFmsUtils, WTLineLegacyFlightPlans } from '@microsoft/msfs-wtlinesdk';
+import { CommunicationTypePage } from './CommunicationTypePage';
 
 const NUM_FREQUENCY_ROWS = 8;
 const NUM_FREQUENCY_ENTRIES = NUM_FREQUENCY_ROWS;
@@ -62,39 +64,38 @@ interface SeeMultipleFrequencyPageAction extends BaseFrequencyPageAction {
  */
 type FrequencyPageAction = SetFrequencyFrequencyPageAction | SeeMultipleFrequencyPageAction
 
+
+/**
+ * Airport selection on the FREQUENCY DATA page
+ */
+enum FrequencyPageAirportSelection {
+  /** FROM airport */
+  Origin,
+
+  /** TO airport */
+  Destination,
+
+  /** ALTN airport */
+  Alternate,
+
+  /** Custom airport */
+  Custom,
+}
+
 /**
  * Data store for the FREQUENCY DATA page
  */
 class FrequencyPageStore {
-  /**
-   * PPOS
-   */
-  ppos = GeoPointSubject.create(new GeoPoint(0, 0));
+  public readonly ppos = GeoPointSubject.create(new GeoPoint(0, 0));
 
-  /**
-   * FROM airport
-   */
-  fromAirport = Subject.create<AirportFacility | null>(null);
+  public readonly airports: { [k in FrequencyPageAirportSelection]: MutableSubscribable<AirportFacility | null> } = {
+    [FrequencyPageAirportSelection.Origin]: Subject.create<AirportFacility | null>(null),
+    [FrequencyPageAirportSelection.Destination]: Subject.create<AirportFacility | null>(null),
+    [FrequencyPageAirportSelection.Alternate]: Subject.create<AirportFacility | null>(null),
+    [FrequencyPageAirportSelection.Custom]: Subject.create<AirportFacility | null>(null),
+  };
 
-  /**
-   * TO airport
-   */
-  toAirport = Subject.create<AirportFacility | null>(null);
-
-  /**
-   * ALTN airport
-   */
-  altnAirport = Subject.create<AirportFacility | null>(null);
-
-  /**
-   * Custom airport
-   */
-  inputAirport = Subject.create<AirportFacility | null>(null);
-
-  /**
-   * Selected airport index
-   */
-  selectedIndex = Subject.create<0 | 1 | 2 | 3>(0);
+  public readonly selectedIndex = Subject.create(FrequencyPageAirportSelection.Origin);
 }
 
 /**
@@ -120,56 +121,64 @@ export class FrequencyPage extends WT21FmcPage {
 
     sub.on('gps-position').whenChanged().handle(({ lat, long }) => {
       this.store.ppos.set(lat, long);
-    });
+    }).withLifecycle(this.defaultLifecycle);
 
     sub.on('fplLoaded').handle((evt) => {
-      if (evt.planIndex === WT21FmsUtils.PRIMARY_ACT_PLAN_INDEX) {
+      if (evt.planIndex === WTLineLegacyFlightPlans.Active) {
         this.onPrimaryPlanChanged();
       }
-    });
+    }).withLifecycle(this.defaultLifecycle);
 
     sub.on('fplCopied').handle((evt) => {
-      if (evt.targetPlanIndex === WT21FmsUtils.PRIMARY_ACT_PLAN_INDEX) {
+      if (evt.targetPlanIndex === WTLineLegacyFlightPlans.Active) {
         this.onPrimaryPlanChanged();
       }
-    });
+    }).withLifecycle(this.defaultLifecycle);
 
     sub.on('fplOriginDestChanged').handle((evt) => {
+      // FIXME hanlde plan indices here...?
+
       switch (evt.type) {
         case OriginDestChangeType.OriginAdded:
         case OriginDestChangeType.OriginRemoved: {
-          if (evt.airport) {
-            this.fms.facLoader.getFacility(ICAO.getFacilityType(evt.airport) as FacilityType.Airport, evt.airport).then((airport) => {
-              this.store.fromAirport.set(airport);
+          if (evt.airportIcao !== undefined) {
+            this.fms.facLoader.getFacility(FacilityType.Airport, evt.airportIcao, AirportFacilityDataFlags.Minimal | AirportFacilityDataFlags.Frequencies).then((airport) => {
+              this.store.airports[FrequencyPageAirportSelection.Origin].set(airport);
+
+              this.store.selectedIndex.set(FrequencyPageAirportSelection.Origin);
             });
           } else {
-            this.store.fromAirport.set(null);
+            this.store.airports[FrequencyPageAirportSelection.Origin].set(null);
           }
           break;
         }
         case OriginDestChangeType.DestinationAdded:
         case OriginDestChangeType.DestinationRemoved: {
-          if (evt.airport) {
-            this.fms.facLoader.getFacility(ICAO.getFacilityType(evt.airport) as FacilityType.Airport, evt.airport).then((airport) => {
-              this.store.toAirport.set(airport);
+          if (evt.airportIcao) {
+            this.fms.facLoader.getFacility(FacilityType.Airport, evt.airportIcao, AirportFacilityDataFlags.Minimal | AirportFacilityDataFlags.Frequencies).then((airport) => {
+              this.store.airports[FrequencyPageAirportSelection.Destination].set(airport);
+
+              this.store.selectedIndex.set(FrequencyPageAirportSelection.Destination);
             });
           } else {
-            this.store.toAirport.set(null);
+            this.store.airports[FrequencyPageAirportSelection.Destination].set(null);
           }
           break;
         }
       }
-    });
+    }).withLifecycle(this.defaultLifecycle);
 
     sub.on('fplUserDataSet').handle((evt) => {
-      if (evt.planIndex === WT21FmsUtils.PRIMARY_ACT_PLAN_INDEX && evt.key === WT21FmsUtils.USER_DATA_KEY_ALTN) {
+      if (evt.planIndex === WTLineLegacyFlightPlans.Active && evt.key === WT21FmsUtils.USER_DATA_KEY_ALTN) {
         const altnIcao = evt.data as string;
 
         this.fms.facLoader.getFacility(FacilityType.Airport, altnIcao).then((airport) => {
-          this.store.toAirport.set(airport);
+          this.store.airports[FrequencyPageAirportSelection.Alternate].set(airport);
+
+          this.store.selectedIndex.set(FrequencyPageAirportSelection.Alternate);
         }).catch();
       }
-    });
+    }).withLifecycle(this.defaultLifecycle);
   }
 
   /**
@@ -180,46 +189,64 @@ export class FrequencyPage extends WT21FmcPage {
       return;
     }
 
-    const originIcao = this.fms.getPrimaryFlightPlan().originAirport;
+    const originIcao = this.fms.getPrimaryFlightPlan().originAirportIcao;
 
     if (originIcao) {
-      this.fms.facLoader.getFacility(ICAO.getFacilityType(originIcao) as FacilityType.Airport, originIcao).then((airport) => {
-        this.store.fromAirport.set(airport);
+      this.fms.facLoader.getFacility(FacilityType.Airport, originIcao).then((airport) => {
+        this.store.airports[FrequencyPageAirportSelection.Origin].set(airport);
       });
     } else {
-      this.store.fromAirport.set(null);
+      this.store.airports[FrequencyPageAirportSelection.Origin].set(null);
     }
 
-    const destIcao = this.fms.getPrimaryFlightPlan().destinationAirport;
+    const destIcao = this.fms.getPrimaryFlightPlan().destinationAirportIcao;
 
     if (destIcao) {
-      this.fms.facLoader.getFacility(ICAO.getFacilityType(destIcao) as FacilityType.Airport, destIcao).then((airport) => {
-        this.store.toAirport.set(airport);
+      this.fms.facLoader.getFacility(FacilityType.Airport, destIcao).then((airport) => {
+        this.store.airports[FrequencyPageAirportSelection.Destination].set(airport);
       });
     } else {
-      this.store.toAirport.set(null);
+      this.store.airports[FrequencyPageAirportSelection.Destination].set(null);
     }
 
-    const altnIcao = this.fms.getPrimaryFlightPlan().getUserData(WT21FmsUtils.USER_DATA_KEY_ALTN) as string;
+    const altnIcao = WTLineFmsUtils.getFlightPlanAlternate(this.fms.getFlightPlan(WTLineLegacyFlightPlans.Active));
 
     if (altnIcao) {
       this.fms.facLoader.getFacility(FacilityType.Airport, altnIcao).then((airport) => {
-        this.store.altnAirport.set(airport);
+        this.store.airports[FrequencyPageAirportSelection.Alternate].set(airport);
       });
     } else {
-      this.store.altnAirport.set(null);
+      this.store.airports[FrequencyPageAirportSelection.Alternate].set(null);
     }
   }
 
-  private AirportSelectionField = new DisplayField(this, {
+  private AirportSelectionField = new TextInputField(this, {
     onSelected: async (scratchpadContents: string) => {
       if (scratchpadContents === '') {
-        this.store.selectedIndex.set((this.store.selectedIndex.get() + 1) % 4 as 0 | 1 | 2 | 3);
+        this.store.selectedIndex.set((this.store.selectedIndex.get() + 1) % 4);
         return true;
       }
 
       return false;
     },
+
+    onDelete: async () => {
+      const selectedIndex = this.store.selectedIndex.get();
+
+      if (selectedIndex !== FrequencyPageAirportSelection.Custom) {
+        throw 'INVALID DELETE';
+      }
+
+      this.store.airports[FrequencyPageAirportSelection.Custom].set(null);
+      return true;
+    },
+
+    onModified: async (airport: AirportFacility): Promise<boolean | string> => {
+      this.store.airports[FrequencyPageAirportSelection.Custom].set(airport);
+      this.store.selectedIndex.set(FrequencyPageAirportSelection.Custom);
+      return true;
+    },
+
     formatter: {
       nullValueString: '----/----/----/□□□□',
 
@@ -231,10 +258,10 @@ export class FrequencyPage extends WT21FmcPage {
         input: AirportFacility | null,
         selectedIndex: number,
       ]): string {
-        let fromIdent = from ? ICAO.getIdent(from.icao) : '----';
-        let toIdent = to ? ICAO.getIdent(to.icao) : '----';
-        let altnIdent = altn ? ICAO.getIdent(altn.icao) : '----';
-        let inputIdent = input ? ICAO.getIdent(input.icao) : '□□□□';
+        let fromIdent = from ? from.icaoStruct.ident : '----';
+        let toIdent = to ? to.icaoStruct.ident : '----';
+        let altnIdent = altn ? altn.icaoStruct.ident : '----';
+        let inputIdent = input ? input.icaoStruct.ident : '□□□□';
 
         switch (selectedIndex) {
           case 0:
@@ -265,52 +292,34 @@ export class FrequencyPage extends WT21FmcPage {
 
         return `${fromIdent}${toIdent}${altnIdent}${inputIdent}`;
       },
-    },
-  }).bind(MappedSubject.create(this.store.fromAirport, this.store.toAirport, this.store.altnAirport, this.store.inputAirport, this.store.selectedIndex));
 
-  private readonly AirportInputField = new TextInputField<AirportFacility | null, AirportFacility>(this, {
-    formatter: {
-      nullValueString: '',
-
-      /** @inheritDoc */
-      format(): string {
-        return '';
-      },
-
-      /** @inheritDoc */
       parse: async (input: string): Promise<AirportFacility | null> => {
-        const facility = await this.screen.selectWptFromIdent(input, this.store.ppos.get());
+        const facility = await this.screen.selectWptFromIdent(input, this.store.ppos.get(), FacilitySearchType.Airport);
 
-        if (facility !== null && FacilityUtils.isFacilityType(facility, FacilityType.Airport)) {
-          return facility as AirportFacility;
-        } else {
+        if (facility === null) {
           return null;
         }
+
+        return facility;
       },
     },
-  }).bind(this.store.inputAirport);
+  }).bind(
+    MappedSubject.create(
+      this.store.airports[FrequencyPageAirportSelection.Origin],
+      this.store.airports[FrequencyPageAirportSelection.Destination],
+      this.store.airports[FrequencyPageAirportSelection.Alternate],
+      this.store.airports[FrequencyPageAirportSelection.Custom],
+      this.store.selectedIndex,
+    ),
+  );
 
   private readonly IndexLinkField = PageLinkField.createLink(this, '<INDEX', '/index');
 
   /** @inheritDoc */
   public render(): FmcRenderTemplate[] {
-    let selectedAirport;
-    switch (this.store.selectedIndex.get()) {
-      case 0:
-        selectedAirport = this.store.fromAirport.get();
-        break;
-      case 1:
-        selectedAirport = this.store.toAirport.get();
-        break;
-      case 2:
-        selectedAirport = this.store.altnAirport.get();
-        break;
-      case 3:
-        selectedAirport = this.store.inputAirport.get();
-        break;
-    }
+    const selectedAirport = this.store.airports[this.store.selectedIndex.get()].get();
 
-    if (selectedAirport) {
+    if (selectedAirport && selectedAirport.frequencies.length > 0) {
       const frequencies = this.groupAirportFrequencies(selectedAirport);
 
       const numPages = Math.ceil(frequencies.size / NUM_FREQUENCY_ENTRIES);
@@ -319,10 +328,10 @@ export class FrequencyPage extends WT21FmcPage {
       for (let i = 0; i < numPages; i++) {
         pages.push(
           [
-            ['', this.PagingIndicator, 'FREQUENCY DATA[blue]'],
+            ['     FREQUENCY DATA[blue]', this.PagingIndicator],
             [' SEL APT[blue]'],
-            [this.AirportSelectionField, this.AirportInputField],
-            ...this.renderAirportFrequencyList(frequencies, selectedAirport.icao, i),
+            [this.AirportSelectionField],
+            ...this.renderAirportFrequencyList(frequencies, selectedAirport.icaoStruct, i),
             ['', '', '------------------------[blue]'],
             [this.IndexLinkField, ''],
           ],
@@ -333,11 +342,11 @@ export class FrequencyPage extends WT21FmcPage {
     } else {
       return [
         [
-          ['', this.PagingIndicator, 'FREQUENCY DATA[blue]'],
+          ['      FREQUENCY DATA[blue]', this.PagingIndicator],
           [' SEL APT[blue]'],
-          [this.AirportSelectionField, this.AirportInputField],
+          [this.AirportSelectionField],
           ...this.renderNoDataAvailable(),
-          ['', '', '------------------------[blue]'],
+          ['------------------------[blue]'],
           [this.IndexLinkField, ''],
         ],
       ];
@@ -355,7 +364,7 @@ export class FrequencyPage extends WT21FmcPage {
    */
   private renderAirportFrequencyList(
     frequencies: Map<FacilityFrequencyType, FacilityFrequency[]>,
-    airportIcao: string,
+    airportIcao: IcaoValue,
     pageIndex: number,
   ): FmcRenderTemplateRow[] {
     const isVisiblePage = pageIndex === this.screen.currentSubpageIndex.get() - 1;
@@ -388,7 +397,7 @@ export class FrequencyPage extends WT21FmcPage {
         if (leftFrequencies.length > 1) {
           leftContent = '<MULTIPLE';
           if (isVisiblePage) {
-            this.setFrequencyAction(i % NUM_FREQUENCY_ENTRIES, { type: 'seeMultiple', value: { airportIdent: ICAO.getIdent(airportIcao), frequencies: leftFrequencies } });
+            this.setFrequencyAction(i % NUM_FREQUENCY_ENTRIES, { type: 'seeMultiple', value: { airportIdent: airportIcao.ident, frequencies: leftFrequencies } });
           }
         } else {
           leftContent = leftFrequencies[0].freqMHz.toFixed(3);
@@ -409,7 +418,7 @@ export class FrequencyPage extends WT21FmcPage {
           if (rightFrequencies.length > 1) {
             rightContent = 'MULTIPLE>';
             if (isVisiblePage) {
-              this.setFrequencyAction((i + 1) % NUM_FREQUENCY_ENTRIES, { type: 'seeMultiple', value: { airportIdent: ICAO.getIdent(airportIcao), frequencies: rightFrequencies } });
+              this.setFrequencyAction((i + 1) % NUM_FREQUENCY_ENTRIES, { type: 'seeMultiple', value: { airportIdent: airportIcao.ident, frequencies: rightFrequencies } });
             }
           } else {
             rightContent = rightFrequencies[0].freqMHz.toFixed(3);
@@ -476,9 +485,9 @@ export class FrequencyPage extends WT21FmcPage {
     return [
       ['', ''],
       ['', ''],
-      ['', '', 'NO DATA[d-text]'],
-      ['', ''],
-      ['', '', 'AVAILABLE[d-text]'],
+      ['         NO DATA[d-text]'],
+      [''],
+      ['        AVAILABLE[d-text]'],
       ['', ''],
       ['', ''],
       ['', ''],
@@ -530,7 +539,7 @@ export class FrequencyPage extends WT21FmcPage {
       if (action.type === 'setFrequency') {
         return action.value.toFixed(3);
       } else if (action.type === 'seeMultiple') {
-        this.screen.navigateTo('/comm-type', action.value);
+        this.screen.navigateTo(CommunicationTypePage, { airportIdent: action.value.airportIdent, frequencies: action.value.frequencies });
         return true;
       }
     }

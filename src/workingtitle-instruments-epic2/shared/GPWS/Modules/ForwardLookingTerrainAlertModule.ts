@@ -110,7 +110,7 @@ export class ForwardLookingTerrainAlertModule implements GpwsModule {
             if (isCautionActive) {
               this.alertController.triggerAlert(ForwardLookingTerrainAlertModule.TERRAIN_ALERT_ID);
             } else {
-              this.alertController.untriggerAlert(ForwardLookingTerrainAlertModule.PULL_UP_ALERT_ID);
+              this.alertController.untriggerAlert(ForwardLookingTerrainAlertModule.TERRAIN_ALERT_ID);
             }
           }
         }

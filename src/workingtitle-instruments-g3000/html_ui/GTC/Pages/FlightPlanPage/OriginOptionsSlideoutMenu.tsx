@@ -7,7 +7,7 @@ import { GtcFlightPlanDialogs } from './GtcFlightPlanDialogs';
 import { GtcDeparturePage } from '../Procedures/GtcDeparturePage';
 import { GtcFlightPlanPageSlideoutMenu, GtcFlightPlanPageSlideoutMenuProps } from './GtcFlightPlanPageSlideoutMenu';
 import { GtcTouchButton } from '../../Components';
-import { GtcAirportInfoPage } from '../WaypointInfoPages';
+import { GtcAirportInfoPage2 } from '../WaypointInfoPages';
 
 /** Component props for OriginOptionsSlideoutMenu. */
 export interface OriginOptionsSlideoutMenuProps extends GtcFlightPlanPageSlideoutMenuProps {
@@ -58,7 +58,7 @@ export class OriginOptionsSlideoutMenu extends GtcFlightPlanPageSlideoutMenu<Fli
               // Close menu before opening new page
               this.closeMenu();
 
-              this.gtcService.changePageTo<GtcAirportInfoPage>(GtcViewKeys.AirportInfo).ref.initSelection(facility as AirportFacility);
+              this.gtcService.changePageTo<GtcAirportInfoPage2>(GtcViewKeys.AirportInfo).ref.initSelection(facility as AirportFacility);
             }}
           />
         </div>

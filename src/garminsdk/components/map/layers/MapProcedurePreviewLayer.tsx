@@ -1,8 +1,8 @@
 import {
-  AirportFacilityDataFlags, ClippedPathStream, EventBus, FacilityLoader, FacilityRepository, FSComponent,
+  AirportFacilityDataFlags, BitFlags, ClippedPathStream, EventBus, FacilityLoader, FacilityRepository, FSComponent,
   GeoCircleResampler, GeoCylindricalClippedPathStream, GeoProjection, GeoProjectionPathStreamStack,
-  MapCachedCanvasLayer, MapLayer, MapLayerProps, MapProjection, MapSyncedCanvasLayer, NullPathStream, VecNSubject,
-  VNode
+  MapCachedCanvasLayer, MapLayer, MapLayerProps, MapProjection, MapProjectionChangeType, MapSyncedCanvasLayer,
+  NullPathStream, VecNSubject, VNode
 } from '@microsoft/msfs-sdk';
 
 import { ProcedureType } from '../../../flightplan/FmsTypes';
@@ -70,7 +70,7 @@ export class MapProcedurePreviewLayer extends MapLayer<MapProcedurePreviewLayerP
   private readonly geoClipBounds = VecNSubject.create(new Float64Array(4));
   private readonly geoClippedPathStream = new GeoCylindricalClippedPathStream(NullPathStream.INSTANCE, this.geoClipBounds);
 
-  private readonly clipBounds = VecNSubject.createFromVector(new Float64Array(4));
+  private readonly clipBounds = VecNSubject.create(new Float64Array(4));
   private readonly clippedPathStream = new ClippedPathStream(NullPathStream.INSTANCE, this.clipBounds);
 
   private readonly pathStreamStack = new GeoProjectionPathStreamStack(NullPathStream.INSTANCE, this.props.mapProjection.getGeoProjection(), this.resampler);
@@ -96,7 +96,9 @@ export class MapProcedurePreviewLayer extends MapLayer<MapProcedurePreviewLayerP
   private needRefreshTransitionWaypoints = false;
   private needRepickTransitionWaypoints = false;
 
-  /** @inheritdoc */
+  private isAwake = true;
+
+  /** @inheritDoc */
   public onAttached(): void {
     super.onAttached();
 
@@ -109,6 +111,8 @@ export class MapProcedurePreviewLayer extends MapLayer<MapProcedurePreviewLayerP
 
     this.initWaypointRenderer();
     this.initFlightPlanHandlers();
+
+    this.updateClipBounds();
   }
 
   /**
@@ -127,12 +131,32 @@ export class MapProcedurePreviewLayer extends MapLayer<MapProcedurePreviewLayerP
     this.procPreviewModule.transitionPlan.sub(() => { this.scheduleUpdates(true, false, false, true, true); }, true);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.isAwake = true;
+
+    this.flightPathLayerRef.instance.onWake();
+    this.waypointLayerRef.instance.onWake();
+
+    this.updateClipBounds();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.isAwake = false;
+
+    this.flightPathLayerRef.instance.onSleep();
+    this.waypointLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.flightPathLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
     this.waypointLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
 
-    this.updateClipBounds();
+    if (this.isAwake && BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
+      this.updateClipBounds();
+    }
   }
 
   /**
@@ -148,7 +172,7 @@ export class MapProcedurePreviewLayer extends MapLayer<MapProcedurePreviewLayerP
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     this.flightPathLayerRef.instance.onUpdated(time, elapsed);
 
@@ -260,7 +284,7 @@ export class MapProcedurePreviewLayer extends MapLayer<MapProcedurePreviewLayerP
     this.needRepickTransitionWaypoints ||= scheduleRepickTransitionWaypoints;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
       <>
@@ -269,8 +293,14 @@ export class MapProcedurePreviewLayer extends MapLayer<MapProcedurePreviewLayerP
           model={this.props.model}
           mapProjection={this.props.mapProjection}
           overdrawFactor={Math.SQRT2}
+          collapseOnSleep
         />
-        <MapSyncedCanvasLayer ref={this.waypointLayerRef} model={this.props.model} mapProjection={this.props.mapProjection} />
+        <MapSyncedCanvasLayer
+          ref={this.waypointLayerRef}
+          model={this.props.model}
+          mapProjection={this.props.mapProjection}
+          collapseOnSleep
+        />
       </>
     );
   }

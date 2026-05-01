@@ -1,6 +1,5 @@
 import {
-  Accessible, AdcEvents, AhrsEvents, APRollSteerDirectorSteerCommand, ConsumerSubject, EventBus, LerpLookupTable,
-  LNavRollSteerCommand, Subject
+  Accessible, AdcEvents, AhrsEvents, APRollSteerDirectorSteerCommand, ConsumerSubject, EventBus, LerpLookupTable, LNavRollSteerCommand, Subject
 } from '@microsoft/msfs-sdk';
 
 import { UnsLnavHeadingSteerCommand } from './UnsLnavHeadingSteerCommand';
@@ -48,6 +47,9 @@ export interface UnsLnavSteeringStateEvents {
 
   /** the current commanded turn direction */
   uns_lnav_commanded_turn_direction: 'left' | 'right' | null,
+
+  /** the track radius */
+  uns_lnav_track_radius: number,
 }
 
 export enum UnsLnavMode {
@@ -160,6 +162,7 @@ export class UnsLnavSteeringController {
     pub.pub('uns_lnav_dtk', command.dtk);
     pub.pub('uns_lnav_xtk', command.xtk);
     pub.pub('uns_lnav_tae', command.tae);
+    pub.pub('uns_lnav_track_radius', command.trackRadius);
   }
 
   /**

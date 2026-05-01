@@ -53,11 +53,14 @@ export type LNavState = {
   /** Whether leg sequencing is suspended. */
   isSuspended: boolean;
 
-  /** The global index of the flight plan leg for which suspend is inhibited, or `-1` if there is no such leg. */
+  /** The global index of the flight plan leg for which leg sequencing suspend is inhibited, or `-1` if there is no such leg. */
   inhibitedSuspendLegIndex: number;
 
-  /** Whether to reset the tracked vector to the beginning of the suspended leg once suspend ends. */
+  /** Whether to reset the tracked vector to the beginning of the suspended leg once leg sequencing suspend ends. */
   resetVectorsOnSuspendEnd: boolean;
+
+  /** Whether flight path vector sequencing is locked. */
+  isVectorSequencingLocked: boolean;
 
   /** Whether the missed approach is active. */
   isMissedApproachActive: boolean;

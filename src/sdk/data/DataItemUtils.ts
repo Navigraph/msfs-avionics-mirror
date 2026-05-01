@@ -1,11 +1,7 @@
-import { DataItem, DataItemOfStatus, DataItemStatus, EmptyDataItem } from './DataItem';
-
-// eslint-disable-next-line jsdoc/require-jsdoc
-type DataItemStatusGuard<S extends DataItemStatus> = (dataItem: Readonly<DataItem<any>>) => dataItem is Readonly<DataItemOfStatus<any, S>>;
+import { DataItem, DataItemOfStatus, DataItemStatus, DataItemStatusGuard, DataItemValueType, EmptyDataItem } from './DataItem';
 
 /**
  * A utility class for working with {@link DataItem | DataItems}.
- * @experimental
  */
 export class DataItemUtils {
   /**
@@ -41,6 +37,7 @@ export class DataItemUtils {
    * equality operator (`===`) evaluates to `true` for `a` and `b`, or both `a` and `b` are the numeric value `NaN`.
    * @returns A function that evaluates the equality of two data items given the value equality semantics defined by
    * the specified function.
+   * @template T The value type of the data items to compare.
    */
   public static createEquals<T>(
     valueEqualityFunc: (a: T, b: T) => boolean = DataItemUtils.defaultValueEquals
@@ -65,65 +62,66 @@ export class DataItemUtils {
   }
 
   /**
-   * Checks if a data item status is {@link DataItemStatus.Normal} or {@link DataItemStatus.Testing}.
+   * Checks if a data item is valid. A valid data item's status is either {@link DataItemStatus.Normal} or
+   * {@link DataItemStatus.Testing}.
    * @param dataItem The data item to check.
-   * @returns true if the data item is valid.
+   * @returns Whether the specified data item's status is either {@link DataItemStatus.Normal} or
+   * {@link DataItemStatus.Testing}.
    */
-  public static defaultIsValid(dataItem: Readonly<DataItem<any>>): dataItem is Readonly<DataItemOfStatus<any, DataItemStatus.Normal | DataItemStatus.Testing>> {
-    return dataItem.status === DataItemStatus.Normal || dataItem.status === DataItemStatus.Testing;
+  public static defaultIsValid(dataItem: Readonly<DataItem<unknown>>): dataItem is Readonly<DataItemOfStatus<unknown, DataItemStatus.Normal | DataItemStatus.Testing>> {
+    return DataItemUtils.defaultIsStatusValid(dataItem.status);
   }
 
   /**
-   * Creates a predicate that can be used with {@link DataItemUtils.valueOr} or {@link DataItemUtils.isValid}.
-   * @param validStatuses An array of statuses that should be considered valid.
-   * @returns The new predicate.
+   * Checks if a data item status is either {@link DataItemStatus.Normal} or {@link DataItemStatus.Testing}.
+   * @param status The data item status to check.
+   * @returns Whether the specified data item's status is either {@link DataItemStatus.Normal} or
+   * {@link DataItemStatus.Testing}.
+   */
+  public static defaultIsStatusValid(status: DataItemStatus): status is DataItemStatus.Normal | DataItemStatus.Testing {
+    return status === DataItemStatus.Normal || status === DataItemStatus.Testing;
+  }
+
+  /**
+   * Creates a function that checks whether data items are valid.
+   * @param validStatuses An array of data item statuses that should be considered valid. The returned function will
+   * consider a data item to be valid if and only if its status is contained in this array.
+   * @returns A function that checks whether data items are valid given the specified array of valid statuses.
+   * @template S The type of the data item statuses that should be considered valid.
    */
   public static createIsValid<S extends DataItemStatus>(validStatuses: readonly S[]): DataItemStatusGuard<S> {
     return ((dataItem) => (validStatuses as readonly DataItemStatus[]).includes(dataItem.status)) as DataItemStatusGuard<S>;
   }
 
   /**
-   * Checks if a data item is valid, according to the isValid predicate.
-   * @param dataItem The data item to check.
-   * @returns Whether the data item is valid (status is {@link DataItemStatus.Normal} or {@link DataItemStatus.Testing}).
+   * Creates a function that checks whether data item statuses are valid.
+   * @param validStatuses An array of data item statuses that should be considered valid. The returned function will
+   * consider a data item status to be valid if and only if it is contained in this array.
+   * @returns A function that checks whether data item statuses are valid given the specified array of valid statuses.
+   * @template S The type of the data item statuses that should be considered valid.
    */
-  public static isValid(dataItem: Readonly<DataItem<any>>): dataItem is Readonly<DataItemOfStatus<any, DataItemStatus.Normal | DataItemStatus.Testing>>;
-  /**
-   * Checks if a data item is valid, according to the isValid predicate.
-   * @param dataItem The data item to check.
-   * @param isValid An isValid predicate created by {@link DataItemUtils.createIsValid}.
-   * @returns Whether the data item is valid according to isValid.
-   */
-  public static isValid<S extends DataItemStatus>(dataItem: Readonly<DataItem<any>>, isValid: DataItemStatusGuard<S>): dataItem is Readonly<DataItemOfStatus<any, S>>;
-  /**
-   * Checks if a data item is valid, according to the isValid predicate.
-   * @param dataItem The data item to check.
-   * @param isValid An isValid predicate created by {@link DataItemUtils.createIsValid}.
-   * Defaults to a validator accepting {@link DataItemUtils.valueOr} or {@link DataItemUtils.isValid}.
-   * @returns Whether the data item is valid according to isValid.
-   */
-  public static isValid(dataItem: Readonly<DataItem<any>>, isValid?: DataItemStatusGuard<DataItemStatus>): boolean;
-  // eslint-disable-next-line jsdoc/require-jsdoc
-  public static isValid(dataItem: Readonly<DataItem<any>>, isValid: DataItemStatusGuard<DataItemStatus> = DataItemUtils.defaultIsValid): boolean {
-    return isValid(dataItem);
+  public static createIsStatusValid<S extends DataItemStatus>(validStatuses: readonly S[]): (status: DataItemStatus) => status is S {
+    return (status): status is S => (validStatuses as readonly DataItemStatus[]).includes(status);
   }
 
   /**
-   * Gets the value of the data item is the status is valid (Normal or Testing),
-   * or else a default value.
-   * @param dataItem The data item to use.
+   * Gets the value of a data item if it is valid or a default value if it is not valid.
+   * @param dataItem The data item for which to get a value.
    * @param defaultValue The default value returned when the data item is invalid.
-   * @param isValid An isValid predicate created by {@link DataItemUtils.createIsValid}.
-   * Defaults to a predicate that accepts {@link DataItemStatus.Normal} or {@link DataItemStatus.Testing} as valid.
-   * @returns The valid value, or the default value.
+   * @param isValid A function that checks whether the data item is valid. Defaults to a function that considers a data
+   * item to be valid if and only if its status is {@link DataItemStatus.Normal} or {@link DataItemStatus.Testing}.
+   * @returns The value of the specified data item if it is valid (according to the `isValid` argument), or the
+   * specified default value if the item is invalid.
+   * @template Item The type of the data item for which to get a value.
+   * @template D The type of the default value.
    */
-  public static valueOr<T, D = T>(
-    dataItem: Readonly<DataItem<T>>,
+  public static valueOr<Item extends Readonly<DataItem<unknown>>, D = DataItemValueType<Item>>(
+    dataItem: Item,
     defaultValue: D,
     isValid: DataItemStatusGuard<Exclude<DataItemStatus, DataItemStatus.EmptyValue>> = DataItemUtils.defaultIsValid
-  ): T | D {
+  ): DataItemValueType<Item> | D {
     if (isValid(dataItem)) {
-      return dataItem.value;
+      return dataItem.value as DataItemValueType<Item>;
     }
     return defaultValue;
   }

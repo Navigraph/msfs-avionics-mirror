@@ -395,6 +395,7 @@ class WTG1000_MFD extends BaseInstrument {
     });
 
     const apConfig = new GarminAPConfig(this.bus, {
+      flightDirectorCount: 1,
       lnavOptions: {
         steerCommand: this.lnavComputer.steerCommand
       },

@@ -1,0 +1,28 @@
+.ifd-wpt-tab {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ifd-wpt-tab .ifd-list {
+  margin-left: 7px;
+  width: 100%;
+}
+
+.ifd-wpt-tab-no-wpt {
+  position: absolute;
+  top: 200px;
+  left: 0;
+  width: 100%;
+  height: 100%;
+
+  text-align: center;
+  color: var(--wtdyne-color-yellow);
+  font-size: 20px;
+  font-family: "Arial Bold";
+}

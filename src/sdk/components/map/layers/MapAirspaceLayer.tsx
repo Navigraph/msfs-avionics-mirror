@@ -112,6 +112,7 @@ export class MapAirspaceLayer extends MapLayer<MapAirspaceLayerProps> {
   private isDisplayInvalidated = true;
 
   private isAttached = false;
+  private isAwake = true;
 
   /**
    * Creates a new instance of MapAirspaceLayer.
@@ -134,7 +135,7 @@ export class MapAirspaceLayer extends MapLayer<MapAirspaceLayerProps> {
     this.isAttached && this.scheduleSearch(0, true);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     this.canvasLayerRef.instance.onAttached();
 
@@ -165,11 +166,27 @@ export class MapAirspaceLayer extends MapLayer<MapAirspaceLayerProps> {
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.isAwake = true;
+
+    this.canvasLayerRef.instance.onWake();
+
+    this.updateClipBounds();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.isAwake = false;
+
+    this.canvasLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.canvasLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
 
-    if (BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
+    if (this.isAwake && BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
       this.updateClipBounds();
     }
   }
@@ -263,7 +280,7 @@ export class MapAirspaceLayer extends MapLayer<MapAirspaceLayerProps> {
     return filter;
   }
 
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     this.canvasLayerRef.instance.onUpdated(time, elapsed);
 
@@ -483,13 +500,15 @@ export class MapAirspaceLayer extends MapLayer<MapAirspaceLayerProps> {
     this.scheduleSearch(0, true);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
       <MapCachedCanvasLayer
         ref={this.canvasLayerRef}
         model={this.props.model} mapProjection={this.props.mapProjection}
-        useBuffer={true} overdrawFactor={Math.SQRT2}
+        useBuffer
+        overdrawFactor={Math.SQRT2}
+        collapseOnSleep
       />
     );
   }

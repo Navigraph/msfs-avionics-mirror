@@ -23,6 +23,7 @@ export class MapWaypointIconImageCache {
   private static createCache(): WaypointIconImageCache {
     const cache = new DefaultWaypointIconImageCache();
 
+    cache.register(DefaultWaypointIconImageKey.Heliport, `${G3000FilePaths.ASSETS_PATH}/Images/Map/airport_h.png`);
     cache.register(DefaultWaypointIconImageKey.AirportPrivate, `${G3000FilePaths.ASSETS_PATH}/Images/Map/airport_r.png`);
     cache.register(DefaultWaypointIconImageKey.AirportUnknown, `${G3000FilePaths.ASSETS_PATH}/Images/Map/airport_q.png`);
     cache.register(DefaultWaypointIconImageKey.AirportUntoweredServiced, `${G3000FilePaths.ASSETS_PATH}/Images/Map/airport_large_magenta.png`);

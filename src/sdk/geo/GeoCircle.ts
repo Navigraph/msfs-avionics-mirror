@@ -38,8 +38,19 @@ export class GeoCircle {
    * cartesian reference system.
    * @param radius The radius of the new circle in great-arc radians.
    */
-  public constructor(center: ReadonlyFloat64Array, radius: number) {
-    this.set(center, radius);
+  public constructor(center: ReadonlyFloat64Array, radius: number);
+  /**
+   * Creates a new instance of GeoCircle initialized to an invalid circle.
+   */
+  public constructor();
+  // eslint-disable-next-line jsdoc/require-jsdoc
+  public constructor(center?: ReadonlyFloat64Array, radius?: number) {
+    if (center) {
+      this.set(center, radius!);
+    } else {
+      Vec3Math.set(NaN, NaN, NaN, this._center);
+      this._setRadius(0);
+    }
   }
 
   /**

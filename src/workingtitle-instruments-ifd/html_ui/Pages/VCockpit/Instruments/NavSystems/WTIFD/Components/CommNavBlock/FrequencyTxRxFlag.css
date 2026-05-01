@@ -1,0 +1,12 @@
+.wt-ifd-frequency-tx-rx-container {
+    line-height: 14px;
+    width: 20px;
+    height: 17px;
+    padding: 2px 0 0 1px;
+    letter-spacing: 1px;
+    font-family: "Arial Narrow", sans-serif;
+    font-size: 16px;
+    color: var(--wtdyne-color-white);
+    background: var(--wtdyne-color-blue);
+    border-radius: 1px;
+}

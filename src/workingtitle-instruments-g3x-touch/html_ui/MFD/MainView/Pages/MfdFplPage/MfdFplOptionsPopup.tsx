@@ -4,6 +4,8 @@ import {
   UserSettingManager, VNode
 } from '@microsoft/msfs-sdk';
 
+import { DefaultObsSuspDataProvider, ObsSuspModes } from '@microsoft/msfs-garminsdk';
+
 import { UiImgTouchButton } from '../../../../Shared/Components/TouchButton/UiImgTouchButton';
 import { UiToggleTouchButton } from '../../../../Shared/Components/TouchButton/UiToggleTouchButton';
 import { UiTouchButton } from '../../../../Shared/Components/TouchButton/UiTouchButton';
@@ -14,6 +16,8 @@ import { G3XFmsUtils } from '../../../../Shared/FlightPlan/G3XFmsUtils';
 import { G3XFplSourceDataProvider } from '../../../../Shared/FlightPlan/G3XFplSourceDataProvider';
 import { G3XFplSource } from '../../../../Shared/FlightPlan/G3XFplSourceTypes';
 import { G3XTouchFilePaths } from '../../../../Shared/G3XTouchFilePaths';
+import { G3XObsController } from '../../../../Shared/Navigation/G3XObsController';
+import { G3XTouchNavSources } from '../../../../Shared/NavReference/G3XTouchNavReference';
 import { FplDisplayUserSettingTypes } from '../../../../Shared/Settings/FplDisplayUserSettings';
 import { AbstractUiView } from '../../../../Shared/UiSystem/AbstractUiView';
 import { UiFocusableComponent } from '../../../../Shared/UiSystem/UiFocusTypes';
@@ -22,6 +26,7 @@ import { UiViewProps } from '../../../../Shared/UiSystem/UiView';
 import { UiViewKeys } from '../../../../Shared/UiSystem/UiViewKeys';
 import { UiViewSizeMode, UiViewStackLayer } from '../../../../Shared/UiSystem/UiViewTypes';
 import { ApproachDialog } from '../../../Views/ApproachDialog/ApproachDialog';
+import { SelectedCourseDialog } from '../../../Views/SelectedCourseDialog/SelectedCourseDialog';
 import { WaypointDialog } from '../../../Views/WaypointDialog/WaypointDialog';
 
 import './MfdFplOptionsPopup.css';
@@ -32,6 +37,9 @@ import './MfdFplOptionsPopup.css';
 export interface MfdFplOptionsPopupProps extends UiViewProps {
   /** The FMS. */
   fms: G3XFms;
+
+  /** A collection of all navigation sources. */
+  navSources: G3XTouchNavSources;
 
   /** A provider of flight plan source data. */
   fplSourceDataProvider: G3XFplSourceDataProvider;
@@ -55,6 +63,16 @@ export class MfdFplOptionsPopup extends AbstractUiView<MfdFplOptionsPopupProps> 
     return source === G3XFplSource.Internal || source === G3XFplSource.InternalRev;
   }).pause();
 
+  private readonly internalObsSuspDataProvider = new DefaultObsSuspDataProvider(
+    this.props.uiService.bus,
+    { lnavIndex: this.props.fplSourceDataProvider.internalSourceDef.lnavIndex }
+  );
+  private readonly isSetObsAndHoldButtonEnabled = MappedSubject.create(
+    ([isInternalFplSource, isObsAvailable]) => isInternalFplSource && isObsAvailable,
+    this.isInternalFplSource,
+    this.internalObsSuspDataProvider.isObsAvailable
+  ).pause();
+
   private readonly showApproachRow = MappedSubject.create(
     ([isInternalFplSource, loadedApproachData]) => isInternalFplSource && loadedApproachData !== null,
     this.isInternalFplSource,
@@ -76,6 +94,7 @@ export class MfdFplOptionsPopup extends AbstractUiView<MfdFplOptionsPopupProps> 
 
   private readonly pauseable: Subscription[] = [
     this.isInternalFplSource,
+    this.isSetObsAndHoldButtonEnabled,
     this.showApproachRow,
     this.isApproachActivated,
     this.isVtfActivated
@@ -84,6 +103,8 @@ export class MfdFplOptionsPopup extends AbstractUiView<MfdFplOptionsPopupProps> 
   /** @inheritDoc */
   public onAfterRender(thisNode: VNode): void {
     this.thisNode = thisNode;
+
+    this.internalObsSuspDataProvider.init();
 
     for (const ref of this.focusableRefs) {
       this.focusController.register(ref.instance);
@@ -176,6 +197,56 @@ export class MfdFplOptionsPopup extends AbstractUiView<MfdFplOptionsPopupProps> 
     if (!approachResult.wasCancelled) {
       const { airport, approachIndex, action } = approachResult.payload;
       await this.props.fms.loadApproach(airport, approachIndex, action !== 'load', action === 'vtf');
+    }
+  }
+
+  /**
+   * Responds to when this popup's "Set OBS and Hold" button is pressed.
+   */
+  private async onSetObsAndHoldButtonPressed(): Promise<void> {
+    const internalNavSource = this.props.navSources.get('GPSInt');
+    const isObsActive = this.internalObsSuspDataProvider.mode.get() === ObsSuspModes.OBS;
+
+    const obsController = new G3XObsController(
+      this.props.uiService.bus,
+      this.props.fplSourceDataProvider,
+      this.props.navSources,
+      G3XFplSource.Internal
+    );
+
+    try {
+      const initialValue = isObsActive
+        ? this.internalObsSuspDataProvider.obsCourse.get()
+        : internalNavSource.bearing.get() ?? 360;
+      
+      const result = await this.props.uiService
+        .openMfdPopup<SelectedCourseDialog>(UiViewStackLayer.Overlay, UiViewKeys.SelectedCourseDialog, true)
+        .ref.request({
+          initialValue,
+          navSource: internalNavSource,
+          isObsActive,
+        });
+
+      // NOTE: at this point, the options popup is closed (it is closed when we open the course dialog above).
+      // Therefore, from this point forward we can't use anything owned by the options popup that requires the popup
+      // to be open.
+
+      const fplSource = this.props.fplSourceDataProvider.source.get();
+      const isFplSourceInternal = fplSource === G3XFplSource.Internal || fplSource === G3XFplSource.InternalRev;
+
+      if (
+        !result.wasCancelled
+        && isFplSourceInternal
+        && obsController.obsSuspDataProvider.isObsAvailable.get()
+      ) {
+        if (isFinite(result.payload)) {
+          await obsController.activateObs(result.payload);
+        } else {
+          obsController.deactivateObs();
+        }
+      }
+    } finally {
+      obsController.destroy();
     }
   }
 
@@ -295,8 +366,9 @@ export class MfdFplOptionsPopup extends AbstractUiView<MfdFplOptionsPopupProps> 
               />
               <UiTouchButton
                 ref={this.createFocusableRef(5)}
-                isEnabled={false}
+                isEnabled={this.isSetObsAndHoldButtonEnabled}
                 label={'Set OBS\nand Hold'}
+                onPressed={this.onSetObsAndHoldButtonPressed.bind(this)}
               />
             </div>
           </div>
@@ -397,6 +469,8 @@ export class MfdFplOptionsPopup extends AbstractUiView<MfdFplOptionsPopupProps> 
   /** @inheritDoc */
   public destroy(): void {
     this.thisNode && FSComponent.shallowDestroy(this.thisNode);
+
+    this.internalObsSuspDataProvider.destroy();
 
     for (const sub of this.subscriptions) {
       sub.destroy();

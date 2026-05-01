@@ -61,7 +61,7 @@ export class GtcAdvancedVnavClimbTab extends DisplayComponent<GtcAdvancedVnavCli
       input: () => {
         return {
           inputData: this.selectScheduleInputData,
-          selectedValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbScheduleIndex').value,
+          selectedValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbScheduleIndex').get(),
           listItemHeightPx: this.dialogListItemHeightPx,
           listItemSpacingPx: this.dialogListItemSpacingPx,
           class: 'advanced-vnav-schedule-dialog'
@@ -86,9 +86,9 @@ export class GtcAdvancedVnavClimbTab extends DisplayComponent<GtcAdvancedVnavCli
 
             const schedule = this.props.fmsSpeedSettingManager.climbSchedules[index];
 
-            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbScheduleIndex').value = index;
-            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbIas').value = schedule.ias;
-            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbMach').value = schedule.mach;
+            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbScheduleIndex').set(index);
+            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbIas').set(schedule.ias);
+            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbMach').set(schedule.mach);
 
             return false;
           }
@@ -103,7 +103,7 @@ export class GtcAdvancedVnavClimbTab extends DisplayComponent<GtcAdvancedVnavCli
       input: () => {
         return {
           title: 'Climb Speed IAS',
-          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotClimbIas').value,
+          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotClimbIas').get(),
           unitsAllowed: 'ias'
         };
       },
@@ -116,7 +116,7 @@ export class GtcAdvancedVnavClimbTab extends DisplayComponent<GtcAdvancedVnavCli
       input: () => {
         return {
           title: 'Climb Speed Mach',
-          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotClimbMach').value,
+          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotClimbMach').get(),
           unitsAllowed: 'mach',
         };
       }
@@ -146,12 +146,12 @@ export class GtcAdvancedVnavClimbTab extends DisplayComponent<GtcAdvancedVnavCli
       const ias = (result.payload[1] as GtcDialogResultSubmitted<GtcFmsSpeedDialogOutput>).payload.value;
       const mach = (result.payload[2] as GtcDialogResultSubmitted<GtcFmsSpeedDialogOutput>).payload.value;
 
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotClimbIas').value = ias;
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotClimbMach').value = mach;
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotClimbIas').set(ias);
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotClimbMach').set(mach);
 
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbScheduleIndex').value = index;
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbIas').value = ias;
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbMach').value = mach;
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbScheduleIndex').set(index);
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbIas').set(ias);
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedClimbMach').set(mach);
     }
   }
 

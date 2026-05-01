@@ -71,9 +71,9 @@ export interface ApproachProcedureDescription {
   visualRunwayNumber?: number,
   /** The runway designator of the visual approach, if applicable */
   visualRunwayDesignator?: RunwayDesignator,
-  /** The runway extension distance of the visual approach, if applicable */
+  /** The runway extension distance of the visual approach, if applicable. Defaults to 5 NM if undefined. */
   visualRunwayOffset?: number,
-  /** The vertical path angle of the VFR approach, if applicable */
+  /** The vertical path angle of the VFR approach, if applicable. Defaults to 3° if undefined. */
   vfrVerticalPathAngle?: number,
 }
 

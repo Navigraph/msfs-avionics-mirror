@@ -1,0 +1,17 @@
+.ifd-page,
+.ifd-narrow-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--wtdyne-color-black);
+}
+
+.ifd-narrow-container {
+  position: absolute;
+  left: 0;
+  top: 0;
+}

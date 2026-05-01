@@ -63,6 +63,7 @@ export class GarminNegativeClimbRateModule implements TerrainSystemModule {
 
   private isReset = true;
   private isInhibited = false;
+  private isPrimed = false;
 
   private altitudeLossReference: number | undefined = undefined;
 
@@ -114,8 +115,14 @@ export class GarminNegativeClimbRateModule implements TerrainSystemModule {
           ? statuses.has(GarminTawsStatus.GpwsFailed)
           : statuses.has(GarminTawsStatus.TawsFailed) || statuses.has(GarminTawsStatus.TawsNotAvailable)
       )
-      || data.isOnGround
     ) {
+      this.isPrimed = false;
+      this.reset(dt, alertController);
+      return;
+    }
+
+    if (data.isOnGround) {
+      this.isPrimed = true;
       this.reset(dt, alertController);
       return;
     }
@@ -193,6 +200,14 @@ export class GarminNegativeClimbRateModule implements TerrainSystemModule {
    */
   private updateAlerts(dt: number, agl: number, altitude: number, verticalSpeed: number, alertController: TerrainSystemAlertController): void {
     if (agl > 700) {
+      this.isPrimed = false;
+      this.reset(dt, alertController);
+      return;
+    } else if (agl < 50) {
+      this.isPrimed = true;
+    }
+
+    if (!this.isPrimed) {
       this.reset(dt, alertController);
       return;
     }

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
 import {
   AffineTransformPathStream, ArrayUtils, BasicNavAngleSubject, BasicNavAngleUnit, BitFlags, ClippedPathStream, CssTransformBuilder, CssTransformSubject,
   DebounceTimer, FSComponent, MapFollowAirplaneModule, MapLayer, MapLayerProps, MapOwnAirplanePropsModule, MappedSubject, MapProjection,
@@ -245,7 +243,7 @@ export class G3XMapCompassArcLayer extends MapLayer<G3XMapCompassArcLayerProps> 
 
   private manualHeadingSelectSub?: Subscription;
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onVisibilityChanged(isVisible: boolean): void {
     this.needUpdateRootVisibility = true;
 
@@ -258,7 +256,7 @@ export class G3XMapCompassArcLayer extends MapLayer<G3XMapCompassArcLayerProps> 
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     super.onAttached();
 
@@ -314,7 +312,17 @@ export class G3XMapCompassArcLayer extends MapLayer<G3XMapCompassArcLayerProps> 
     this.magVarCorrectionSubject.sub(updateParametersHandler);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.canvasLayerRef.instance.onWake();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.canvasLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.canvasLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
 
@@ -327,7 +335,7 @@ export class G3XMapCompassArcLayer extends MapLayer<G3XMapCompassArcLayerProps> 
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     if (this.needUpdateRootVisibility) {
       this.updateRootVisibility();
@@ -465,13 +473,18 @@ export class G3XMapCompassArcLayer extends MapLayer<G3XMapCompassArcLayerProps> 
     this.headingIndicatorSuppressTimer.schedule(this.suppressHeadingCallback, G3XMapCompassArcLayer.HEADING_UNSUPPRESS_DURATION);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     const autopilotPropsModule = this.props.model.getModule(MapSystemKeys.AutopilotProps);
 
     return (
       <div ref={this.rootRef} class='map-compass-arc' style='position: absolute; left: 0; top: 0; width: 100%; height: 100%;'>
-        <MapSharedCanvasLayer ref={this.canvasLayerRef} model={this.props.model} mapProjection={this.props.mapProjection}>
+        <MapSharedCanvasLayer
+          ref={this.canvasLayerRef}
+          model={this.props.model}
+          mapProjection={this.props.mapProjection}
+          collapseOnSleep
+        >
           {autopilotPropsModule !== undefined && (
             <G3XMapCompassArcHeadingLineSubLayer
               model={this.props.model}
@@ -532,7 +545,7 @@ export class G3XMapCompassArcLayer extends MapLayer<G3XMapCompassArcLayerProps> 
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     this.magVarCorrectionSubject.destroy();
 
@@ -614,14 +627,12 @@ class G3XMapCompassArcMainSubLayer extends MapSharedCanvasSubLayer<G3XMapCompass
 
   private needInvalidate = true;
   private needInitStyles = true;
-  private needRechooseReferenceMarker = true;
-  private needRepositionReferenceMarker = true;
 
   private readonly subscriptions: Subscription[] = [];
 
   private readoutBorderSizeSub?: Subscription;
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     this.transformPathStream.setConsumer(this.display.context);
 
@@ -667,21 +678,27 @@ class G3XMapCompassArcMainSubLayer extends MapSharedCanvasSubLayer<G3XMapCompass
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    // We need to re-initialize canvas styles because the styles are reset when the map goes to sleep (as a result of
+    // being collapsed).
+    this.needInitStyles = true;
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     if (BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
-      // Resizing the map will cause the arc canvas layer to clear itself and reset all styles, so we need to
-      // re-initialize styles and force a redraw.
+      // Resizing the map will cause the arc canvas layer to reset all styles, so we need to re-initialize styles.
       this.needInitStyles = true;
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public shouldInvalidate(): boolean {
     return this.needInvalidate;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(): void {
     if (!this.isVisible()) {
       return;
@@ -967,35 +984,7 @@ class G3XMapCompassArcMainSubLayer extends MapSharedCanvasSubLayer<G3XMapCompass
     this.display.context.resetTransform();
   }
 
-  /**
-   * Redraws the reference marker.
-   */
-  private updateReferenceMarker(): void {
-    if (!this.needRechooseReferenceMarker && !this.needRepositionReferenceMarker) {
-      return;
-    }
-
-    // if (this.needRechooseReferenceMarker) {
-    //   const orientation = this.orientationModule.orientation.get();
-    //   const type = (this.props.showHeadingBug && this.isFollowingAirplane.get() && orientation === MapOrientation.HeadingUp)
-    //     ? MapRangeCompassReferenceMarkerType.ARROW
-    //     : MapRangeCompassReferenceMarkerType.TICK;
-
-    //   this.referenceMarkerTypeSub.set(type);
-
-    //   this.needRechooseReferenceMarker = false;
-    // }
-
-    // if (!this.needRepositionReferenceMarker) {
-    //   return;
-    // }
-
-    // this.referenceMarkerContainerRef.instance.reposition();
-
-    this.needRepositionReferenceMarker = false;
-  }
-
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     for (const sub of this.subscriptions) {
       sub.destroy();
@@ -1047,7 +1036,7 @@ class G3XMapCompassArcHeadingLineSubLayer extends MapSharedCanvasSubLayer<G3XMap
   private readoutBorderSizeSub?: Subscription;
   private compassRadiusSub?: Subscription;
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     this.clipPathStream.setConsumer(this.display.context);
 
@@ -1086,7 +1075,7 @@ class G3XMapCompassArcHeadingLineSubLayer extends MapSharedCanvasSubLayer<G3XMap
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     if (BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
       const size = mapProjection.getProjectedSize();
@@ -1094,12 +1083,12 @@ class G3XMapCompassArcHeadingLineSubLayer extends MapSharedCanvasSubLayer<G3XMap
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public shouldInvalidate(): boolean {
     return this.needInvalidate;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(): void {
     if (!this.isVisible()) {
       return;
@@ -1178,7 +1167,7 @@ class G3XMapCompassArcHeadingLineSubLayer extends MapSharedCanvasSubLayer<G3XMap
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     for (const sub of this.subscriptions) {
       sub.destroy();
@@ -1227,7 +1216,7 @@ class G3XMapCompassArcHeadingBugSubLayer extends MapSharedCanvasSubLayer<G3XMapC
 
   private readonly subscriptions: Subscription[] = [];
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     this.transformPathStream.setConsumer(this.display.context);
 
@@ -1250,12 +1239,12 @@ class G3XMapCompassArcHeadingBugSubLayer extends MapSharedCanvasSubLayer<G3XMapC
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public shouldInvalidate(): boolean {
     return this.needInvalidate;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(): void {
     if (!this.isVisible()) {
       return;
@@ -1309,7 +1298,7 @@ class G3XMapCompassArcHeadingBugSubLayer extends MapSharedCanvasSubLayer<G3XMapC
     this.display.context.fill();
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     for (const sub of this.subscriptions) {
       sub.destroy();

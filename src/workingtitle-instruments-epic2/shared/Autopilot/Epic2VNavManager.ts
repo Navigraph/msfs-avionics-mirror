@@ -1,10 +1,10 @@
 import {
-  AdcEvents, AirportFacility, AirportUtils, APEvents, APLateralModes, APValues, APVerticalModes, BitFlags, ClockEvents, ConsumerSubject, EventBus,
-  FacilityLoader, FlightPlan, FlightPlanner, FlightPlannerEvents, FlightPlanSegment, FlightPlanSegmentType, GeoPoint, GlidePathCalculator2, GNSSEvents, ICAO,
-  LegDefinition, LegDefinitionFlags, LegType, LNavEvents, MappedSubject, MappedValue, MathUtils, NavMath, ObjectSubject, OriginDestChangeType, RnavTypeFlags,
-  SimVarValueType, SmoothingPathCalculator, Subject, TocBocDetails, TodBodDetails, UnitType, VerticalFlightPhase, VerticalFlightPlan, VNavAltCaptureType,
-  VNavAvailability, VNavConstraint, VNavControlEvents, VNavDataEvents, VNavEvents, VNavManager, VNavPathCalculator, VNavPathMode, VNavState, VNavUtils,
-  VNavVars, Wait, WeightBalanceEvents
+  AdcEvents, AdditionalApproachType, AirportFacility, AirportUtils, APEvents, APLateralModes, APValues, APVerticalModes, BitFlags, ClockEvents, ConsumerSubject,
+  EventBus, FacilityLoader, FlightPlan, FlightPlanner, FlightPlannerEvents, FlightPlanSegment, FlightPlanSegmentType, GeoPoint, GlidePathCalculator2,
+  GNSSEvents, ICAO, LegDefinition, LegDefinitionFlags, LegType, LNavEvents, MappedSubject, MappedValue, MathUtils, NavMath, ObjectSubject, OriginDestChangeType,
+  RnavTypeFlags, SimVarValueType, SmoothingPathCalculator, Subject, TocBocDetails, TodBodDetails, UnitType, VerticalFlightPhase, VerticalFlightPlan,
+  VNavAltCaptureType, VNavAvailability, VNavConstraint, VNavControlEvents, VNavDataEvents, VNavEvents, VNavManager, VNavPathCalculator, VNavPathMode, VNavState,
+  VNavUtils, VNavVars, Wait, WeightBalanceEvents
 } from '@microsoft/msfs-sdk';
 
 import { ApproachDetails, Epic2FlightPlans, Epic2FmsEvents, Epic2VerticalFlightPhase, RnavMinima } from '../Fms';
@@ -1501,7 +1501,8 @@ export class Epic2VNavManager implements VNavManager {
     const approachIsActive = approachDetails.approachIsActive;
     const approachSupportsVnav = approachDetails.selectedRnavMinima === RnavMinima.LPV ||
       approachDetails.selectedRnavMinima === RnavMinima.LP ||
-      (approachDetails.selectedRnavMinima === RnavMinima.LNAV && !BitFlags.isAny(approachDetails.approachRnavType, RnavTypeFlags.LNAV));
+      (approachDetails.selectedRnavMinima === RnavMinima.LNAV && !BitFlags.isAny(approachDetails.approachRnavType, RnavTypeFlags.LNAV)) ||
+      approachDetails.approachType === AdditionalApproachType.APPROACH_TYPE_VISUAL;
 
     const activeLeg = lateralPlan?.tryGetLeg(this.lnavLegIndex.get());
     const activeLegIsNotMissed = activeLeg && !BitFlags.isAll(LegDefinitionFlags.MissedApproach, activeLeg.flags);

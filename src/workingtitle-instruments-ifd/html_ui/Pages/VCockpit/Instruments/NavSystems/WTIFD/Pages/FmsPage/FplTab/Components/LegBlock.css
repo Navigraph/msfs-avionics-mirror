@@ -1,0 +1,606 @@
+.wt-ifd-leg-block {
+  position: relative;
+  height: 100%;
+  margin-left: 45px;
+  margin-right: 5px;
+  border-radius: 5px;
+  border-style: solid;
+  border-width: 3px;
+  border-color: black;
+  font-size: 16px;
+  font-family: "Arial Bold";
+  color: var(--wtdyne-color-mint);
+  white-space: pre;
+}
+
+.leg-block-selected {
+  border-color: var(--wtdyne-color-cyan);
+}
+
+.destination-leg-block {
+  box-shadow: inset 0.15em 0.15em 0.1em 0 rgba(255, 255, 255, 0.5), inset -0.15em -0.15em 0.1em 0 rgba(0, 0, 0, 0.6);
+}
+
+.origin-leg-block {
+  background-color: var(--leg-block-blue-3);
+  padding-bottom: 5px;
+  box-shadow: inset 0.15em 0.15em 0.1em 0 rgba(255, 255, 255, 0.5), inset -0.15em -0.15em 0.1em 0 rgba(0, 0, 0, 0.6);
+}
+
+.normal-leg-block {
+  background-color: var(--leg-block-gray);
+  box-shadow: inset 0.15em 0.15em 0.1em 0 rgba(255, 255, 255, 0.5), inset -0.15em -0.15em 0.1em 0 rgba(0, 0, 0, 0.6);
+}
+
+.destination-leg-block {
+  background-color: var(--leg-block-blue-3);
+}
+
+.leg-block-active {
+  background-color: var(--leg-block-magenta);
+}
+
+.leg-block-white-text {
+  color: var(--wtdyne-color-white);
+}
+
+.leg-block-unit-text {
+  font-size: 13px;
+}
+
+.leg-block-top-row {
+  margin-left: 5px;
+  margin-top: 6px;
+  padding-bottom: 2px;
+  display: flex;
+}
+
+.leg-block-top-row .direct-to-icon {
+  stroke: none;
+  fill: var(--wtdyne-color-mint);
+  width: 35px;
+  height: 23px;
+  margin: -5px 3px 0 -2px;
+}
+
+.leg-block-data-row {
+  height: 22px;
+  margin-right: 31px;
+  display: flex;
+}
+
+.leg-block-airport-row {
+  background-color: var(--leg-block-blue-2);
+  border-top-right-radius: 5px;
+  border-bottom-right-radius: 5px;
+}
+
+.leg-block-normal-row {
+  background-color: var(--leg-block-light-gray);
+}
+
+.leg-block-normal-top-row {
+  display: flex;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  margin-left: auto;
+  margin-right: 31px;
+  margin-top: 6px;
+  padding-top: 5px;
+  padding-left: 8px;
+  padding-right: 8px;
+  height: 21px;
+  width: 178px;
+  line-height: 16px;
+}
+
+.collapsed-leg .leg-block-normal-top-row {
+  /* To shift the "Proc:" label to the left. */
+  width: 195px;
+}
+
+.leg-block-normal-bottom-row {
+  border-bottom-right-radius: 5px;
+  margin-left: 2px;
+}
+
+.leg-block-normal-bottom-row-data {
+  display: flex;
+  margin-left: auto;
+  width: 178px;
+  padding-top: 3px;
+  padding-left: 10px;
+  padding-right: 8px;
+}
+
+.leg-block-row-active {
+  background-color: var(--leg-block-light-magenta);
+}
+
+.leg-block-arrow-icon {
+  width: 24px;
+  height: 100%;
+}
+
+.leg-block-input-field {
+  border-radius: 5px;
+  color: var(--wtdyne-color-white);
+}
+
+.leg-block-black-field {
+  background-color: var(--wtdyne-color-black);
+  color: var(--wtdyne-color-white);
+}
+
+.leg-block-cyan-field {
+  background-color: var(--wtdyne-color-cyan);
+  color: var(--wtdyne-color-black);
+}
+
+.wt-ifd-leg-block .text-input-selected {
+  background-color: var(--wtdyne-color-cyan);
+  color: var(--wtdyne-color-black);
+}
+
+.leg-block-white-field {
+  background-color: var(--wtdyne-color-white);
+  color: var(--wtdyne-color-black);
+}
+
+.leg-block-airport-field {
+  width: 105px;
+  margin-top: 1px;
+  padding-left: 6px;
+  font-size: 20px;
+}
+
+.leg-block-arr-app-field {
+  padding-top: 4px;
+  padding-left: 4px;
+  flex-grow: 1;
+}
+
+.leg-block-info-text {
+  padding-top: 3px;
+  padding-left: 5px;
+}
+
+.leg-block-bearing-label {
+  width: 83px;
+}
+
+.leg-block-info-dist {
+  margin-left: 18px;
+}
+
+.origin-leg-block.mini-leg-format .leg-block-info-dist {
+  margin-left: 0px;
+}
+
+.leg-block-rwy-field {
+  width: 45px;
+  margin-top: 1px;
+  margin-left: 2px;
+  margin-right: 5px;
+  padding-left: 6px;
+  font-size: 20px;
+}
+
+.leg-block-airport-name {
+  margin-top: 5px;
+  margin-left: 25px;
+  font-size: 14px;
+}
+
+.destination-leg-block .leg-block-airport-name {
+  margin-top: 2px;
+}
+
+.origin-leg-block .mini-fpl-time-dashes {
+  margin-right: 32px;
+}
+
+.destination-leg-block .mini-fpl-time-dashes {
+  margin-left: 48px;
+  margin-right: 32px;
+}
+
+.leg-block-procedure-row {
+  background-color: var(--leg-block-blue-4);
+  margin-right: 3px;
+  margin-left: 3px;
+  margin-top: 4px;
+  padding-left: 2px;
+  height: 21px;
+  border-radius: 3px;
+  display: flex;
+}
+
+.leg-block-procedure-label {
+  padding-top: 4px;
+  font-size: 13px;
+}
+
+.leg-block-departure-label {
+  width: 72px;
+}
+
+.leg-block-arr-app-label {
+  margin-right: 5px;
+}
+
+.leg-block-procedure-field {
+  width: 200px;
+  margin-top: 3px;
+  padding-top: 1px;
+  padding-left: 5px;
+  font-size: 16px;
+  height: 17px;
+}
+
+.leg-block-procedure-button {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  width: 25px;
+  height: 26px;
+  border-radius: 5px;
+}
+
+.leg-block-alt-constraint {
+  margin-top: 4px;
+  margin-bottom: 1px;
+  margin-left: 25px;
+  font-size: 14px;
+  display: flex;
+  color: var(--wtdyne-color-white);
+}
+
+.leg-block-airport-flag-container {
+  position: absolute;
+  right: 0;
+}
+
+.leg-block-fix-type {
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.hold-leg-distance {
+  display: flex;
+  margin-left: auto;
+  justify-content: flex-end;
+  height: 15px;
+}
+
+.hold-leg-distance svg {
+  width: 10px;
+}
+
+.hold-leg-distance .hold-left-end {
+  margin-right: 2px;
+}
+
+.hold-leg-distance .hold-right-end {
+  margin-left: 2px;
+}
+
+.hold-leg-distance .leg-block-input-field {
+  width: 40px;
+  text-align: center;
+}
+
+.hold-leg-distance .hold-end,
+.hold-turn-indicator-icon {
+  fill: var(--wtdyne-color-mint);
+}
+
+.hold-leg-block .leg-block-normal-top-row {
+  height: 30px;
+}
+
+.hold-leg-angle {
+  border-radius: 15px;
+  border-color: var(--wtdyne-color-mint);
+  border-width: 3px;
+  width: 110px;
+  height: 26px;
+  border-style: solid;
+  margin-right: -5px;
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.hold-leg-angle .leg-block-input-field {
+  line-height: 1;
+  width: 50px;
+  text-align: center;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 2px;
+  position: absolute;
+}
+
+.hold-leg-block .leg-block-normal-bottom-row-data {
+  align-items: center;
+  margin-top: -8px;
+}
+
+.insert-wpt-input-field {
+  height: 100%;
+}
+
+.insert-wpt-input-field .cursor-input-slots {
+  position: relative;
+  width: 90px;
+  height: 20px;
+  margin-top: 2px;
+  font-size: 22px;
+  border-radius: 4px;
+  background: black;
+  padding-top: 2px;
+}
+
+
+.insert-wpt-input-field>div {
+  width: 100%;
+}
+
+.hold-turn-indicator {
+  position: absolute;
+  width: 30px;
+  top: 11px;
+  right: 0;
+}
+
+.hold-turn-indicator-right {
+  transform: scaleY(-1);
+  top: -10px;
+}
+
+.intercept-leg-block .leg-block-top-row {
+  width: 100%;
+  padding-right: 30px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.intercept-leg-block .leg-block-normal-bottom-row {
+  border-top-right-radius: 5px;
+}
+
+.turn-icon {
+  fill: var(--wtdyne-color-mint);
+}
+
+.intercept-turn {
+  margin-bottom: -5px;
+  margin-left: -5px;
+  padding-right: 3px;
+}
+
+.intercept-turn .intercept-turn-svg {
+  height: 19px;
+}
+
+.intercept-turn-reverse .intercept-turn-svg {
+  transform: scaleY(-1);
+}
+
+.intercept-turn-reverse {
+  margin-top: -5px;
+  margin-bottom: 0;
+}
+
+.intercept-course-row {
+  display: flex;
+  align-items: center;
+}
+
+.origin-leg-block .leg-block-data-row,
+.destination-leg-block .leg-block-data-row {
+  margin-left: 2px;
+}
+
+.ifd-sidebar-full .normal-leg-block .short-instruction,
+.ifd-sidebar-full .normal-leg-block .leg-block-alt-constraint-short {
+  display: none;
+}
+
+/* Sidebar styling */
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .leg-block-normal-top-row,
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .leg-block-normal-top-row,
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .leg-block-arrow-icon,
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .leg-block-arrow-icon,
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .leg-block-normal-bottom-row-data,
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .leg-block-alt-constraint,
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .leg-block-airport-flag-container,
+.ifd-sidebar-sidebar .flight-plan-list .origin-leg-block .leg-block-arrow-icon,
+.ifd-sidebar-sidebar .flight-plan-list .origin-leg-block .leg-block-info-text,
+.ifd-sidebar-sidebar .flight-plan-list .origin-leg-block .leg-block-airport-name,
+.ifd-sidebar-sidebar .flight-plan-list .origin-leg-block .leg-block-procedure-label,
+.ifd-sidebar-sidebar .flight-plan-list .origin-leg-block .leg-block-rwy-field,
+.ifd-sidebar-sidebar .flight-plan-list .origin-leg-block .leg-block-procedure-button,
+.ifd-sidebar-sidebar .flight-plan-list .origin-leg-block .leg-block-airport-flag-container,
+.ifd-sidebar-sidebar .flight-plan-list .destination-leg-block .leg-block-arrow-icon,
+.ifd-sidebar-sidebar .flight-plan-list .destination-leg-block .leg-block-info-text,
+.ifd-sidebar-sidebar .flight-plan-list .destination-leg-block .leg-block-airport-name,
+.ifd-sidebar-sidebar .flight-plan-list .destination-leg-block .leg-block-procedure-label,
+.ifd-sidebar-sidebar .flight-plan-list .destination-leg-block .leg-block-rwy-field,
+.ifd-sidebar-sidebar .flight-plan-list .destination-leg-block .leg-block-procedure-button,
+.ifd-sidebar-sidebar .flight-plan-list .destination-leg-block .leg-block-airport-flag-container {
+  display: none;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .origin-leg-block .leg-block-procedure-field {
+  font-size: 13px;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .destination-leg-block .leg-block-procedure-row {
+  display: flex;
+  flex-direction: column;
+  height: 42px;
+  margin-top: 2px !important;
+  font-size: 13px;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .airport-field-text {
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .leg-block-terminus {
+  line-height: 1;
+  overflow: hidden;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .leg-block-fix-type {
+  margin-left: unset;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .origin-leg-block .leg-block-procedure-row,
+.ifd-sidebar-sidebar .flight-plan-list .destination-leg-block .leg-block-procedure-row {
+  margin-top: 26px;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .origin-leg-block .leg-block-airport-row,
+.ifd-sidebar-sidebar .flight-plan-list .destination-leg-block .leg-block-airport-row,
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .leg-block-normal-bottom-row {
+  margin-right: 2px;
+  border-radius: unset;
+  margin-left: 2px;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .origin-leg-block .leg-block-airport-field,
+.ifd-sidebar-sidebar .flight-plan-list .normal-leg-block .leg-block-airport-field,
+.ifd-sidebar-sidebar .flight-plan-list .destination-leg-block .leg-block-airport-field {
+  padding-left: 2px;
+  width: 109px;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .wt-ifd-leg-block {
+  margin-left: 15px;
+}
+
+.ifd-sidebar-sidebar .leg-block-alt-constraint-short.between {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .items-container {
+  width: 140px;
+  transition: width 500ms linear;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .empty-leg-block {
+  width: unset;
+  right: 2px;
+  left: 12px;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .leg-block-alt-constraint-short {
+  color: white;
+  font-size: 13px;
+  margin-right: 4px;
+  margin-top: 2px;
+  text-align: right;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .leg-block-alt-constraint-short .alt-constraint-text {
+  text-align: center;
+  display: inline-block;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .leg-block-alt-constraint-short .constraint-wrapper.top-border {
+  border-top: 1px solid white;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .leg-block-alt-constraint-short .constraint-wrapper.bottom-border {
+  border-bottom: 1px solid white;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .leg-block-alt-constraint-short .between {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .leg-block-alt-constraint-short .constraint-wrapper {
+  display: inline-block;
+}
+
+.mini-leg-format {
+  padding: 6px 0;
+}
+
+.leg-row-distance {
+  display: flex;
+}
+
+.wt-ifd-leg-block .leg-block-ete {
+  display: flex;
+  margin-left: auto;
+  margin-right: -7px;
+}
+
+.wt-ifd-leg-block .leg-block-ete .leg-block-unit-text {
+  width: 24px;
+}
+
+.mini-leg-format .mini-fpl-hidden,
+.mini-leg-format .leg-block-top-row,
+.mini-leg-format .leg-block-airport-name,
+.mini-leg-format .leg-block-procedure-row,
+.mini-leg-format .leg-block-edit-button,
+.mini-leg-format .leg-block-airport-flag-container,
+.mini-leg-format .leg-block-rwy-text,
+.mini-leg-format .leg-block-rwy-field,
+.mini-leg-format .leg-block-arrow-icon,
+.mini-leg-format .leg-block-normal-bottom-row-data,
+.mini-leg-format .leg-block-procedure-button,
+.mini-leg-format .leg-row-distance {
+  display: none;
+}
+
+.mini-leg-format .leg-block-normal-top-row {
+  width: 100%;
+}
+
+.mini-leg-format .leg-block-data-row {
+  padding-right: 5px;
+  height: auto;
+}
+
+.mini-leg-format .leg-block-airport-field {
+  display: flex;
+  width: auto;
+  align-items: center;
+}
+
+.mini-leg-format .leg-block-bearing-label {
+  margin-left: auto;
+}
+
+.mini-leg-format .leg-block-to-label {
+  display: none;
+}
+
+.mini-leg-format .leg-block-alt-constraint {
+  display: none;
+}
+
+.mini-fpl-origin {
+  font-size: 14px;
+}
+
+.mini-fpl-distance {
+  margin-left: auto;
+}
+
+.mini-fpl-distance .leg-block-normal-top-row {
+  padding-top: 0;
+  height: auto;
+  background: none;
+}

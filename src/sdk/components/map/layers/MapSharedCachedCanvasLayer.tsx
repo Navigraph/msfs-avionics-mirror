@@ -43,6 +43,14 @@ export interface MapSharedCachedCanvasLayerProps<M> extends MapLayerProps<M> {
 
   /** The factor by which the canvas should be overdrawn. Values less than 1 will be clamped to 1. */
   overdrawFactor: number;
+
+  /**
+   * Whether the layer should automatically collapse its canvas elements (the display canvas and the buffer canvas, if
+   * it exists) to zero size (0px by 0px) when the map is asleep. Collapsing the canvas elements will free memory used
+   * by the canvas textures. It will also clear everything drawn to the canvases, reset their context states, and
+   * invalidate them. Defaults to `false`.
+   */
+  collapseOnSleep?: boolean;
 }
 
 /**
@@ -54,6 +62,8 @@ export interface MapSharedCachedCanvasLayerProps<M> extends MapLayerProps<M> {
  */
 export class MapSharedCachedCanvasLayer extends MapLayer<MapSharedCachedCanvasLayerProps<any>> {
   private thisNode?: VNode;
+
+  private readonly collapseOnSleep = !!this.props.collapseOnSleep;
 
   private readonly canvasLayerRef = FSComponent.createRef<MapCachedCanvasLayer>();
 
@@ -119,6 +129,8 @@ export class MapSharedCachedCanvasLayer extends MapLayer<MapSharedCachedCanvasLa
 
   /** @inheritDoc */
   public onWake(): void {
+    this.canvasLayerRef.instance.onWake();
+
     for (let i = 0; i < this.sublayers.length; i++) {
       this.sublayers[i].onWake();
     }
@@ -126,6 +138,8 @@ export class MapSharedCachedCanvasLayer extends MapLayer<MapSharedCachedCanvasLa
 
   /** @inheritDoc */
   public onSleep(): void {
+    this.canvasLayerRef.instance.onSleep();
+
     for (let i = 0; i < this.sublayers.length; i++) {
       this.sublayers[i].onSleep();
     }
@@ -181,6 +195,7 @@ export class MapSharedCachedCanvasLayer extends MapLayer<MapSharedCachedCanvasLa
           mapProjection={this.props.mapProjection}
           useBuffer={this.props.useBuffer}
           overdrawFactor={this.props.overdrawFactor}
+          collapseOnSleep={this.collapseOnSleep}
           class={this.props.class}
         />
         {this.props.children}
@@ -421,19 +436,13 @@ class MapSharedCachedCanvasInstanceClass implements MapSharedCachedCanvasInstanc
   }
 
   /** @inheritDoc */
-  public get reference(): MapCachedCanvasLayerReference {
-    return this.instance.reference;
-  }
+  public readonly reference = this.instance.reference;
 
   /** @inheritDoc */
-  public get transform(): MapCachedCanvasLayerTransform {
-    return this.instance.transform;
-  }
+  public readonly transform = this.instance.transform;
 
   /** @inheritDoc */
-  public get geoProjection(): GeoProjection {
-    return this.instance.geoProjection;
-  }
+  public readonly geoProjection = this.instance.geoProjection;
 
   /**
    * Creates a new instance of MapSharedCachedCanvasInstanceClass.

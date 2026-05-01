@@ -1,0 +1,33 @@
+.page-tabs {
+  position: absolute;
+  bottom: -4px;
+  left: -143px;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* We want it to unhide faster than it hides. */
+  transition: transform 250ms linear;
+}
+
+.page-tabs.page-tabs-always-visible {
+  transition: none !important;
+}
+
+.page-tabs.page-tabs-hidden {
+  transform: translate3d(0, 26px, 0);
+  transition: transform 750ms linear;
+}
+
+.page-tabs .touch-tab {
+  --touch-tab-width: 69px;
+}
+
+/* Makes the clickable footprint bigger so the selected tab can be clicked when hidden. */
+.page-tabs .touch-tab::after {
+  position: absolute;
+  top: -3px;
+  width: 75px;
+  height: 36px;
+  content: '';
+}

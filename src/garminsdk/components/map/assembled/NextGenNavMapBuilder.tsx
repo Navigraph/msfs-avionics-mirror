@@ -1,9 +1,9 @@
 /* eslint-disable jsdoc/require-jsdoc */
 import {
   FacilityLoader, FacilityRepository, FlightPlanner, FSComponent, MapDataIntegrityModule, MapIndexedRangeModule,
-  MapOwnAirplaneIconOrientation, MapOwnAirplanePropsKey, MappedSubject, MappedSubscribable, MapSystemBuilder,
-  MapSystemContext, MapSystemKeys, MutableSubscribable, NumberUnitInterface, ReadonlyFloat64Array, Subject,
-  Subscribable, UnitFamily, UnitType, UserSettingManager, Vec2Math, Vec2Subject, VecNMath, VNode
+  MapOwnAirplaneIconOrientation, MapOwnAirplanePropsKey, MappedSubject, MappedSubscribable, MapSyncedCanvasLayer,
+  MapSystemBuilder, MapSystemContext, MapSystemKeys, MutableSubscribable, NumberUnitInterface, ReadonlyFloat64Array,
+  Subject, Subscribable, UnitFamily, UnitType, UserSettingManager, Vec2Math, Vec2Subject, VecNMath, VNode
 } from '@microsoft/msfs-sdk';
 
 import { WaypointIconImageCache } from '../../../graphics/img/WaypointIconImageCache';
@@ -13,13 +13,14 @@ import { TrafficUserSettingTypes } from '../../../settings/TrafficUserSettings';
 import { UnitsDistanceSettingMode, UnitsUserSettingManager } from '../../../settings/UnitsUserSettings';
 import { TrafficSystem } from '../../../traffic/TrafficSystem';
 import { WindDataProvider } from '../../../wind/WindDataProvider';
+import { NextGenMapWaypointIconColliderFactory } from '../colliders';
 import { MapGarminAutopilotPropsKey } from '../controllers';
 import { DefaultFlightPathPlanRenderer, MapDefaultFlightPlanWaypointRecordManager } from '../flightplan';
 import { GarminMapBuilder, RangeCompassOptions, RangeRingOptions, TrafficIconOptions } from '../GarminMapBuilder';
 import { GarminMapKeys } from '../GarminMapKeys';
 import {
-  MapBannerIndicator, MapDetailIndicator, MapOrientationIndicator, MapRelativeTerrainStatusIndicator, MapTerrainScaleIndicator, MapTrafficFailedIndicator,
-  MapTrafficOffScaleIndicator, MapTrafficStatusIndicator
+  MapBannerIndicator, MapDetailIndicator, MapOrientationIndicator, MapRelativeTerrainStatusIndicator,
+  MapTerrainScaleIndicator, MapTrafficFailedIndicator, MapTrafficOffScaleIndicator, MapTrafficStatusIndicator
 } from '../indicators';
 import { MapDeadReckoningLayer, MapPointerInfoLayerSize } from '../layers';
 import { MapRangeDisplay } from '../MapRangeDisplay';
@@ -30,8 +31,8 @@ import { MapWaypointDisplayBuilder } from '../MapWaypointDisplayBuilder';
 import { MapWaypointRenderRole } from '../MapWaypointRenderer';
 import { NextGenMapWaypointStyles } from '../MapWaypointStyles';
 import {
-  MapDeclutterMode, MapDeclutterModule, MapFlightPlanFocusModule, MapGarminTrafficModule, MapOrientation, MapOrientationModule, MapPointerModule,
-  MapTerrainMode, MapTerrainModule, MapUnitsModule
+  MapDeclutterMode, MapDeclutterModule, MapFlightPlanFocusModule, MapGarminTrafficModule, MapOrientation,
+  MapOrientationModule, MapPointerModule, MapTerrainMode, MapTerrainModule, MapUnitsModule
 } from '../modules';
 import { NextGenGarminMapBuilder } from '../NextGenGarminMapBuilder';
 import { NextGenGarminMapUtils } from '../NextGenGarminMapUtils';
@@ -209,6 +210,12 @@ export type NextGenNavMapOptions = {
 
   /** Configuration options for traffic icons. Required to display traffic. */
   trafficIconOptions?: NextGenNavMapTrafficIconOptions;
+
+  /** Whether to include support for highlighted waypoints. Defaults to `true`. */
+  supportWaypointHighlight?: boolean;
+
+  /** Whether to include support for hovered waypoints. Defaults to `true`. */
+  supportWaypointHover?: boolean;
 
   /** Whether to include the track vector display. Defaults to `true`. */
   includeTrackVector?: boolean;
@@ -401,6 +408,9 @@ export class NextGenNavMapBuilder {
 
     options.supportDataIntegrity ??= true;
 
+    options.supportWaypointHighlight ??= true;
+    options.supportWaypointHover ??= true;
+
     options.useRangeUserSettingByDefault ??= true;
 
     options.useOrientationUserSettings ??= true;
@@ -553,17 +563,55 @@ export class NextGenNavMapBuilder {
       );
     }
 
-    mapBuilder
-      .with(GarminMapBuilder.waypointHighlight,
-        false,
-        (builder: MapWaypointDisplayBuilder) => {
-          builder.withHighlightStyles(
-            options.waypointIconImageCache,
-            NextGenMapWaypointStyles.highlightIconStyles(5, options.waypointStyleScale),
-            NextGenMapWaypointStyles.highlightLabelStyles(5, options.waypointStyleFontType, options.waypointStyleScale)
+    if (options.supportWaypointHighlight) {
+      mapBuilder
+        .with(GarminMapBuilder.waypointHighlight,
+          false,
+          (builder: MapWaypointDisplayBuilder) => {
+            builder.withHighlightStyles(
+              options.waypointIconImageCache,
+              NextGenMapWaypointStyles.highlightIconStyles(5, options.waypointStyleScale),
+              NextGenMapWaypointStyles.highlightLabelStyles(5, options.waypointStyleFontType, options.waypointStyleScale)
+            );
+          },
+          {
+            layerKey: options.supportWaypointHover ? 'waypointHighlightHover' : undefined,
+          }
+        );
+    }
+
+    if (options.supportWaypointHover) {
+      mapBuilder
+        .with(GarminMapBuilder.waypointColliders, new NextGenMapWaypointIconColliderFactory({ scale: options.waypointStyleScale }))
+        .with(GarminMapBuilder.waypointHover,
+          (builder: MapWaypointDisplayBuilder) => {
+            builder.withHoverStyles(
+              options.waypointIconImageCache,
+              NextGenMapWaypointStyles.hoverIconStyles(6, options.waypointStyleScale),
+              NextGenMapWaypointStyles.hoverLabelStyles(6, options.waypointStyleFontType, options.waypointStyleScale)
+            );
+          },
+          {
+            layerKey: options.supportWaypointHighlight ? 'waypointHighlightHover' : undefined,
+          }
+        );
+    }
+
+    if (options.supportWaypointHighlight && options.supportWaypointHover) {
+      const textLayerOrder = mapBuilder.layerCount;
+
+      mapBuilder
+        .withLayer('waypointHighlightHover', context => {
+          return (
+            <MapSyncedCanvasLayer
+              model={context.model}
+              mapProjection={context.projection}
+              collapseOnSleep
+            />
           );
-        }
-      );
+        })
+        .withLayerOrder(MapSystemKeys.TextLayer, textLayerOrder);
+    }
 
     mapBuilder
       .with(GarminMapBuilder.rangeRing, options.rangeRingOptions)

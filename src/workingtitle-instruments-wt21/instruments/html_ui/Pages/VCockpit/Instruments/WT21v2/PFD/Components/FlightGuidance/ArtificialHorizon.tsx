@@ -17,24 +17,33 @@ interface ArtificialHorizonProps extends ComponentProps {
  * The ArtificialHorizon component.
  */
 export class ArtificialHorizon extends DisplayComponent<ArtificialHorizonProps> {
-  private innerRef = FSComponent.createRef<HTMLElement>();
-  private outerRef = FSComponent.createRef<HTMLElement>();
-  private readonly pxPerDegY: number;
+  private static readonly DEFAULT_WIDTH = 772;
+  private static readonly DEFAULT_HEIGHT = 461;
+  private static readonly CENTER_X = 386;
+  private static readonly CENTER_Y = 262;
+  private static readonly HORIZON_LINE_WIDTH = 2;
+  private static readonly HORIZON_HALF_SPAN = Math.hypot(ArtificialHorizon.DEFAULT_WIDTH, ArtificialHorizon.DEFAULT_HEIGHT);
+  private static readonly HORIZON_SPAN = ArtificialHorizon.HORIZON_HALF_SPAN * 2;
+  private static readonly SKY_COLOR = 'hsl(217, 100%, 50%)';
+  private static readonly GROUND_COLOR = 'hsl(30, 63%, 37%)';
+  private static readonly HORIZON_LINE_COLOR = '#ffffff';
+  private static readonly HORIZON_LINE_HALF_WIDTH = ArtificialHorizon.HORIZON_LINE_WIDTH / 2;
+  private static readonly PX_PER_DEG_Y: number = AdiProjectionUtils.getPxPerDegY();
 
-  /**
-   * Ctor.
-   * @param props the component properties
-   */
-  constructor(props: ArtificialHorizonProps) {
-    super(props);
-    this.pxPerDegY = AdiProjectionUtils.getPxPerDegY();
-  }
+  private readonly canvasRef = FSComponent.createRef<HTMLCanvasElement>();
+  private canvasContext: CanvasRenderingContext2D | null = null;
 
   /**
    * A callback called after the component renders.
    */
   public onAfterRender(): void {
-    // TODO do stuff
+    const canvas = this.canvasRef.instance;
+    this.canvasContext = canvas.getContext('2d');
+
+    canvas.width = ArtificialHorizon.DEFAULT_WIDTH;
+    canvas.height = ArtificialHorizon.DEFAULT_HEIGHT;
+
+    this.drawHorizon(0, 0);
   }
 
   /**
@@ -42,8 +51,39 @@ export class ArtificialHorizon extends DisplayComponent<ArtificialHorizonProps> 
    * @param planeState The plane state info
    */
   public update(planeState: FlightGuidancePlaneInfo): void {
-    this.innerRef.instance.style.transform = `translate3d(0px, ${planeState.pitch * this.pxPerDegY}px, 0px)`;
-    this.outerRef.instance.style.transform = `rotate3d(0,0,1,${planeState.roll}deg)`;
+    this.drawHorizon(planeState.pitch, planeState.roll);
+  }
+
+  /**
+   * Draws the horizon.
+   * @param pitch The current pitch, in degrees.
+   * @param roll The current roll, in degrees.
+   */
+  private drawHorizon(pitch: number, roll: number): void {
+    const context = this.canvasContext;
+    if (!context) {
+      return;
+    }
+
+    const pitchOffset = pitch * ArtificialHorizon.PX_PER_DEG_Y;
+    const rotation = roll * Avionics.Utils.DEG2RAD;
+    const sinRot = Math.sin(rotation);
+    const cosRot = Math.cos(rotation);
+    const translatedCenterX = ArtificialHorizon.CENTER_X - sinRot * pitchOffset;
+    const translatedCenterY = ArtificialHorizon.CENTER_Y + cosRot * pitchOffset;
+
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, ArtificialHorizon.DEFAULT_WIDTH, ArtificialHorizon.DEFAULT_HEIGHT);
+    context.setTransform(cosRot, sinRot, -sinRot, cosRot, translatedCenterX, translatedCenterY);
+
+    context.fillStyle = ArtificialHorizon.SKY_COLOR;
+    context.fillRect(-ArtificialHorizon.HORIZON_HALF_SPAN, -ArtificialHorizon.HORIZON_HALF_SPAN, ArtificialHorizon.HORIZON_SPAN, ArtificialHorizon.HORIZON_HALF_SPAN);
+
+    context.fillStyle = ArtificialHorizon.HORIZON_LINE_COLOR;
+    context.fillRect(-ArtificialHorizon.HORIZON_HALF_SPAN, -ArtificialHorizon.HORIZON_LINE_HALF_WIDTH, ArtificialHorizon.HORIZON_SPAN, ArtificialHorizon.HORIZON_LINE_WIDTH);
+
+    context.fillStyle = ArtificialHorizon.GROUND_COLOR;
+    context.fillRect(-ArtificialHorizon.HORIZON_HALF_SPAN, ArtificialHorizon.HORIZON_LINE_HALF_WIDTH, ArtificialHorizon.HORIZON_SPAN, ArtificialHorizon.HORIZON_HALF_SPAN);
   }
 
   /**
@@ -52,19 +92,7 @@ export class ArtificialHorizon extends DisplayComponent<ArtificialHorizonProps> 
    */
   public render(): VNode {
     return (
-      <div class="artificial-horizon-container" ref={this.outerRef}>
-        <div class="artificial-horizon-inner" ref={this.innerRef}>
-          <div class="artificial-horizon-sky"></div>
-          <div class="artificial-horizon-horizon"></div>
-          <div class="artificial-horizon-ground"></div>
-        </div>
-        {/* <div id="dev-center"
-          style="position: absolute; width: 100%; height: 100%; border-left:1px solid green; top:0%; left:50%">
-        </div>
-        <div id="dev-centerh"
-          style="position: absolute; width: 100%; height: 100%; border-top:1px solid green; top:50%; left:0%">
-        </div> */}
-      </div>
+      <canvas class="artificial-horizon-container" ref={this.canvasRef} />
     );
   }
 }

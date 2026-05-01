@@ -48,7 +48,8 @@ export class DisplayField<T> extends FmcComponent<DisplayFieldOptions<T>> {
    * @returns the created binding (usually not needed)
    */
   public bind(subscribable: Subscribable<T>): DisplayField<T> {
-    this.page.addBinding(subscribable.sub((value) => this.takeValue(value, true), true));
+    subscribable.sub((value) => this.takeValue(value, true), true)
+      .withLifecycle(this.page.defaultLifecycle);
     return this;
   }
 

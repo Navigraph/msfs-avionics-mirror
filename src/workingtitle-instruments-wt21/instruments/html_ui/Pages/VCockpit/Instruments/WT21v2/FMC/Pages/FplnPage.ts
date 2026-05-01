@@ -188,7 +188,7 @@ export class FplnPage extends WT21FmcPage {
    * @returns the Render Template
    */
   renderRoutePage(): FmcRenderTemplate {
-    const template =  this.controller.renderPage();
+    const template = this.controller.renderPage();
 
     if (this.wptAlreadyExistsPrompt.shown.get()) {
       template[11] = [WaypointAlreadyExistsPrompt.CduFooter];

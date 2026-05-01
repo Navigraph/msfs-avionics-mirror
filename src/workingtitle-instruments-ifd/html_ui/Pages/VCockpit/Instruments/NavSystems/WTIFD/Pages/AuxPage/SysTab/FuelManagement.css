@@ -1,0 +1,128 @@
+.sys-tab-fuel {
+  padding-top: 60px;
+  align-items: center;
+}
+
+.fuel-data-container {
+  position: relative;
+  width: 80%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  border: var(--wtdyne-border-blue);
+  border-color: var(--wtdyne-color-navy);
+  border-radius: 5px;
+}
+
+.fuel-data-container .fuel-data-row {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.fuel-data-row .fuel-data-row-label {
+  flex-grow: 1;
+  text-align: end;
+  padding-top: 3px;
+  margin-right: 5px;
+}
+
+.fuel-data-row .fuel-data-row-value {
+  height: 41px;
+  text-align: end;
+  font-size: 35px;
+  margin-right: 5px;
+
+  color: var(--wtdyne-color-white);
+  border: var(--wtdyne-border-blue);
+  border-color: var(--wtdyne-color-navy);
+  border-radius: 5px;
+}
+
+.fuel-data-row.single .fuel-data-row-value {
+  width: 185px;
+  padding-right: 72px;
+}
+
+.fuel-data-row.dual .fuel-data-row-value {
+  width: 102px;
+}
+
+.fuel-data-row .fuel-data-row-unit {
+  width: 68px;
+  text-align: start;
+  padding-top: 3px;
+}
+
+.fuel-data-row.single .fuel-data-row-unit {
+  position: relative;
+  left: -77px;
+}
+
+.fuel-controls-container {
+  width: 94%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+}
+
+.fuel-controls-container .fuel-control {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.fuel-control .fuel-control-label {
+  text-align: end;
+}
+
+.fuel-control .fuel-control-label.small {
+  font-size: 18px;
+}
+
+.fuel-control .fuel-control-button {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: 120px;
+  height: 34px;
+  padding: 2px;
+  margin-left: 5px;
+  background: #333333;
+  border-top: 2px solid #636363;
+  border-right: 2px solid #212121;
+  border-left: 2px solid #555555;
+  border-bottom: 2px solid #252525;
+  border-radius: 5px;
+  font-size: 22px;
+}
+
+.fuel-control .fuel-control-button.touch-button-highlight::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 3px solid var(--wtdyne-color-cyan);
+  border-radius: 5px;
+}
+
+.fuel-control-button .fuel-control-value {
+  flex-grow: 1;
+  text-align: center;
+  color: var(--wtdyne-color-white);
+}
+
+.fuel-control-button .fuel-control-unit {
+  font-size: 18px;
+  padding-right: 2px;
+}
+

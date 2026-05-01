@@ -7,6 +7,20 @@ import { APValues } from '../APValues';
  */
 export type APFPADirectorOptions = {
   /**
+   * The maximum absolute pitch up angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `null`.
+   */
+  maxPitchUpAngle?: number | null | (() => number | null);
+
+  /**
+   * The maximum absolute pitch down angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `null`.
+   */
+  maxPitchDownAngle?: number | null | (() => number | null);
+
+  /**
    * The maximum flight path angle, in degrees, supported by the director, or a function which returns it. If not
    * defined, then the director will not limit the FPA.
    */
@@ -15,7 +29,7 @@ export type APFPADirectorOptions = {
 
 /**
  * An autopilot director that generates flight director pitch commands to hold a flight path angle.
- * 
+ *
  * The director requires valid pitch, ground speed, and positional vertical speed data to arm or activate.
  */
 export class APFPADirector implements PlaneDirector {
@@ -32,8 +46,10 @@ export class APFPADirector implements PlaneDirector {
   public onDeactivate?: () => void;
 
   /** @inheritDoc */
-  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean) => void;
+  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number, maxNoseDownPitch?: number, maxNoseUpPitch?: number) => void;
 
+  private readonly maxPitchUpAngleFunc: () => number | undefined;
+  private readonly maxPitchDownAngleFunc: () => number | undefined;
   private readonly maxFpaFunc: () => number;
 
   private readonly pitch = this.apValues.dataProvider.getItem('pitch');
@@ -47,6 +63,9 @@ export class APFPADirector implements PlaneDirector {
    * @param options Options to configure the new director.
    */
   public constructor(private readonly apValues: APValues, options?: Readonly<APFPADirectorOptions>) {
+    this.maxPitchUpAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchUpAngle);
+    this.maxPitchDownAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchDownAngle);
+
     const maxFpaOpt = options?.maxFpa ?? undefined;
     switch (typeof maxFpaOpt) {
       case 'number':
@@ -60,6 +79,22 @@ export class APFPADirector implements PlaneDirector {
     }
 
     this.state = DirectorState.Inactive;
+  }
+
+  /**
+   * Creates a function that returns the maximum pitch angle limit defined by an option.
+   * @param option The option that defines the maximum pitch angle limit.
+   * @returns A function that returns the maximum pitch angle limit defined by the specified option.
+   */
+  private createMaxPitchAngleFunc(option: number | null | (() => number | null) = null): () => number | undefined {
+    switch (typeof option) {
+      case 'number':
+        return () => option;
+      case 'function':
+        return () => option() ?? undefined;
+      default:
+        return () => undefined;
+    }
   }
 
   /**
@@ -121,7 +156,14 @@ export class APFPADirector implements PlaneDirector {
     }
 
     const maxFpa = this.maxFpaFunc();
-    this.drivePitch && this.drivePitch(-MathUtils.clamp(this.apValues.selectedFlightPathAngle.get(), -maxFpa, maxFpa), true, true);
+    this.drivePitch && this.drivePitch(
+      -MathUtils.clamp(this.apValues.selectedFlightPathAngle.get(), -maxFpa, maxFpa),
+      true,
+      true,
+      undefined,
+      this.maxPitchDownAngleFunc(),
+      this.maxPitchUpAngleFunc()
+    );
   }
 
   /**

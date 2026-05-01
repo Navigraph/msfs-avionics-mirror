@@ -45,6 +45,7 @@ export enum NavDataFieldType {
   UtcTime = 'UTC',
   VerticalSpeedRequired = 'VSR',
   Waypoint = 'WPT',
+  WeatherAltimeter = 'WXALTIM',
   CrossTrack = 'XTK',
 }
 
@@ -165,6 +166,9 @@ export type NavDataFieldTypeModelMap = {
 
   /** Next waypoint ident. */
   [NavDataFieldType.Waypoint]: NavDataFieldModel<string>;
+
+  /** Altimeter setting at the nearest METAR reporting station. */
+  [NavDataFieldType.WeatherAltimeter]: NavDataFieldModel<NumberUnitInterface<UnitFamily.Pressure>>;
 
   /** Cross-track error. */
   [NavDataFieldType.CrossTrack]: NavDataFieldModel<NumberUnitInterface<UnitFamily.Distance>>;

@@ -1,0 +1,12 @@
+.svs-page .wt-ifd-altitude-container .wt-ifd-tape tspan.big-text {
+    font-size: 23px;
+    letter-spacing: -1px;
+}
+
+.svs-page .wt-ifd-altitude-container .wt-ifd-tape tspan.normal-text {
+    font-size: 20px;
+}
+
+.svs-page .wt-ifd-altitude-container .wt-ifd-tape tspan.small-text {
+    font-size: 10px;
+}

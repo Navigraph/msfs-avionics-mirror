@@ -117,7 +117,7 @@ export class MapSystemTrafficLayer extends MapLayer<MapSystemTrafficLayerProps> 
 
   private isInit = false;
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onVisibilityChanged(isVisible: boolean): void {
     if (!isVisible) {
       if (this.isInit) {
@@ -130,7 +130,7 @@ export class MapSystemTrafficLayer extends MapLayer<MapSystemTrafficLayerProps> 
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     this.iconLayerRef.instance.onAttached();
 
@@ -174,7 +174,21 @@ export class MapSystemTrafficLayer extends MapLayer<MapSystemTrafficLayerProps> 
     tcasSub.on('tcas_intruder_alert_changed').handle(this.onIntruderAlertLevelChanged.bind(this));
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.iconLayerRef.instance.onWake();
+
+    // We need to re-initialize canvas styles after waking up because the canvas context state is reset when the map
+    // goes to sleep (as a result of being collapsed).
+    this.initCanvasStyles();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.iconLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.iconLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
 
@@ -199,7 +213,7 @@ export class MapSystemTrafficLayer extends MapLayer<MapSystemTrafficLayerProps> 
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public onUpdated(time: number, elapsed: number): void {
     if (!this.isVisible()) {
@@ -300,10 +314,16 @@ export class MapSystemTrafficLayer extends MapLayer<MapSystemTrafficLayerProps> 
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
-      <MapSyncedCanvasLayer ref={this.iconLayerRef} model={this.props.model} mapProjection={this.props.mapProjection} class={this.props.class ?? ''} />
+      <MapSyncedCanvasLayer
+        ref={this.iconLayerRef}
+        model={this.props.model}
+        mapProjection={this.props.mapProjection}
+        collapseOnSleep
+        class={this.props.class ?? ''}
+      />
     );
   }
 }

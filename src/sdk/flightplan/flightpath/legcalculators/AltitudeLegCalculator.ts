@@ -51,6 +51,7 @@ export abstract class AltitudeLegCalculator extends AbstractFlightPathLegCalcula
    * @param leg The flight plan leg for which the vector is to be built.
    * @param isActiveLeg Whether the vector is to be built for the active flight plan leg.
    * @param state The current flight path state.
+   * @param options Options to use for the leg calculations.
    * @param path A GeoCircle that defines the path of the vector to build.
    * @param start The start point of the vector to build.
    * @param flags The flags to set on the vector.
@@ -67,6 +68,7 @@ export abstract class AltitudeLegCalculator extends AbstractFlightPathLegCalcula
     leg: LegDefinition,
     isActiveLeg: boolean,
     state: FlightPathState,
+    options: Readonly<FlightPathLegCalculationOptions>,
     path: GeoCircle,
     start: ReadonlyFloat64Array,
     flags: number,
@@ -79,7 +81,9 @@ export abstract class AltitudeLegCalculator extends AbstractFlightPathLegCalcula
       UnitType.GA_RADIAN
     );
 
-    const climbStartVec = isActiveLeg && state.planePosition.isValid() ? path.closest(state.planePosition, this.__vec3Cache[0]) : start;
+    const climbStartVec = !options.disableCalculateFromPpos && isActiveLeg && state.planePosition.isValid()
+      ? path.closest(state.planePosition, this.__vec3Cache[0])
+      : start;
     const originToClimbStartDistance = MathUtils.normalizeAngle(path.distanceAlong(start, climbStartVec, Math.PI, GeoMath.ANGULAR_TOLERANCE), -Math.PI);
 
     // TODO: make minimum distance configurable
@@ -440,6 +444,7 @@ export class CourseToAltitudeLegCalculator extends AltitudeLegCalculator {
       vectors, vectorIndex,
       calculateIndex, leg, isActiveLeg,
       state,
+      options,
       finalPath, originVec,
       state.isFallback ? FlightPathVectorFlags.Fallback : 0
     );
@@ -542,6 +547,7 @@ export class FixToAltitudeLegCalculator extends AltitudeLegCalculator {
       vectors, vectorIndex,
       calculateIndex, leg, isActiveLeg,
       state,
+      options,
       finalPath, originVec,
       state.isFallback ? FlightPathVectorFlags.Fallback : 0
     );
@@ -579,14 +585,15 @@ export class HeadingToAltitudeLegCalculator extends AltitudeLegCalculator {
     legs: LegDefinition[],
     calculateIndex: number,
     activeLegIndex: number,
-    state: FlightPathState
+    state: FlightPathState,
+    options: Readonly<FlightPathLegCalculationOptions>
   ): void {
     const leg = legs[calculateIndex];
 
     let magVar = this.getMagVarFromIcao(leg.leg.originIcaoStruct);
     if (magVar === undefined) {
       let position: LatLonInterface | undefined;
-      if (calculateIndex === activeLegIndex && state.planePosition.isValid()) {
+      if (!options.disableCalculateFromPpos && calculateIndex === activeLegIndex && state.planePosition.isValid()) {
         position = state.planePosition;
       } else if (!state.isDiscontinuity && state.currentPosition.isValid()) {
         position = state.currentPosition;
@@ -605,7 +612,8 @@ export class HeadingToAltitudeLegCalculator extends AltitudeLegCalculator {
     legs: LegDefinition[],
     calculateIndex: number,
     activeLegIndex: number,
-    state: FlightPathState
+    state: FlightPathState,
+    options: Readonly<FlightPathLegCalculationOptions>
   ): void {
     const leg = legs[calculateIndex];
     const vectors = leg.calculated!.flightPath;
@@ -630,7 +638,7 @@ export class HeadingToAltitudeLegCalculator extends AltitudeLegCalculator {
     let retainOldVectors = false;
 
     const isActiveLeg = calculateIndex === activeLegIndex;
-    if (isActiveLeg && state.planePosition.isValid()) {
+    if (!options.disableCalculateFromPpos && isActiveLeg && state.planePosition.isValid()) {
       // If the leg to calculate is the active leg and we know the airplane's current position, then we should start
       // the leg path at the airplane's current position. The exception to this is if vectors have been previously
       // calculated and include an initial turn and the airplane's current position puts it within a certain
@@ -717,6 +725,7 @@ export class HeadingToAltitudeLegCalculator extends AltitudeLegCalculator {
       vectors, vectorIndex,
       calculateIndex, leg, isActiveLeg,
       state,
+      options,
       finalPath, originVec,
       FlightPathVectorFlags.ConstantHeading,
       leg.leg.course, leg.leg.trueDegrees

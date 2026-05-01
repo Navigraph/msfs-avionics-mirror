@@ -22,6 +22,8 @@ export interface MapWaypointHighlightLayerProps extends MapLayerProps<MapWaypoin
 
 /**
  * The map layer showing highlighted waypoints.
+ * @deprecated It is now recommended to use the combination of `MapWaypointHighlightRenderController` and a plain
+ * `MapSyncedCanvasLayer` to display highlighted waypoints.
  */
 export class MapWaypointHighlightLayer extends MapSyncedCanvasLayer<MapWaypointHighlightLayerProps> {
   private registeredWaypoint: Waypoint | null = null;

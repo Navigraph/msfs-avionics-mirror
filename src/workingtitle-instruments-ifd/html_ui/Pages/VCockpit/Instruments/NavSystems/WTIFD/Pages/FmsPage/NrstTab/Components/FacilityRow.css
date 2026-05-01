@@ -1,0 +1,144 @@
+.facility-row {
+  display: grid;
+  grid-template-columns: 82px 85px 240px 10px;
+  grid-row-gap: 3px;
+
+  padding: 5px 6px 4px 6px;
+  background: #333333;
+  border-top: 2px solid rgba(255, 255, 255, 0.2);
+  border-right: 2px solid rgba(0, 0, 0, 0.2);
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  color: white;
+  height: 55px;
+}
+
+.facility-row.fpl-airport {
+  background-color: var(--leg-block-blue-3);
+}
+
+.facility-row.active-waypoint {
+  background: var(--leg-block-magenta);
+}
+
+.facility-row p,
+.facility-row span {
+  font-size: 20px;
+  font-family: "Arial Bold", sans-serif;
+}
+
+.facility-ident {
+  margin-left: -2px;
+}
+
+.facility-freq {
+  width: 82px;
+  height: 24px;
+
+  margin-left: -4px;
+  margin-top: 0;
+
+  padding-left: 2px;
+}
+
+.facility-name {
+  color: var(--wtdyne-color-light-cyan);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.facility-dist,
+.facility-hdg {
+  text-align: right;
+  padding-right: 8px;
+}
+
+.facility-dist-unit {
+  font-size: 16px;
+  font-family: "Arial", sans-serif;
+}
+
+.no-metar {
+  visibility: hidden;
+}
+
+.facility-info-icon,
+.facility-chart-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  margin-top: -3px;
+}
+
+.facility-info-icon {
+  margin-left: 65px;
+}
+
+.facility-info-icon img,
+.facility-chart-icon img {
+  margin-left: 4px;
+  margin-top: 4px;
+}
+
+.facility-row.facility-row-selected {
+  border-color: var(--wtdyne-color-cyan);
+  background: #00254a;
+}
+
+.facility-row-selected .facility-info-icon,
+.facility-row-selected .facility-chart-icon {
+  background-color: var(--wtdyne-color-black);
+}
+
+.facility-row-selected.facility-info-selected .facility-info-icon,
+.facility-row-selected.facility-chart-selected .facility-chart-icon {
+  border-radius: 3px;
+  border: solid 2px var(--wtdyne-color-cyan);
+}
+
+.facility-row-selected.facility-info-selected .facility-info-icon img,
+.facility-row-selected.facility-chart-selected .facility-chart-icon img {
+  margin-left: 2px;
+  margin-top: 0;
+  margin-bottom: 1px;
+}
+
+.facility-row-selected.facility-freq-selected .facility-freq {
+  margin-left: -6px;
+  margin-top: -2px;
+
+  border-radius: 3px;
+  border: solid 2px var(--wtdyne-color-cyan);
+  background-color: var(--wtdyne-color-black);
+}
+
+/* Handle Narrow Sidebar */
+.ifd-sidebar-sidebar .facility-row p,
+.ifd-sidebar-sidebar .facility-row span {
+  font-size: 16px;
+  font-family: "Arial Bold", sans-serif;
+}
+
+.ifd-sidebar-sidebar .facility-row {
+  grid-template-columns: 58px 56px;
+  grid-row-gap: 10px;
+}
+
+.ifd-sidebar-sidebar .facility-row .facility-name,
+.ifd-sidebar-sidebar .facility-row .facility-metar-icon,
+.ifd-sidebar-sidebar .facility-row .facility-info-icon {
+  display: none;
+}
+
+.ifd-sidebar-sidebar .facility-row .facility-freq {
+  width: 73px
+}
+
+.ifd-sidebar-sidebar .facility-row .facility-dist-unit {
+  font-size: 13px;
+}
+
+.ifd-sidebar-sidebar .facility-row .facility-hdg {
+  margin-left: 16px;
+}

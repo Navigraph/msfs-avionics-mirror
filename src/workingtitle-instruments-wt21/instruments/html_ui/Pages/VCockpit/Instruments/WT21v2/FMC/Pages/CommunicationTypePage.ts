@@ -1,43 +1,101 @@
-import { FacilityFrequency, FacilityFrequencyType, FmcRenderTemplate, FmcRenderTemplateRow, ICAO, PageLinkField } from '@microsoft/msfs-sdk';
+import { FacilityFrequency, FacilityFrequencyType, FmcRenderTemplate, FmcRenderTemplateRow, PageLinkField, RadioUtils } from '@microsoft/msfs-sdk';
 
 import { WT21FmsUtils } from '@microsoft/msfs-wt21-shared';
 
 import { FmcSelectKeysEvent } from '../FmcEvent';
 import { WT21FmcPage } from '../WT21FmcPage';
 
-const NUM_FREQUENCY_ROWS = 10;
+/**
+ * Props for {@link CommunicationTypePage}
+ */
+export interface CommunicationTypePageProps {
+  /** The airport ident */
+  airportIdent: string;
+
+  /** The frequencies to display */
+  frequencies: readonly FacilityFrequency[];
+}
 
 /**
  * Page for `<MULTIPLE` links in the FREQUENCY DATA page
  */
-export class CommunicationTypePage extends WT21FmcPage {
+export class CommunicationTypePage extends WT21FmcPage<CommunicationTypePageProps> {
+  private static readonly NUM_FREQUENCY_ROWS = 10;
+
+  public static readonly MAX_FREQUENCIES_LISTED = 8;
+
   private frequencyTable: number[] = [];
 
   private readonly FrequencyPageLink = PageLinkField.createLink(this, '<FREQUENCY', '/freq');
 
   /** @inheritDoc */
   render(): FmcRenderTemplate[] {
-    const airportIdent = this.params.get('airportIdent') as string;
-    const frequencies = this.params.get('frequencies') as FacilityFrequency[];
+    const airportIdent = this.props.airportIdent;
 
-    const header = WT21FmsUtils.formatFacilityFrequencyType(frequencies[0], 'ILS/LOC');
+    const sortedFrequencies = [...this.props.frequencies].sort(CommunicationTypePage.sortFrequencies);
+    sortedFrequencies.length = Math.min(sortedFrequencies.length, CommunicationTypePage.MAX_FREQUENCIES_LISTED);
 
-    const numPages = Math.ceil(frequencies.length / 5);
+    const header = WT21FmsUtils.formatFacilityFrequencyType(sortedFrequencies[0], 'ILS/LOC');
+
+    const numPages = Math.ceil(sortedFrequencies.length / 5);
 
     const pages = [];
 
     for (let i = 0; i < numPages; i++) {
       pages.push(
         [
-          [`${airportIdent}[blue]`, this.PagingIndicator, `${header}[blue]`],
-          ...this.renderFrequencyRows(frequencies, i),
-          ['', '', '------------------------[blue]'],
+          [`${airportIdent}   ${header}[blue]`, this.PagingIndicator],
+          ...this.renderFrequencyRows(sortedFrequencies, i),
+          ['------------------------[blue]'],
           [this.FrequencyPageLink, ''],
         ],
       );
     }
 
     return pages;
+  }
+
+  /**
+   * Sorts two frequencies according to COM frequency sorting rules:
+   * 8.33 KHz spaced frequencies, then 25 KHz spaced frequencies, then HF frequencies, then UHF frequencies
+   * @param a the first frequency
+   * @param b the second frequency
+   * @returns a negative number if `a` should come before `b`, a positive number if `b` should come before `a`, or
+   * zero if they are equivalent
+   */
+  private static sortFrequencies(a: FacilityFrequency, b: FacilityFrequency): number {
+    // Sort frequencies as: 8.33 KHz spaced, 25 KHz spaced, HF then UHF
+    const aIs833 = RadioUtils.isCom833Frequency(a.freqMHz);
+    const bIs833 = RadioUtils.isCom833Frequency(b.freqMHz);
+
+    // 8.33 KHz before 25 KHz
+    if (aIs833 && !bIs833) {
+      return -1;
+    } else if (!aIs833 && bIs833) {
+      return 1;
+    }
+
+    const aIs25 = RadioUtils.isCom25Frequency(a.freqMHz);
+    const bIs25 = RadioUtils.isCom25Frequency(b.freqMHz);
+
+    // 25 KHz before HF/UHF
+    if (aIs25 && !bIs25) {
+      return -1;
+    } else if (!aIs25 && bIs25) {
+      return 1;
+    }
+
+    const aIsUhf = RadioUtils.isComUhfFrequency(a.freqMHz);
+    const bIsUhf = RadioUtils.isComUhfFrequency(b.freqMHz);
+
+    // HF before UHF
+    if (!aIsUhf && bIsUhf) {
+      return -1;
+    } else if (aIsUhf && !bIsUhf) {
+      return 1;
+    }
+
+    return a.freqMHz - b.freqMHz;
   }
 
   /**
@@ -60,7 +118,7 @@ export class CommunicationTypePage extends WT21FmcPage {
     const start = pageIndex * 5;
     const end = start + 5;
 
-    for (let i = start; i < end && i < frequencies.length && rows.length < NUM_FREQUENCY_ROWS; i++) {
+    for (let i = start; i < end && i < frequencies.length && rows.length < CommunicationTypePage.NUM_FREQUENCY_ROWS; i++) {
       const frequency = frequencies[i];
 
       let title = '';
@@ -68,7 +126,7 @@ export class CommunicationTypePage extends WT21FmcPage {
         const runway = frequency.name.match(/.*RW(\d{2}[LRCT]?).*/)?.[1];
 
         if (runway) {
-          const ident = ICAO.getIdent(frequency.icao);
+          const ident = frequency.icaoStruct.ident;
 
           title = `LOC RW${runway} ${ident}`;
         }
@@ -84,7 +142,7 @@ export class CommunicationTypePage extends WT21FmcPage {
       }
     }
 
-    for (let i = rows.length; i < NUM_FREQUENCY_ROWS; i++) {
+    for (let i = rows.length; i < CommunicationTypePage.NUM_FREQUENCY_ROWS; i++) {
       rows.push(['']);
     }
 

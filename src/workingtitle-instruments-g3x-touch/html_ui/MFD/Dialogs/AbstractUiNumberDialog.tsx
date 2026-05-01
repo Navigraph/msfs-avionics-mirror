@@ -4,6 +4,7 @@ import { NumberInput } from '../../Shared/Components/NumberInput/NumberInput';
 import { NumberPad } from '../../Shared/Components/NumberPad/NumberPad';
 import { ImgTouchButton } from '../../Shared/Components/TouchButton/ImgTouchButton';
 import { UiImgTouchButton } from '../../Shared/Components/TouchButton/UiImgTouchButton';
+import { UiMessageDialog } from '../../Shared/Dialogs/UiMessageDialog';
 import { G3XTouchFilePaths } from '../../Shared/G3XTouchFilePaths';
 import { AbstractUiView } from '../../Shared/UiSystem/AbstractUiView';
 import { UiDialogResult, UiDialogView } from '../../Shared/UiSystem/UiDialogView';
@@ -11,7 +12,6 @@ import { UiInteractionEvent } from '../../Shared/UiSystem/UiInteraction';
 import { UiViewProps } from '../../Shared/UiSystem/UiView';
 import { UiViewKeys } from '../../Shared/UiSystem/UiViewKeys';
 import { UiViewStackLayer } from '../../Shared/UiSystem/UiViewTypes';
-import { UiMessageDialog } from './UiMessageDialog';
 
 import './AbstractUiNumberDialog.css';
 

@@ -3,14 +3,15 @@ import { ArraySubject, FSComponent, LegDefinition, NodeReference, Subject, Subsc
 import { DynamicListData } from '@microsoft/msfs-garminsdk';
 
 import { FmsFlightPlanningConfig } from '../../../../../Shared/AvionicsConfig/FmsConfig';
+import { UnitsConfig } from '../../../../../Shared/AvionicsConfig/UnitsConfig';
 import { UiList } from '../../../../../Shared/Components/List/UiList';
 import { UiListFocusable } from '../../../../../Shared/Components/List/UiListFocusable';
 import { UiValueTouchButton } from '../../../../../Shared/Components/TouchButton/UiValueTouchButton';
+import { ActiveFlightPlanDataArray } from '../../../../../Shared/FlightPlan/ActiveFlightPlanDataArray';
 import { DefaultFlightPlanDataFieldCalculatorRepo } from '../../../../../Shared/FlightPlan/DefaultFlightPlanDataFieldCalculatorRepo';
 import { DefaultFlightPlanDataFieldFactory } from '../../../../../Shared/FlightPlan/DefaultFlightPlanDataFieldFactory';
 import { FlightPlanDataField, FlightPlanDataFieldType } from '../../../../../Shared/FlightPlan/FlightPlanDataField';
 import { FlightPlanDataItemType, FlightPlanLegDataItem } from '../../../../../Shared/FlightPlan/FlightPlanDataItem';
-import { ActiveFlightPlanDataArray } from '../../../../../Shared/FlightPlan/ActiveFlightPlanDataArray';
 import { G3XFms } from '../../../../../Shared/FlightPlan/G3XFms';
 import { G3XFplSourceDataProvider } from '../../../../../Shared/FlightPlan/G3XFplSourceDataProvider';
 import { G3XExternalFplSourceIndex, G3XFplSource } from '../../../../../Shared/FlightPlan/G3XFplSourceTypes';
@@ -39,6 +40,9 @@ export interface MfdFplPageDataFieldSelectDialogProps extends UiViewProps {
 
   /** A configuration object defining options for flight planning. */
   flightPlanningConfig: FmsFlightPlanningConfig;
+
+  /** A configuration object defining options for measurement units. */
+  unitsConfig: UnitsConfig;
 }
 
 /**
@@ -91,9 +95,8 @@ export class MfdFplPageDataFieldSelectDialog extends AbstractUiView<MfdFplPageDa
     [FlightPlanDataFieldType.LegDistance]: 'Leg\nDistance',
     [FlightPlanDataFieldType.LegEte]: 'Leg\nETE',
     [FlightPlanDataFieldType.LegFuel]: 'Leg\nFuel',
-    // TODO: Disabling these until the calculations are implemented.
-    // [FlightPlanDataFieldType.Sunrise]: 'Sunrise\nAt Waypoint',
-    // [FlightPlanDataFieldType.Sunset]: 'Sunset\nAt Waypoint'
+    [FlightPlanDataFieldType.Sunrise]: 'Sunrise\nAt Waypoint',
+    [FlightPlanDataFieldType.Sunset]: 'Sunset\nAt Waypoint',
   };
 
   private readonly listRef = FSComponent.createRef<UiList<any>>();
@@ -144,6 +147,7 @@ export class MfdFplPageDataFieldSelectDialog extends AbstractUiView<MfdFplPageDa
     this.fplCalculationSettingManager.getSetting('fplSpeed'),
     this.fplCalculationSettingManager.getSetting('fplFuelFlow'),
     {
+      fuelType: this.props.unitsConfig.fuelType,
       supportSensedFuelFlow: this.props.flightPlanningConfig.supportSensedFuelFlow,
       fuelOnBoardType: this.props.flightPlanningConfig.fuelOnBoardType
     }

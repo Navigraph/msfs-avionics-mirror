@@ -3,10 +3,10 @@ import {
   UserFacilityUtils,
 } from '@microsoft/msfs-sdk';
 
-import { WTLineFms } from '../fms/WTLineFms';
 import { CoordinatesInput, WTLineCoordinatesUtils } from '../fms/WTLineCoordinatesUtils';
+import { WTLineFms } from '../fms/WTLineFms';
+import { FlightPlanIndexTypes, WTLineLegacyFlightPlanIndexTypes, WTLineLegacyFlightPlans } from '../fms/WTLineFmsTypes';
 import { WTLineFacilityUtils } from './WTLineFacilityUtils';
-import { FlightPlanIndexTypes, WTLineLegacyFlightPlanIndexTypes, WTLineLegacyFlightPlans } from '../fms';
 
 export const PBD_REGEX = /^(\w+) ?(\d{3}(?:\.\d)?)\/(\d{1,3}(?:\.\d)?)(?:\/(\w+))?$/;
 
@@ -174,7 +174,7 @@ export enum PilotWaypointError {
  * Utilities for WT21 pilot defined waypoints
  */
 export class WTLinePilotWaypointUtils {
-  private static readonly geoPointCache = [new GeoPoint(0, 0)];
+  private static readonly MAX_PILOT_WAYPOINTS = 512;
 
   /**
    * Returns whether the limit number of pilot defined waypoints is reached
@@ -184,7 +184,7 @@ export class WTLinePilotWaypointUtils {
    * @returns a boolean
    */
   public static isLimitReached(facilities: readonly FacilityWaypoint<UserFacility>[]): boolean {
-    return facilities.length >= 100;
+    return facilities.length >= WTLinePilotWaypointUtils.MAX_PILOT_WAYPOINTS;
   }
 
   /**

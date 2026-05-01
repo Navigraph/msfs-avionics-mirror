@@ -1,6 +1,6 @@
 {
   "name": "workingtitle-instruments-wt21",
-  "version": "3.2.8",
+  "version": "3.2.13",
   "description": "Working Title MSFS WT21",
   "main": "index.ts",
   "types": "./index.d.ts",
@@ -12,7 +12,9 @@
     "build:copies:extras": "robocopy html_ui *.svg *.png *.html *.ttf dist/workingtitle-instruments-wt21-v2/html_ui /s",
     "build:copies:msfssdk": "xcopy node_modules\\@microsoft\\msfs-sdk\\msfssdk-iife.js dist\\workingtitle-instruments-wt21-v2\\html_ui\\Pages\\VCockpit\\Instruments\\WT21v2\\Libraries\\msfssdk.js /Y /-I",
     "build:copies:wtlinesdk": "xcopy node_modules\\@microsoft\\msfs-wtlinesdk\\wtlinesdk-iife.js dist\\workingtitle-instruments-wt21-v2\\html_ui\\Pages\\VCockpit\\Instruments\\WT21v2\\Libraries\\wtlinesdk.js /Y /-I",
-    "build:copies:shared": "xcopy node_modules\\@microsoft\\msfs-wt21-shared\\wt21shared.js dist\\workingtitle-instruments-wt21-v2\\html_ui\\Pages\\VCockpit\\Instruments\\WT21v2\\Libraries\\wt21shared.js /Y /-I"
+    "build:copies:shared": "npm run build:copies:shared:js & npm run build:copies:shared:css",
+    "build:copies:shared:js": "xcopy node_modules\\@microsoft\\msfs-wt21-shared\\wt21shared.js dist\\workingtitle-instruments-wt21-v2\\html_ui\\Pages\\VCockpit\\Instruments\\WT21v2\\Libraries\\wt21shared.js /Y /-I",
+    "build:copies:shared:css": "xcopy node_modules\\@microsoft\\msfs-wt21-shared\\wt21shared.css dist\\workingtitle-instruments-wt21-v2\\html_ui\\Pages\\VCockpit\\Instruments\\WT21v2\\Libraries\\wt21shared.css /Y /-I"
   },
   "repository": {
     "type": "git",
@@ -21,11 +23,11 @@
   "author": "Working Title Simulations, LLC",
   "license": "Modified MIT",
   "devDependencies": {
-    "@microsoft/msfs-sdk": "2.3.3",
+    "@microsoft/msfs-sdk": "2.4.3",
     "@microsoft/msfs-ts-transformer": "^1.0.0",
     "@microsoft/msfs-types": "1.14.6",
-    "@microsoft/msfs-wtlinesdk": "0.1.0-dev.5",
-    "@microsoft/msfs-wt21-shared": "../shared/dist/msfs-wt21-shared-3.2.8.tgz",
+    "@microsoft/msfs-wtlinesdk": "0.1.0-dev.7",
+    "@microsoft/msfs-wt21-shared": "../shared/dist/msfs-wt21-shared-3.2.13.tgz",
     "@rollup/plugin-image": "^3.0.2",
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@types/node": "^18.11.18",

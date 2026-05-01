@@ -32,6 +32,20 @@ export type APGPDirectorGuidance = {
  */
 export type APGPDirectorOptions = {
   /**
+   * The maximum absolute pitch up angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `null`.
+   */
+  maxPitchUpAngle?: number | null | (() => number | null);
+
+  /**
+   * The maximum absolute pitch down angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `null`.
+   */
+  maxPitchDownAngle?: number | null | (() => number | null);
+
+  /**
    * The guidance for the director to use. If not defined, then the director will source guidance data from VNAV
    * SimVars at the index defined by `vnavIndex`.
    */
@@ -77,7 +91,7 @@ export type APGPDirectorOptions = {
 
 /**
  * An autopilot director that generates flight director pitch commands to track a glidepath.
- * 
+ *
  * The director requires valid pitch data to arm or activate.
  */
 export class APGPDirector implements PlaneDirector {
@@ -94,7 +108,10 @@ export class APGPDirector implements PlaneDirector {
   public onDeactivate?: () => void;
 
   /** @inheritDoc */
-  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean) => void;
+  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number, maxNoseDownPitch?: number, maxNoseUpPitch?: number) => void;
+
+  private readonly maxPitchUpAngleFunc: () => number | undefined;
+  private readonly maxPitchDownAngleFunc: () => number | undefined;
 
   private readonly guidance?: Accessible<Readonly<APGPDirectorGuidance>>;
 
@@ -125,6 +142,9 @@ export class APGPDirector implements PlaneDirector {
     private readonly apValues: APValues,
     options?: Readonly<APGPDirectorOptions>
   ) {
+    this.maxPitchUpAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchUpAngle);
+    this.maxPitchDownAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchDownAngle);
+
     if (options?.guidance) {
       this.guidance = options.guidance;
 
@@ -160,6 +180,22 @@ export class APGPDirector implements PlaneDirector {
         this.deactivate();
       }
     });
+  }
+
+  /**
+   * Creates a function that returns the maximum pitch angle limit defined by an option.
+   * @param option The option that defines the maximum pitch angle limit.
+   * @returns A function that returns the maximum pitch angle limit defined by the specified option.
+   */
+  private createMaxPitchAngleFunc(option: number | null | (() => number | null) = null): () => number | undefined {
+    switch (typeof option) {
+      case 'number':
+        return () => option;
+      case 'function':
+        return () => option() ?? undefined;
+      default:
+        return () => undefined;
+    }
   }
 
   /**
@@ -263,7 +299,7 @@ export class APGPDirector implements PlaneDirector {
 
       const groundSpeed = this.groundSpeed.getActualValue();
       const fpaPercentage = Math.max(deviation / (VNavUtils.getPathErrorDistance(groundSpeed) * -1), -1) + 1;
-      this.drivePitch && this.drivePitch(fpa * fpaPercentage, true, true);
+      this.drivePitch && this.drivePitch(fpa * fpaPercentage, true, true, undefined, this.maxPitchDownAngleFunc(), this.maxPitchUpAngleFunc());
     }
   }
 

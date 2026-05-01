@@ -41,6 +41,7 @@ import { WaypointInfoInfo } from './WaypointInfoInfo';
 import { WaypointInfoContentMode } from './WaypointInfoTypes';
 
 import './WaypointInfo.css';
+import { WaypointInfoAirportWeatherProvider } from './WaypointInfoAirportWeatherProvider';
 
 /**
  * Component props for {@link WaypointInfo}.
@@ -142,6 +143,8 @@ export class WaypointInfo extends DisplayComponent<WaypointInfoProps> implements
 
   private readonly selectedWaypoint = this.props.selectedWaypoint ?? Subject.create<FacilityWaypoint | null>(null);
   private readonly waypointInfoStore = new WaypointInfoStore(this.selectedWaypoint, this.ppos);
+
+  private readonly airportWeatherProvider = new WaypointInfoAirportWeatherProvider(this.props.facLoader, this.waypointInfoStore.facility);
 
   private readonly contentMode = this.waypointInfoStore.facility.map(facility => {
     if (!facility) {
@@ -297,6 +300,7 @@ export class WaypointInfo extends DisplayComponent<WaypointInfoProps> implements
 
     this.pposPipe.resume(true);
 
+    this.airportWeatherProvider.resume();
     this.chartDisplayDataProvider.resume();
   }
 
@@ -306,6 +310,7 @@ export class WaypointInfo extends DisplayComponent<WaypointInfoProps> implements
   public onClose(): void {
     this.pposPipe.pause();
 
+    this.airportWeatherProvider.pause();
     this.chartDisplayDataProvider.pause();
 
     this.updateTabsVisSub.pause();
@@ -760,6 +765,7 @@ export class WaypointInfo extends DisplayComponent<WaypointInfoProps> implements
               allowKnobPush={this.allowTabKnobPush}
               facLoader={this.props.facLoader}
               waypointInfo={this.waypointInfoStore}
+              airportWeatherProvider={this.airportWeatherProvider}
               tabContentDimensions={this.tabContentDimensions}
               mapBingId={this.props.runwayTabMapBingId}
               gduSettingManager={this.props.gduSettingManager}
@@ -783,7 +789,7 @@ export class WaypointInfo extends DisplayComponent<WaypointInfoProps> implements
               }}
               uiService={this.props.uiService}
               facLoader={this.props.facLoader}
-              waypointInfo={this.waypointInfoStore}
+              airportWeatherProvider={this.airportWeatherProvider}
               tabContentDimensions={this.tabContentDimensions}
               comRadioSpacingDataProvider={this.props.comRadioSpacingDataProvider}
               dateTimeSettingManager={this.props.dateTimeSettingManager}
@@ -882,6 +888,8 @@ export class WaypointInfo extends DisplayComponent<WaypointInfoProps> implements
   /** @inheritDoc */
   public destroy(): void {
     this.thisNode && FSComponent.shallowDestroy(this.thisNode);
+
+    this.airportWeatherProvider.destroy();
 
     this.chartsSelectionManager.destroy();
     this.chartDisplayDataProvider.destroy();

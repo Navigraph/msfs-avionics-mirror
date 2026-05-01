@@ -6,11 +6,11 @@ import { GtcImgTouchButton } from '../../Components/TouchButton/GtcImgTouchButto
 import { GtcUserWaypointDialog } from '../../Dialog/GtcUserWaypointDialog';
 import { GtcView } from '../../GtcService/GtcView';
 import { GtcViewKeys } from '../../GtcService/GtcViewKeys';
-import { GtcAirportInfoPage } from './GtcAirportInfoPage';
-import { GtcIntersectionInfoPage } from './GtcIntersectionInfoPage';
-import { GtcNdbInfoPage } from './GtcNdbInfoPage';
-import { GtcUserWaypointInfoPage } from './GtcUserWaypointInfoPage';
-import { GtcVorInfoPage } from './GtcVorInfoPage';
+import { GtcAirportInfoPage2 } from './GtcAirportInfoPage2';
+import { GtcIntersectionInfoPage2 } from './GtcIntersectionInfoPage2';
+import { GtcNdbInfoPage2 } from './GtcNdbInfoPage2';
+import { GtcUserWaypointInfoPage2 } from './GtcUserWaypointInfoPage2';
+import { GtcVorInfoPage2 } from './GtcVorInfoPage2';
 
 import '../../Components/TouchButton/GtcDirectoryButton.css';
 import './GtcWaypointInfoDirectoryPage.css';
@@ -36,19 +36,19 @@ export class GtcWaypointInfoDirectoryPage extends GtcView {
           <GtcImgTouchButton
             label='Airport'
             imgSrc={`${G3000FilePaths.ASSETS_PATH}/Images/GTC/icon_small_airport.png`}
-            onPressed={(): void => { this.props.gtcService.changePageTo<GtcAirportInfoPage>(GtcViewKeys.AirportInfo).ref.initSelection(); }}
+            onPressed={(): void => { this.props.gtcService.changePageTo<GtcAirportInfoPage2>(GtcViewKeys.AirportInfo).ref.initSelection(); }}
             class='gtc-directory-button'
           />
           <GtcImgTouchButton
             label='INT'
             imgSrc={`${G3000FilePaths.ASSETS_PATH}/Images/GTC/icon_small_intersection.png`}
-            onPressed={(): void => { this.props.gtcService.changePageTo<GtcIntersectionInfoPage>(GtcViewKeys.IntersectionInfo).ref.initSelection(); }}
+            onPressed={(): void => { this.props.gtcService.changePageTo<GtcIntersectionInfoPage2>(GtcViewKeys.IntersectionInfo).ref.initSelection(); }}
             class='gtc-directory-button'
           />
           <GtcImgTouchButton
             label='VOR'
             imgSrc={`${G3000FilePaths.ASSETS_PATH}/Images/GTC/icon_small_vor.png`}
-            onPressed={(): void => { this.props.gtcService.changePageTo<GtcVorInfoPage>(GtcViewKeys.VorInfo).ref.initSelection(); }}
+            onPressed={(): void => { this.props.gtcService.changePageTo<GtcVorInfoPage2>(GtcViewKeys.VorInfo).ref.initSelection(); }}
             class='gtc-directory-button'
           />
         </div>
@@ -56,13 +56,13 @@ export class GtcWaypointInfoDirectoryPage extends GtcView {
           <GtcImgTouchButton
             label='NDB'
             imgSrc={`${G3000FilePaths.ASSETS_PATH}/Images/GTC/icon_small_ndb.png`}
-            onPressed={(): void => { this.props.gtcService.changePageTo<GtcNdbInfoPage>(GtcViewKeys.NdbInfo).ref.initSelection(); }}
+            onPressed={(): void => { this.props.gtcService.changePageTo<GtcNdbInfoPage2>(GtcViewKeys.NdbInfo).ref.initSelection(); }}
             class='gtc-directory-button'
           />
           <GtcImgTouchButton
             label='User<br>Waypoint'
             imgSrc={`${G3000FilePaths.ASSETS_PATH}/Images/GTC/icon_small_user.png`}
-            onPressed={(): void => { this.props.gtcService.changePageTo<GtcUserWaypointInfoPage>(GtcViewKeys.UserWaypointInfo).ref.initSelection(); }}
+            onPressed={(): void => { this.props.gtcService.changePageTo<GtcUserWaypointInfoPage2>(GtcViewKeys.UserWaypointInfo).ref.initSelection(); }}
             class='gtc-directory-button'
           />
         </div>

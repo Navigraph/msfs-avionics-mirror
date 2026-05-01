@@ -39,11 +39,11 @@ export interface DataBarFieldSelectDialogProps extends UiViewProps {
  */
 export class DataBarFieldSelectDialog extends AbstractUiView<DataBarFieldSelectDialogProps> implements UiDialogView<DataBarFieldSelectDialogInput, NavDataFieldType> {
   private static readonly FIELD_LABELS: Partial<Record<NavDataFieldType, string>> = {
-    [NavDataFieldType.BearingToWaypoint]: 'Bearing\nto Waypoint', // TODO: Need to confirm wording
-    [NavDataFieldType.CabinAltitude]: 'Cabin\nAltitude', // TODO: Need to confirm wording
+    [NavDataFieldType.BearingToWaypoint]: 'Bearing', // TODO: Need to confirm wording
+    [NavDataFieldType.CabinAltitude]: 'Cabin Altitude', // TODO: Need to confirm wording
     [NavDataFieldType.ClimbGradient]: 'Climb Gradient', // TODO: Need to confirm wording
     [NavDataFieldType.ClimbGradientPerDistance]: 'Climb Gradient\n(ALT/NM)', // TODO: Need to confirm wording
-    [NavDataFieldType.CrossTrack]: 'Cross Track\nError', // TODO: Need to confirm wording
+    [NavDataFieldType.CrossTrack]: 'Crosstrack\nError', // TODO: Need to confirm wording
     [NavDataFieldType.DensityAltitude]: 'Density\nAltitude',
     [NavDataFieldType.DesiredTrack]: 'Desired\nTrack',
     [NavDataFieldType.DistanceToDestination]: 'Distance\n(Destination)',
@@ -70,8 +70,9 @@ export class DataBarFieldSelectDialog extends AbstractUiView<DataBarFieldSelectD
     [NavDataFieldType.TimeToWaypoint]: 'Time En Route\n(Next Waypoint)',
     [NavDataFieldType.TimeOfDestinationArrival]: 'Time of Arrival\n(Destination)',
     [NavDataFieldType.TimeOfWaypointArrival]: 'Time of Arrival\n(Next Waypoint)',
-    [NavDataFieldType.LocalTime]: 'Time of Day\n(Local)', // TODO: Need to confirm wording
-    [NavDataFieldType.UtcTime]: 'Time of Day\n(UTC)', // TODO: Need to confirm wording
+    [NavDataFieldType.LocalTime]: 'Time\n(Local)', // TODO: Need to confirm wording
+    [NavDataFieldType.UtcTime]: 'Time\n(UTC)', // TODO: Need to confirm wording
+    [NavDataFieldType.WeatherAltimeter]: 'Wx\n(Altimeter)', // TODO: Need to confirm wording
   };
 
   private readonly listRef = FSComponent.createRef<UiList<any>>();

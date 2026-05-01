@@ -1234,7 +1234,11 @@ export class FlightPathLegToLegCalculator {
     let transitionTurnStartVec: ReadonlyFloat64Array;
     let transitionTurnEndVec: ReadonlyFloat64Array;
 
+    // The distance along the FROM vector from the end of the FROM vector to the start of the transition (anticipated
+    // turn). Positive distances indicate that the transition starts after the end of the FROM vector.
     let transitionStartFromVectorEndOffset = 0;
+    // The distance along the TO vector from the end of the transition (anticipated turn) to the start of the TO
+    // vector. Positive distances indicate that the transition ends before the start of the TO vector.
     let transitionEndToVectorStartOffset = 0;
 
     let egressVectorCount = 0;
@@ -1272,17 +1276,11 @@ export class FlightPathLegToLegCalculator {
         false
       );
 
-      const intersectionTransitionStartOffset = MathUtils.normalizeAngle(
-        fromVectorPath.angleAlong(transitionTurnStartVec, intersection, Math.PI),
-        -Math.PI
-      );
-      const intersectionTransitionEndOffset = MathUtils.normalizeAngle(
-        toVectorPath.angleAlong(intersection, transitionTurnEndVec, Math.PI),
-        -Math.PI
-      );
+      const intersectionTransitionStartOffset = FlightPathLegToLegCalculator.getAlongCircleOffset(fromVectorPath, transitionTurnStartVec, intersection);
+      const intersectionTransitionEndOffset = FlightPathLegToLegCalculator.getAlongCircleOffset(toVectorPath, intersection, transitionTurnEndVec);
 
-      transitionStartFromVectorEndOffset = intersectionTransitionStartOffset - intersectionFromVectorEndOffset;
-      transitionEndToVectorStartOffset = intersectionTransitionEndOffset - intersectionToVectorStartOffset;
+      transitionStartFromVectorEndOffset = intersectionFromVectorEndOffset - intersectionTransitionStartOffset;
+      transitionEndToVectorStartOffset = intersectionToVectorStartOffset - intersectionTransitionEndOffset;
 
       egressVectorCount = 1;
       ingressVectorCount = 1;
@@ -1295,15 +1293,19 @@ export class FlightPathLegToLegCalculator {
       // vector in the egress, then we need to add a zero-length egress vector so that we can properly mark the
       // beginning of the transition.
 
-      if (transitionStartFromVectorEndOffset < 0 || egressVectorCount === 0) {
+      if (transitionStartFromVectorEndOffset > 0 || egressVectorCount === 0) {
         // Copy the first egress vector if it exists to the second egress vector.
         if (egressVectorCount > 0) {
           const movedVector = fromLegCalc.egress[1] ??= FlightPathUtils.createEmptyVector();
           Object.assign(movedVector, fromLegCalc.egress[0]);
         }
 
+        // The end of the extension vector is always the start of the transition turn.
         const vectorEnd = this.turnXAnticipatedTurnCache.geoPoint[0].setFromCartesian(transitionTurnStartVec);
-        const vectorStart = transitionStartFromVectorEndOffset < 0
+        // If the transition starts after the end of the FROM vector, then the start of the extension vector is the end
+        // of the FROM vector. Otherwise, it is the start of the transition turn (because we want to create a
+        // zero-length vector).
+        const vectorStart = transitionStartFromVectorEndOffset > 0
           ? this.turnXAnticipatedTurnCache.geoPoint[1].set(fromVector.endLat, fromVector.endLon)
           : vectorEnd;
 
@@ -1332,9 +1334,13 @@ export class FlightPathLegToLegCalculator {
       // the ingress, then we need to add a zero-length ingress vector so that we can properly mark the end of the
       // transition.
 
-      if (transitionEndToVectorStartOffset < 0 || ingressVectorCount === 0) {
+      if (transitionEndToVectorStartOffset > 0 || ingressVectorCount === 0) {
+        // The start of the extension vector is always the end of the transition turn.
         const vectorStart = this.turnXAnticipatedTurnCache.geoPoint[0].setFromCartesian(transitionTurnEndVec);
-        const vectorEnd = transitionEndToVectorStartOffset < 0
+        // If the transition ends before the start of the TO vector, then the end of the extension vector is the start
+        // of the TO vector. Otherwise, it is the end of the transition turn (because we want to create a zero-length
+        // vector).
+        const vectorEnd = transitionEndToVectorStartOffset > 0
           ? this.turnXAnticipatedTurnCache.geoPoint[1].set(toVector.startLat, toVector.startLon)
           : vectorStart;
 

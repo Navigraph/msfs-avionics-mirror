@@ -117,7 +117,7 @@ export class TextPagesContainer extends DisplayComponent<TextPagesContainerProps
 
     const pageRef = this.pageRefs[currentPage];
 
-    if (pageRef) {
+    if (pageRef.getOrDefault()) {
       this.currentPage = pageRef;
     }
 
@@ -130,13 +130,10 @@ export class TextPagesContainer extends DisplayComponent<TextPagesContainerProps
     this.mfdSettingManager.whenSettingChanged('mfdSelectedTextPage').handle((page) => {
       const newPageRef = this.pageRefs[page];
 
-      if (this.currentPage) {
-        this.currentPage.instance.hide();
-      }
+      this.currentPage.getOrDefault()?.hide();
 
       this.currentPage = newPageRef;
-
-      this.currentPage.instance.show();
+      this.currentPage.getOrDefault()?.show();
     });
   }
 

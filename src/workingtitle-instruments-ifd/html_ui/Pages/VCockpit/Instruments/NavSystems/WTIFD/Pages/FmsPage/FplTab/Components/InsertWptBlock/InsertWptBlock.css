@@ -1,0 +1,119 @@
+.insert-wpt-block {
+  --leg-block-blue-1: #6699cc;
+  --leg-block-blue-2: #006298;
+  --leg-block-blue-3: #003466;
+  --leg-block-blue-4: #010167;
+
+  --leg-block-light-gray: #666666;
+  --leg-block-gray: #333333;
+  --leg-block-light-magenta: #990099;
+  --leg-block-magenta: #660066;
+
+  position: relative;
+  height: 100%;
+  margin-left: 45px;
+  margin-right: 5px;
+  border-radius: 5px;
+  border-style: solid;
+  border-width: 3px;
+  border-color: black;
+  font-size: 16px;
+  font-family: "Arial Bold";
+  color: var(--wtdyne-color-mint);
+  white-space: pre;
+  background-color: var(--leg-block-gray);
+  box-shadow: inset 0.15em 0.15em 0.1em 0 rgba(255, 255, 255, 0.5), inset -0.15em -0.15em 0.1em 0 rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  border-color: var(--wtdyne-color-cyan);
+}
+
+.insert-wpt-block .insert-wpt-search {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 40%;
+  height: 100%;
+}
+
+.insert-wpt-block .insert-wpt-search .search-top-row {
+  margin-left: 5px;
+  margin-top: 5px;
+  margin-bottom: 2px;
+}
+
+.insert-wpt-block .insert-wpt-search .insert-wpt-input {
+  background-color: var(--leg-block-light-gray);
+  display: flex;
+  align-items: center;
+  height: 24px;
+  margin-left: 2px;
+  width: 100%;
+}
+
+.insert-wpt-block .insert-wpt-data {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 60%;
+  max-width: 60%;
+  min-width: 60%;
+  height: 60px;
+  background-color: var(--leg-block-light-gray);
+  border-radius: 5px;
+  margin-right: 8px;
+  padding-top: 3px;
+  padding-bottom: 2px;
+  padding-left: 8px;
+}
+
+.leg-block-arrow-icon {
+  width: 24px;
+  height: 100%;
+}
+
+.insert-wpt-block .ident-input-field {
+  /** Work around the SlotInput stuff messing up the layout */
+  height: 40px;
+}
+
+.insert-wpt-block .details-black-field {
+  background-color: var(--wtdyne-color-black);
+  border-radius: 5px;
+  width: 100px;
+  padding-left: 6px;
+  font-size: 20px;
+  height: 20px;
+  color: var(--wtdyne-color-white);
+}
+
+.insert-wpt-block .cursor-input-cursor {
+  width: 14px;
+  height: 20px;
+}
+
+.insert-wpt-block .text-data {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+/* Sidebar styling */
+.ifd-sidebar-sidebar .flight-plan-list .insert-wpt-block .insert-wpt-search {
+  width: 107px;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .insert-wpt-block {
+  justify-content: flex-start;
+  margin-left: 18px;
+}
+
+.ifd-sidebar-sidebar .flight-plan-list .insert-wpt-block .insert-wpt-data,
+.ifd-sidebar-sidebar .flight-plan-list .insert-wpt-block .leg-block-arrow-icon {
+  display: none;
+}

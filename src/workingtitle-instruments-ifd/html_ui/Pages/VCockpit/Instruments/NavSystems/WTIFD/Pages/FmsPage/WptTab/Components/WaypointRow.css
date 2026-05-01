@@ -1,0 +1,63 @@
+.waypoint-row {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  padding: 2px 2px 4px 4px;
+  background: #333333;
+  border-top: 2px solid #636363;
+  border-right: 2px solid #212121;
+  border-left: 2px solid #555555;
+  border-bottom: 2px solid #252525;
+  border-radius: 5px;
+  color: white;
+  height: 50px;
+}
+
+.waypoint-row p,
+.waypoint-row span {
+  font-size: 20px;
+  font-family: "Arial Bold", sans-serif;
+}
+
+.waypoint-row .waypoint-top-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.waypoint-row .waypoint-info-item {
+  height: 20px;
+}
+
+.waypoint-row .waypoint-ident {
+  width: 100px;
+  padding-left: 4px;
+}
+
+.waypoint-row .waypoint-loc {
+  width: 320px;
+  text-align: right;
+  padding-right: 4px;
+}
+
+.waypoint-row .waypoint-name {
+  width: 400px;
+  padding-left: 4px;
+  color: var(--wtdyne-color-light-cyan);
+  margin-top: 4px;
+}
+
+.waypoint-row.waypoint-row-selected {
+  border-color: var(--wtdyne-color-cyan);
+  background: #00254a;
+}
+
+.waypoint-row-selected .waypoint-info-item {
+  background-color: var(--wtdyne-color-black);
+  border-radius: 3px;
+}
+
+.waypoint-row-selected .waypoint-info-item.selected {
+  background-color: var(--wtdyne-color-cyan);
+  color: var(--wtdyne-color-black);
+}

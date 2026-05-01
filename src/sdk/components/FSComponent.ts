@@ -1,5 +1,8 @@
 /* eslint-disable no-inner-declarations */
+import { AbstractSubscribableSet } from '../sub/AbstractSubscribableSet';
+import { ReadonlyLifecycle } from '../sub/Lifecycle';
 import { ObjectSubject } from '../sub/ObjectSubject';
+import { SetSubject } from '../sub/SetSubject';
 import { Subject } from '../sub/Subject';
 import { Subscribable } from '../sub/Subscribable';
 import { MutableSubscribableMap, SubscribableMap, SubscribableMapEventType } from '../sub/SubscribableMap';
@@ -237,6 +240,16 @@ export interface ToggleableClassNameRecord {
 export interface StyleRecord {
   [styleName: string]: string | Subscribable<string | undefined> | undefined;
 }
+
+/**
+ * A union of all types that can be used to bind an HTML element's `class` attribute through JSX.
+ */
+export type ClassProp = string | Subscribable<string> | SubscribableSet<string> | Readonly<ToggleableClassNameRecord>;
+
+/**
+ * A union of all types that can be used to bind an HTML element's `style` attribute through JSX.
+ */
+export type StyleProp = string | Subscribable<string> | SubscribableMap<string, string> | ObjectSubject<any> | StyleRecord;
 
 /**
  * The FS component namespace.
@@ -854,6 +867,7 @@ export namespace FSComponent {
    * @param classesToSubscribe A set of CSS classes to which to subscribe.
    * @param reservedClasses An iterable of reserved classes.
    * @returns The newly created subscription to the subscribed CSS class set.
+   * @deprecated Please use {@link bindSetToCssClasses | FSComponent.bindSetToCssClasses()} instead.
    */
   export function bindCssClassSet(
     setToBind: MutableSubscribableSet<string>,
@@ -868,6 +882,7 @@ export namespace FSComponent {
    * @param classesToSubscribe A record of CSS classes to which to subscribe.
    * @param reservedClasses An iterable of reserved classes.
    * @returns The newly created subscriptions to the CSS class record.
+   * @deprecated Please use {@link bindSetToCssClasses | FSComponent.bindSetToCssClasses()} instead.
    */
   export function bindCssClassSet(
     setToBind: MutableSubscribableSet<string>,
@@ -884,6 +899,7 @@ export namespace FSComponent {
    * @param reservedClasses An iterable of reserved classes.
    * @returns The newly created subscription to the CSS class set, or an array of new subscriptions to the CSS class
    * record.
+   * @deprecated Please use {@link bindSetToCssClasses | FSComponent.bindSetToCssClasses()} instead.
    */
   export function bindCssClassSet(
     setToBind: MutableSubscribableSet<string>,
@@ -1019,6 +1035,599 @@ export namespace FSComponent {
     }
 
     return record;
+  }
+
+  /**
+   * Binds a target subscribable set to CSS classes. The binding process takes CSS classes from zero or more sources
+   * and adds them to the target. Any class that is included in at least one source will be added to the target. If a
+   * one or more sources define _dynamic_ sets of classes that change over time, then changes in these sources will be
+   * reflected in the classes that are added to the target as long as the subscription returned by this function is
+   * resumed.
+   *
+   * Manually adding or removing classes from the target subscribable set after a binding has been set up can result in
+   * conflicts with the classes added via the binding if not done carefully. It is recommended to add exclusions to the
+   * binding for classes that you plan to manipulate manually in the target.
+   *
+   * When binding dynamically defined classes, it is recommended to only set up one binding per target subscribable
+   * set. This will prevent potential conflicts where multiple bindings are attempting to add and/or remove the same
+   * classes from the target.
+   * @param target The target subscribable set to bind.
+   * @param exclusions CSS classes to exclude from the binding. Excluded classes will not be added to the target
+   * subscribable set, even if they appear in a source. Each string returned by the iterable should specify exactly one
+   * excluded class.
+   * @param sources Sources of CSS classes to add to the target subscribable set. Up to 32 sources are supported. The
+   * order of sources passed to this function does not matter.
+   * @returns A subscription that controls the binding of all dynamically defined CSS classes in the sources, or
+   * `undefined` if there are no dynamically defined CSS classes. The subscription is returned in a resumed state.
+   * Pausing the subscription will stop changes in the sources from being forwarded to the target subscribable set
+   * until the subscription is resumed again. Destroying this subscription will permanently stop changes in the sources
+   * from being forwarded to the target.
+   * @throws Error if more than 32 sources are specified.
+   * @example
+   * Binding classes:
+   * ```typescript
+   * FSComponent.bindSetToCssClasses(
+   *   target,
+   *   undefined,
+   *   SetSubject.create(['class-1', 'class-2']),
+   *   { 'class-2': false, 'class-3': false, 'class-4': true },
+   *   'class-3 class-5'
+   * );
+   * // target now contains: 'class-1', 'class-2', 'class-3', 'class-4', 'class-5'
+   * ```
+   * @example
+   * Using exclusions:
+   * ```typescript
+   * FSComponent.bindSetToCssClasses(
+   *   target,
+   *   ['class-1', 'class-2'],
+   *   SetSubject.create(['class-1', 'class-2']),
+   *   { 'class-2': false, 'class-3': false, 'class-4': true },
+   *   'class-3 class-5'
+   * );
+   * // target now contains: 'class-3', 'class-4', 'class-5'
+   * ```
+   * @example
+   * Binding dynamic classes:
+   * ```typescript
+   * const source1 = SetSubject.create<string>();
+   * const source2 = {
+   *   'class-2': Subject.create(false),
+   *   'class-3': Subject.create(false),
+   *   'class-4': Subject.create(false),
+   * };
+   * const source3 = Subject.create('class-3');
+   *
+   * FSComponent.bindSetToCssClasses(
+   *   target,
+   *   undefined,
+   *   source1,
+   *   source2,
+   *   source3
+   * );
+   * // target now contains: 'class-3'
+   *
+   * source1.add('class-1');
+   * source1.add('class-2');
+   * // target now contains: 'class-1', 'class-2', 'class-3'
+   *
+   * source2['class-2'].set(true);
+   * source2['class-4'].set(true);
+   * // target now contains: 'class-1', 'class-2', 'class-3', 'class-4'
+   *
+   * source1.clear();
+   * // target now contains: 'class-2', 'class-3', 'class-4'
+   *
+   * source3.set('class-5 class-6');
+   * // target now contains: 'class-2', 'class-4', 'class-5', 'class-6'
+   * ```
+   */
+  export function bindSetToCssClasses(
+    target: MutableSubscribableSet<string>,
+    exclusions: Iterable<string> | undefined,
+    ...sources: (ClassProp | undefined)[]
+  ): Subscription | undefined {
+    if (sources.length === 0) {
+      return undefined;
+    }
+
+    if (sources.length > 32) {
+      throw new Error(`FSComponent.bindSetToCssClasses(): too many sources - ${sources.length} sources were specified but only up to 32 are supported`);
+    }
+
+    const classFlags = new Map<string, number>();
+
+    // Mark classes as excluded by setting their flags to -1.
+    if (exclusions) {
+      for (const exclusion of exclusions) {
+        classFlags.set(exclusion, -1);
+      }
+    }
+
+    const classFilter = (classToFilter: string): boolean => classFlags.get(classToFilter) !== -1;
+
+    // Find and process all statically defined classes (these are the classes that will always be added to the target
+    // set). We will add these classes to the exclusions so that we don't waste time counting them in the subscription
+    // handlers for the dynamically defined classes.
+    for (let i = 0; i < sources.length; i++) {
+      const source = sources[i];
+
+      if (source === undefined) {
+        // Remove the undefined source from the array so that we don't have to consider it anymore when processing
+        // dynamically defined classes below.
+        sources[i] = sources[sources.length - 1];
+        sources.pop();
+      } else if (typeof source === 'string') {
+        const classesToAdd = FSComponent.parseCssClassesFromString(source, classFilter);
+        for (const classToAdd of classesToAdd) {
+          classFlags.set(classToAdd, -1);
+          target.add(classToAdd);
+        }
+
+        // Remove the current source from the array so that we don't have to consider it anymore when processing
+        // dynamically defined classes below.
+        sources[i] = sources[sources.length - 1];
+        sources.pop();
+        --i;
+      } else if ((source as any).isSubscribableSet !== true && (source as any).isSubscribable !== true) {
+        for (const cssClass in (source as ToggleableClassNameRecord)) {
+          if (!classFilter(cssClass)) {
+            continue;
+          }
+
+          const value = (source as ToggleableClassNameRecord)[cssClass];
+          if (value === true) {
+            classFlags.set(cssClass, -1);
+            target.add(cssClass);
+          }
+        }
+      }
+    }
+
+    // Iterate through the sources again and remove any ToggleableClassNameRecord sources that do not define
+    // non-excluded dynamic classes. We can't do this in the first loop above because we need to wait until all
+    // exclusions have been added.
+    for (let i = 0; i < sources.length; i++) {
+      const source = sources[i] as SubscribableSet<string> | Readonly<ToggleableClassNameRecord> | Subscribable<string>;
+
+      if ((source as any).isSubscribableSet !== true && (source as any).isSubscribable !== true) {
+        let isDynamic = false;
+        for (const cssClass in (source as ToggleableClassNameRecord)) {
+          if (!classFilter(cssClass)) {
+            continue;
+          }
+
+          const value = (source as ToggleableClassNameRecord)[cssClass];
+          if (typeof value === 'object') {
+            isDynamic = true;
+            break;
+          }
+        }
+
+        if (!isDynamic) {
+          sources[i] = sources[sources.length - 1];
+          sources.pop();
+          --i;
+        }
+      }
+    }
+
+    // Process all dynamically defined classes.
+
+    if (sources.length === 0) {
+      return undefined;
+    } else {
+      return new CssClassBinding(
+        target,
+        sources as (SubscribableSet<string> | Readonly<ToggleableClassNameRecord> | Subscribable<string>)[],
+        classFilter,
+        classFlags
+      );
+    }
+  }
+
+  /**
+   * A subscription to bind a target subscribable set to CSS classes defined in multiple dynamic sources.
+   */
+  class CssClassBinding implements Subscription {
+    /** @inheritDoc */
+    public readonly isAlive = true;
+
+    /** @inheritDoc */
+    public readonly isPaused = false;
+
+    /** @inheritDoc */
+    public readonly canInitialNotify = true;
+
+    private readonly subscriptions: Subscription[] = [];
+
+    /**
+     * Creates a new instance of CssClassBinding.
+     * @param target The target subscribable set to bind.
+     * @param sources The sources containing the classes to add.
+     * @param classFilter A function that checks whether a CSS class is not to be excluded.
+     * @param classFlags A map from CSS classes to bitflags describing which sources contain each class.
+     */
+    public constructor(
+      private readonly target: MutableSubscribableSet<string>,
+      sources: readonly (SubscribableSet<string> | Readonly<ToggleableClassNameRecord> | Subscribable<string>)[],
+      classFilter: (classToFilter: string) => boolean,
+      classFlags: Map<string, number>
+    ) {
+      if (sources.length === 1) {
+        this.bindFromSingleSource(sources[0], classFilter);
+      } else {
+        this.bindFromMultipleSources(sources, classFilter, classFlags);
+      }
+    }
+
+    /**
+     * Sets up a binding from a single source.
+     * @param source The source containing the classes to add.
+     * @param classFilter A function that checks whether a CSS class is not to be excluded.
+     */
+    private bindFromSingleSource(
+      source: SubscribableSet<string> | Readonly<ToggleableClassNameRecord> | Subscribable<string>,
+      classFilter: (classToFilter: string) => boolean
+    ): void {
+      if ((source as any).isSubscribableSet === true) {
+        this.subscriptions.push((source as SubscribableSet<string>).sub((set, type, key) => {
+          if (!classFilter(key)) {
+            return;
+          }
+
+          if (type === SubscribableSetEventType.Added) {
+            this.target.add(key);
+          } else {
+            this.target.delete(key);
+          }
+        }, true));
+      } else if ((source as any).isSubscribable === true) {
+        let parsedClasses: string[] = [];
+
+        this.subscriptions.push((source as Subscribable<string>).sub(classes => {
+          const removedClasses = parsedClasses;
+
+          parsedClasses = FSComponent.parseCssClassesFromString(classes, classFilter);
+
+          // Filter out duplicates.
+          for (let i = 0; i < parsedClasses.length; i++) {
+            const existingIndex = parsedClasses.indexOf(parsedClasses[i]);
+            if (existingIndex < i) {
+              parsedClasses[i] = parsedClasses[parsedClasses.length - 1];
+              parsedClasses.pop();
+              --i;
+            }
+          }
+
+          for (const classToAdd of parsedClasses) {
+            const removedIndex = removedClasses.indexOf(classToAdd);
+            if (removedIndex < 0) {
+              this.target.add(classToAdd);
+            } else {
+              removedClasses[removedIndex] = removedClasses[removedClasses.length - 1];
+              removedClasses.pop();
+            }
+          }
+
+          for (const classToRemove of removedClasses) {
+            this.target.delete(classToRemove);
+          }
+        }, true));
+      } else {
+        for (const cssClass in (source as ToggleableClassNameRecord)) {
+          if (!classFilter(cssClass)) {
+            continue;
+          }
+
+          const value = (source as ToggleableClassNameRecord)[cssClass];
+          if (typeof value === 'object') {
+            this.subscriptions.push(value.sub(include => {
+              if (include) {
+                this.target.add(cssClass);
+              } else {
+                this.target.delete(cssClass);
+              }
+            }, true));
+          }
+        }
+      }
+    }
+
+    /**
+     * Sets up a binding from multiple sources.
+     * @param sources The sources containing the classes to add.
+     * @param classFilter A function that checks whether a CSS class is not to be excluded.
+     * @param classFlags A map from CSS classes to bitflags describing which sources contain each class.
+     */
+    private bindFromMultipleSources(
+      sources: readonly (SubscribableSet<string> | Readonly<ToggleableClassNameRecord> | Subscribable<string>)[],
+      classFilter: (classToFilter: string) => boolean,
+      classFlags: Map<string, number>
+    ): void {
+      for (let i = 0; i < sources.length; i++) {
+        this.bindSourceFromMultipleSources(sources[i], 1 << i, classFilter, classFlags);
+      }
+    }
+
+    /**
+     * Sets up a binding from a single source among multiple sources.
+     * @param source The source containing the classes to add.
+     * @param sourceFlag The bitflag to set for a CSS class when the source contains the class.
+     * @param classFilter A function that checks whether a CSS class is not to be excluded.
+     * @param classFlags A map from CSS classes to bitflags describing which sources contain each class.
+     */
+    private bindSourceFromMultipleSources(
+      source: SubscribableSet<string> | Readonly<ToggleableClassNameRecord> | Subscribable<string>,
+      sourceFlag: number,
+      classFilter: (classToFilter: string) => boolean,
+      classFlags: Map<string, number>
+    ): void {
+      if ((source as any).isSubscribableSet === true) {
+        this.subscriptions.push((source as SubscribableSet<string>).sub((set, type, key) => {
+          let flag = classFlags.get(key) ?? 0;
+
+          if (flag === -1) {
+            return;
+          }
+
+          if (type === SubscribableSetEventType.Added) {
+            flag |= sourceFlag;
+          } else {
+            flag &= ~sourceFlag;
+          }
+
+          classFlags.set(key, flag);
+          this.target.toggle(key, !!flag);
+        }, true));
+      } else if ((source as any).isSubscribable === true) {
+        let parsedClasses: string[] = [];
+
+        this.subscriptions.push((source as Subscribable<string>).sub(classes => {
+          const removedClasses = parsedClasses;
+
+          parsedClasses = FSComponent.parseCssClassesFromString(classes, classFilter);
+
+          // Filter out duplicates.
+          for (let i = 0; i < parsedClasses.length; i++) {
+            const existingIndex = parsedClasses.indexOf(parsedClasses[i]);
+            if (existingIndex < i) {
+              parsedClasses[i] = parsedClasses[parsedClasses.length - 1];
+              parsedClasses.pop();
+              --i;
+            }
+          }
+
+          for (const classToAdd of parsedClasses) {
+            const removedIndex = removedClasses.indexOf(classToAdd);
+            if (removedIndex < 0) {
+              let flag = classFlags.get(classToAdd) ?? 0;
+
+              flag |= sourceFlag;
+
+              classFlags.set(classToAdd, flag);
+              this.target.toggle(classToAdd, !!flag);
+            } else {
+              removedClasses[removedIndex] = removedClasses[removedClasses.length - 1];
+              removedClasses.pop();
+            }
+          }
+
+          for (const classToRemove of removedClasses) {
+            let flag = classFlags.get(classToRemove) ?? 0;
+
+            flag &= ~sourceFlag;
+
+            classFlags.set(classToRemove, flag);
+            this.target.toggle(classToRemove, !!flag);
+          }
+        }, true));
+      } else {
+        for (const cssClass in (source as ToggleableClassNameRecord)) {
+          if (!classFilter(cssClass)) {
+            continue;
+          }
+
+          const value = (source as ToggleableClassNameRecord)[cssClass];
+          if (typeof value === 'object') {
+            this.subscriptions.push(value.sub(include => {
+              let flag = classFlags.get(cssClass) ?? 0;
+
+              if (include) {
+                flag |= sourceFlag;
+              } else {
+                flag &= ~sourceFlag;
+              }
+
+              classFlags.set(cssClass, flag);
+              this.target.toggle(cssClass, !!flag);
+            }, true));
+          }
+        }
+      }
+    }
+
+    /** @inheritDoc */
+    public pause(): this {
+      if (!this.isAlive) {
+        throw new Error('Subscription: cannot pause a dead Subscription.');
+      }
+
+      if (this.isPaused) {
+        return this;
+      }
+
+      (this.isPaused as boolean) = true;
+
+      for (const sub of this.subscriptions) {
+        sub.pause();
+      }
+
+      return this;
+    }
+
+    /** @inheritDoc */
+    public resume(): this {
+      if (!this.isAlive) {
+        throw new Error('Subscription: cannot resume a dead Subscription.');
+      }
+
+      if (!this.isPaused) {
+        return this;
+      }
+
+      (this.isPaused as boolean) = false;
+
+      for (const sub of this.subscriptions) {
+        sub.resume(true);
+      }
+
+      return this;
+    }
+
+    /** @inheritDoc */
+    public withLifecycle(lifecycle: ReadonlyLifecycle): this {
+      lifecycle.register(this);
+      return this;
+    }
+
+    /** @inheritDoc */
+    public destroy(): void {
+      (this.isAlive as boolean) = false;
+
+      for (const sub of this.subscriptions) {
+        sub.destroy();
+      }
+    }
+  }
+
+  /**
+   * Merges CSS classes from zero or more sources into a single set of CSS classes. Any class that is included in at
+   * least one source will be added to the merged set. If a one or more sources define _dynamic_ sets of classes that
+   * change over time, then changes in these sources will be reflected in the merged set as long as the merged set is
+   * resumed.
+   * @param sources Sources of CSS classes to merge. Up to 32 sources are supported. The order of sources passed to
+   * this function does not matter.
+   * @returns A set that contains all CSS classes from the specified sources. The merged set is returned in a resumed
+   * state. Pausing the merged set will stop changes in the sources from being forwarded to the merged set until it is
+   * resumed again. Destroying the merged set will permanently stop changes in the sources from being forwarded to the
+   * merged set.
+   * @throws Error if more than 32 sources are specified.
+   * @example
+   * Merging classes:
+   * ```typescript
+   * const merged = FSComponent.mergeCssClasses(
+   *   SetSubject.create(['class-1', 'class-2']),
+   *   { 'class-2': false, 'class-3': false, 'class-4': true },
+   *   'class-3 class-5'
+   * );
+   * // merged now contains: 'class-1', 'class-2', 'class-3', 'class-4', 'class-5'
+   * ```
+   * @example
+   * Merging dynamic classes:
+   * ```typescript
+   * const source1 = SetSubject.create<string>();
+   * const source2 = {
+   *   'class-2': Subject.create(false),
+   *   'class-3': Subject.create(false),
+   *   'class-4': Subject.create(false),
+   * };
+   * const source3 = Subject.create('class-3');
+   *
+   * const merged = FSComponent.mergeCssClasses(
+   *   source1,
+   *   source2,
+   *   source3
+   * );
+   * // merged now contains: 'class-3'
+   *
+   * source1.add('class-1');
+   * source1.add('class-2');
+   * // merged now contains: 'class-1', 'class-2', 'class-3'
+   *
+   * source2['class-2'].set(true);
+   * source2['class-4'].set(true);
+   * // merged now contains: 'class-1', 'class-2', 'class-3', 'class-4'
+   *
+   * source1.clear();
+   * // merged now contains: 'class-2', 'class-3', 'class-4'
+   *
+   * source3.set('class-5 class-6');
+   * // merged now contains: 'class-2', 'class-4', 'class-5', 'class-6'
+   * ```
+   */
+  export function mergeCssClasses(...sources: (ClassProp | undefined)[]): SubscribableSet<string> & Subscription {
+    return new MergedCssClasses(sources);
+  }
+
+  /**
+   * A set of CSS classes merged from multiple sources.
+   */
+  class MergedCssClasses extends AbstractSubscribableSet<string> implements Subscription {
+    /** @inheritDoc */
+    public readonly isAlive = true;
+
+    /** @inheritDoc */
+    public readonly isPaused = false;
+
+    /** @inheritDoc */
+    public readonly canInitialNotify = true;
+
+    private readonly backingSet = SetSubject.create<string>();
+    private readonly backingSubscription: Subscription | undefined;
+
+    /**
+     * Creates a new instance of MergedCssClasses.
+     * @param sources Sources of CSS classes to merge. Up to 32 sources are supported. The order of sources does not
+     * matter.
+     */
+    public constructor(sources: readonly (ClassProp | undefined)[]) {
+      super();
+
+      this.backingSubscription = FSComponent.bindSetToCssClasses(this.backingSet, undefined, ...sources);
+      this.backingSet.sub(this.onBackingSetChanged.bind(this));
+    }
+
+    /**
+     * Responds to when the backing set changes.
+     * @param set The current state of the backing set.
+     * @param type The type of change that occurred.
+     * @param key The key that changed.
+     */
+    private onBackingSetChanged(set: ReadonlySet<string>, type: SubscribableSetEventType, key: string): void {
+      this.notify(type, key);
+    }
+
+    /** @inheritDoc */
+    public get(): ReadonlySet<string> {
+      return this.backingSet.get();
+    }
+
+    /** @inheritDoc */
+    public pause(): this {
+      (this.isPaused as boolean) = true;
+      this.backingSubscription?.pause();
+      return this;
+    }
+
+    /** @inheritDoc */
+    public resume(): this {
+      (this.isPaused as boolean) = false;
+      this.backingSubscription?.resume(true);
+      return this;
+    }
+
+    /** @inheritDoc */
+    public withLifecycle(lifecycle: ReadonlyLifecycle): this {
+      lifecycle.register(this);
+      return this;
+    }
+
+    /** @inheritDoc */
+    public destroy(): void {
+      (this.isAlive as boolean) = false;
+      this.backingSubscription?.destroy();
+    }
   }
 
   /**

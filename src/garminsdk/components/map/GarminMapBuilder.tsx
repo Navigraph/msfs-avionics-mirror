@@ -2,13 +2,13 @@
 import {
   DefaultLodBoundaryCache, EmptyRecord, FacilityLoader, FlightPlanner, FSComponent, GeoPoint, LatLonInterface,
   MapAltitudeArcLayer, MapAltitudeArcLayerModules, MapAltitudeArcLayerProps, MapAltitudeArcModule, MapBinding,
-  MapCullableTextLabelManager, MapFollowAirplaneModule, MapGenericLayer, MapGenericLayerProps, MapIndexedRangeModule,
-  MapLayerProps, MapLineLayer, MapLineLayerProps, MapOwnAirplanePropsModule, MapSyncedCanvasLayer, MapSystemBuilder,
-  MapSystemBuilderTrafficOffScaleOobOptions, MapSystemContext, MapSystemGenericController, MapSystemKeys,
-  MapTerrainColorsModule, MapTrafficIntruderIconFactory, MapTrafficModule, MapWxrModule, MutableSubscribable,
-  NumberUnitInterface, ReadonlyFloat64Array, ResourceConsumer, ResourceModerator, SetSubject, Subject, Subscribable,
-  SubscribableSet, SubscribableSetEventType, SubscribableUtils, Subscription, TcasAlertLevel, TcasIntruder, UnitFamily,
-  UnitType, UserSettingManager, VecNMath, VNode
+  MapCanvasLayer, MapColliderCollection, MapCullableTextLabelManager, MapFollowAirplaneModule, MapGenericLayer,
+  MapGenericLayerProps, MapIndexedRangeModule, MapLayer, MapLayerProps, MapLineLayer, MapOwnAirplanePropsModule,
+  MapSyncedCanvasLayer, MapSystemBuilder, MapSystemBuilderTrafficOffScaleOobOptions, MapSystemContext,
+  MapSystemGenericController, MapSystemKeys, MapTerrainColorsModule, MapTrafficIntruderIconFactory, MapTrafficModule,
+  MapWxrModule, MutableSubscribable, NumberUnitInterface, ReadonlyFloat64Array, ResourceConsumer, ResourceModerator,
+  SetSubject, Subject, Subscribable, SubscribableSet, SubscribableSetEventType, SubscribableUtils, Subscription,
+  TcasAlertLevel, TcasIntruder, UnitFamily, UnitType, UserSettingManager, VecNMath, VNode
 } from '@microsoft/msfs-sdk';
 
 import { FmsUtils } from '../../flightplan/FmsUtils';
@@ -17,22 +17,34 @@ import { TrafficUserSettingTypes } from '../../settings/TrafficUserSettings';
 import { UnitsUserSettingManager } from '../../settings/UnitsUserSettings';
 import { TrafficSystem } from '../../traffic/TrafficSystem';
 import { WindDataProvider } from '../../wind/WindDataProvider';
+import { MapWaypointIconColliderFactory } from './colliders';
 import {
-  MapAirspaceVisController, MapAirspaceVisControllerModules, MapAirspaceVisUserSettings, MapDataIntegrityRTRController, MapDataIntegrityRTRControllerContext,
-  MapDataIntegrityRTRControllerModules, MapDesiredOrientationController, MapDesiredOrientationControllerContext, MapDesiredOrientationControllerModules,
-  MapFlightPlanFocusRTRController, MapFlightPlanFocusRTRControllerContext, MapFlightPlanFocusRTRControllerModules,
-  MapGarminAutopilotPropsController, MapGarminAutopilotPropsControllerBinding, MapGarminAutopilotPropsControllerModules, MapGarminAutopilotPropsKey,
-  MapGarminTrafficController, MapGarminTrafficControllerModules, MapNexradController, MapNexradControllerModules, MapNexradUserSettings,
-  MapOrientationModeController, MapOrientationModeControllerContext, MapOrientationModeControllerModules, MapOrientationRTRController,
-  MapOrientationRTRControllerContext, MapOrientationRTRControllerModules, MapOrientationSettingsController, MapOrientationSettingsControllerModules,
-  MapOrientationSettingsControllerSettings, MapPanningRTRController, MapPanningRTRControllerContext, MapPanningRTRControllerModules, MapPointerController,
-  MapPointerControllerModules, MapPointerRTRController, MapPointerRTRControllerModules, MapRangeCompassController, MapRangeCompassControllerModules,
-  MapRangeController, MapRangeControllerModules, MapRangeControllerSettings, MapRangeRTRController, MapRangeRTRControllerModules, MapTerrainColorsController,
-  MapTerrainColorsControllerModules, MapTerrainColorsDefinition, MapTerrainController, MapTerrainControllerModules, MapTerrainControllerOptions, MapTerrainUserSettings,
-  MapTrafficController, MapTrafficControllerModules, MapTrafficUserSettings, MapWaypointsVisController, MapWaypointsVisControllerModules,
-  MapWaypointsVisControllerOptions, MapWaypointVisUserSettings, MapWindVectorController, MapWindVectorControllerModules, MapWindVectorUserSettings,
-  MapWxrController, MapWxrControllerModules, TrafficMapRangeController, TrafficMapRangeControllerModules, TrafficMapRangeControllerSettings,
-  WeatherMapOrientationSettingsController, WeatherMapOrientationSettingsControllerModules, WeatherMapOrientationSettingsControllerSettings
+  MapAirspaceVisController, MapAirspaceVisControllerModules, MapAirspaceVisUserSettings, MapDataIntegrityRTRController,
+  MapDataIntegrityRTRControllerContext, MapDataIntegrityRTRControllerModules, MapDesiredOrientationController,
+  MapDesiredOrientationControllerContext, MapDesiredOrientationControllerModules, MapFlightPlanFocusRTRController,
+  MapFlightPlanFocusRTRControllerContext, MapFlightPlanFocusRTRControllerModules, MapGarminAutopilotPropsController,
+  MapGarminAutopilotPropsControllerBinding, MapGarminAutopilotPropsControllerModules, MapGarminAutopilotPropsKey,
+  MapGarminTrafficController, MapGarminTrafficControllerModules, MapNexradController, MapNexradControllerModules,
+  MapNexradUserSettings, MapOrientationModeController, MapOrientationModeControllerContext,
+  MapOrientationModeControllerModules, MapOrientationRTRController, MapOrientationRTRControllerContext,
+  MapOrientationRTRControllerModules, MapOrientationSettingsController, MapOrientationSettingsControllerModules,
+  MapOrientationSettingsControllerSettings, MapPanningRTRController, MapPanningRTRControllerContext,
+  MapPanningRTRControllerModules, MapPointerColliderActiveController, MapPointerColliderActiveControllerControllers,
+  MapPointerColliderActiveControllerModules, MapPointerController, MapPointerControllerModules,
+  MapPointerHoverController, MapPointerHoverControllerContext, MapPointerHoverControllerModules,
+  MapPointerRTRController, MapPointerRTRControllerModules, MapRangeCompassController, MapRangeCompassControllerModules,
+  MapRangeController, MapRangeControllerModules, MapRangeControllerSettings, MapRangeRTRController,
+  MapRangeRTRControllerModules, MapTerrainColorsController, MapTerrainColorsControllerModules,
+  MapTerrainColorsDefinition, MapTerrainController, MapTerrainControllerModules, MapTerrainControllerOptions,
+  MapTerrainUserSettings, MapTrafficController, MapTrafficControllerModules, MapTrafficUserSettings,
+  MapWaypointColliderController, MapWaypointColliderControllerContext, MapWaypointHighlightRenderController,
+  MapWaypointHighlightRenderControllerContext, MapWaypointHighlightRenderControllerModules,
+  MapWaypointHoverRenderController, MapWaypointHoverRenderControllerContext, MapWaypointHoverRenderControllerModules,
+  MapWaypointsVisController, MapWaypointsVisControllerModules, MapWaypointsVisControllerOptions,
+  MapWaypointVisUserSettings, MapWindVectorController, MapWindVectorControllerModules, MapWindVectorUserSettings,
+  MapWxrController, MapWxrControllerModules, TrafficMapRangeController, TrafficMapRangeControllerModules,
+  TrafficMapRangeControllerSettings, WeatherMapOrientationSettingsController,
+  WeatherMapOrientationSettingsControllerModules, WeatherMapOrientationSettingsControllerSettings
 } from './controllers';
 import {
   MapActiveFlightPlanDataProvider, MapFlightPathPlanRenderer, MapFlightPathProcRenderer,
@@ -45,9 +57,8 @@ import {
   MapProcedurePreviewLayerModules, MapRangeCompassLayer, MapRangeCompassLayerModules, MapRangeCompassLayerProps,
   MapRangeRingLayer, MapRangeRingLayerModules, MapRangeRingLayerProps, MapSharedFlightPlanLayer,
   MapSharedFlightPlanLayerModules, MapTrackVectorLayer, MapTrackVectorLayerModules, MapTrackVectorLayerProps,
-  MapWaypointHighlightLayer, MapWaypointHighlightLayerModules, MapWaypointsLayer, MapWaypointsLayerModules,
-  MapWindVectorLayer, MapWindVectorLayerModules, TrafficMapRangeLayer, TrafficMapRangeLayerModules,
-  TrafficMapRangeLayerProps
+  MapWaypointsLayer, MapWaypointsLayerModules, MapWindVectorLayer, MapWindVectorLayerModules, TrafficMapRangeLayer,
+  TrafficMapRangeLayerModules, TrafficMapRangeLayerProps
 } from './layers';
 import { MapAirspaceRendering } from './MapAirspaceRendering';
 import { MapTrafficIntruderIcon, MapTrafficIntruderIconOptions } from './MapTrafficIntruderIcon';
@@ -59,7 +70,8 @@ import {
   MapGarminAutopilotPropsModule, MapGarminDataIntegrityModule, MapGarminFlightPlanEntry, MapGarminFlightPlanModule,
   MapGarminTrafficModule, MapNexradModule, MapOrientation, MapOrientationModule, MapPanningModule, MapPointerModule,
   MapProcedurePreviewModule, MapRangeCompassModule, MapRangeRingModule, MapTerrainMode, MapTerrainModule,
-  MapTrackVectorModule, MapUnitsModule, MapWaypointHighlightModule, MapWaypointsModule, MapWindVectorModule
+  MapTrackVectorModule, MapUnitsModule, MapWaypointHighlightModule, MapWaypointHoverModule, MapWaypointsModule,
+  MapWindVectorModule
 } from './modules';
 
 /**
@@ -151,7 +163,51 @@ export type GarminMapBuilderActiveFlightPlanOptions = {
 /**
  * Options for the waypoint highlight line.
  */
-export type WaypointHighlightLineOptions = Omit<MapLineLayerProps, keyof MapLayerProps<any> | 'start' | 'end'>;
+export type WaypointHighlightLineOptions = {
+  /** The width of the highlight line stroke, in pixels. Defaults to 2 pixels. */
+  strokeWidth?: number;
+
+  /** The style of the highlight line stroke. Defaults to `'white'`. */
+  strokeStyle?: string | CanvasGradient | CanvasPattern;
+
+  /** The dash array of the highlight line stroke. Defaults to `[5, 3, 2, 3]`. */
+  strokeDash?: readonly number[];
+
+  /** The width of the highlight line outline, in pixels. Defaults to 0 pixels. */
+  outlineWidth?: number;
+
+  /** The style of the highlight line outline. Defaults to `'black'`. */
+  outlineStyle?: string | CanvasGradient | CanvasPattern;
+
+  /** The dash array of the highlight line outline. Defaults to `[]`. */
+  outlineDash?: readonly number[];
+};
+
+/**
+ * Options for the display of highlighted waypoints.
+ */
+export type GarminMapBuilderWaypointHighlightOptions = WaypointHighlightLineOptions & {
+  /**
+   * The key of the canvas layer to which hovered waypoints should be rendered. If defined, then it is assumed that a
+   * canvas layer with this key has already been or will be added to the map, and the waypoint renderer will be
+   * configured to render hovered waypoints to the specified layer. If not defined, then a new canvas layer will be
+   * added to the map, and the waypoint renderer will be configured to render hovered waypoints to the new layer.
+   */
+  layerKey?: string;
+};
+
+/**
+ * Options for the display of hovered waypoints.
+ */
+export type GarminMapBuilderWaypointHoverOptions = {
+  /**
+   * The key of the canvas layer to which hovered waypoints should be rendered. If defined, then it is assumed that a
+   * canvas layer with this key has already been or will be added to the map, and the waypoint renderer will be
+   * configured to render hovered waypoints to the specified layer. If not defined, then a new canvas layer will be
+   * added to the map, and the waypoint renderer will be configured to render hovered waypoints to the new layer.
+   */
+  layerKey?: string;
+};
 
 /**
  * Options for traffic intruder icons.
@@ -828,6 +884,42 @@ export class GarminMapBuilder {
   }
 
   /**
+   * Configures a map builder to generate a map which supports collision detection against rendered waypoints. This is
+   * achieved through the use of a {@link MapWaypointHighlightRenderController} which automatically adds colliders to a
+   * {@link MapColliderCollection} for each waypoint icon that is rendered by a {@link MapWaypointRenderer}.
+   * 
+   * The `MapWaypointColliderController` added to the map is initialized as paused. While the controller is paused,
+   * collision detection against waypoints is effectively disabled. To enable collision detection, the controller must
+   * be resumed.
+   * 
+   * Requires the context property `[MapSystemKeys.WaypointRenderer]: MapWaypointRenderer`.
+   * 
+   * Adds the following...
+   *
+   * Context properties:
+   * * `[MapSystemKeys.MapColliderCollection]: MapColliderCollection`
+   *
+   * Controllers:
+   * * `[GarminMapKeys.WaypointCollider]: MapWaypointColliderController`
+   * @param mapBuilder The map builder to configure.
+   * @param colliderFactory A factory to use to create and manage colliders for rendered waypoints.
+   * @returns The map builder, after it has been configured.
+   */
+  public static waypointColliders<MapBuilder extends MapSystemBuilder<{
+    [MapSystemKeys.WaypointRenderer]: MapWaypointRenderer
+  }>>(
+    mapBuilder: MapBuilder,
+    colliderFactory: MapWaypointIconColliderFactory
+  ): MapBuilder {
+    return mapBuilder
+      .withContext(MapSystemKeys.MapColliderCollection, () => new MapColliderCollection())
+      .withController<MapWaypointColliderController, any, any, any, MapWaypointColliderControllerContext>(
+        GarminMapKeys.WaypointCollider,
+        context => new MapWaypointColliderController(context, colliderFactory)
+      );
+  }
+
+  /**
    * Configures a map builder to generate a map which supports the display of waypoints located within the boundaries
    * of the map's projected window. Waypoints displayed in this manner are rendered by a {@link MapWaypointRenderer}
    * under the role {@link MapWaypointRenderRole.Normal}. Optionally binds the visibility of waypoints to user
@@ -1047,6 +1139,7 @@ export class GarminMapBuilder {
           <MapSyncedCanvasLayer
             model={context.model}
             mapProjection={context.projection}
+            collapseOnSleep
           />
         );
       }, order ?? layerCount)
@@ -1377,12 +1470,11 @@ export class GarminMapBuilder {
   }
 
   /**
-   * Configures a map builder to generate a map which supports displaying a highlighted waypoint, and optionally
+   * Configures a map builder to generate a map which supports displaying highlighted waypoints, and optionally
    * drawing a line from the highlighted waypoint to the position of the player airplane.
-   *
-   * If a text layer has already been added to the builder, its order will be changed so that it is rendered above the
-   * highlighted waypoint layers. Otherwise, a text layer will be added to the builder after the highlighted waypoint
-   * layers.
+   * 
+   * If a new highlighted waypoint layer is added as part of this step (i.e. if `options.layerKey` is not defined) or
+   * if a line layer is included, then the text layer will be rendered above both of these layers.
    *
    * Adds the following...
    *
@@ -1396,38 +1488,44 @@ export class GarminMapBuilder {
    *
    * Layers:
    * * `[GarminMapKeys.WaypointHighlightLine]: MapLineLayer` (only if line support is included)
-   * * `[GarminMapKeys.WaypointHighlight]: MapWaypointHighlightLayer`
+   * * `[GarminMapKeys.WaypointHighlight]: MapSyncedCanvasLayer` (only if `options.layerKey` is not defined)
    * * `[MapSystemKeys.TextLayer]: MapCullableTextLayer`
    *
    * Controllers:
-   * * `[MapSystemKeys.WaypointRenderer]: MapSystemCustomController` (handles initialization and updating of the
+   * * `[MapSystemKeys.WaypointRenderer]: MapSystemGenericController` (handles initialization and updating of the
    * waypoint renderer)
+   * * `[MapSystemKeys.WaypointHighlightRender]: MapWaypointHighlightRenderController`
    * @param mapBuilder The map builder to configure.
    * @param includeLine Whether to include support for drawing a line from the highlighted waypoint to the player
    * airplane.
    * @param configure A function used to configure the display and styling of highlighted waypoint icons and labels.
-   * @param lineOptions Styling options for the waypoint highlight line. The default values are the same as for
+   * @param options Styling options for the waypoint highlight line. The default values are the same as for
    * {@link MapLineLayer}, except the `strokeDash` property defaults to `[5, 3, 2, 3]`. Ignored if `includeLine` is
    * `false`.
-   * @param order The order to assign to the highlighted waypoint layers. Layers with lower assigned order will be
-   * attached to the map before and appear below layers with greater assigned order values. Defaults to the number of
-   * layers already added to the map builder.
+   * @param order The order to assign to the text layer, the line layer if it is included, and the highlighted waypoint
+   * layer if it is added by this step (i.e. if `options.layerKey` is not defined). Layers with lower assigned order
+   * will be attached to the map before and appear below layers with greater assigned order values. Defaults to the
+   * number of layers already added to the map builder.
    * @returns The map builder, after it has been configured.
    */
   public static waypointHighlight<MapBuilder extends MapSystemBuilder>(
     mapBuilder: MapBuilder,
     includeLine: boolean,
     configure: (builder: MapWaypointDisplayBuilder) => void,
-    lineOptions?: Readonly<WaypointHighlightLineOptions>,
+    options?: Readonly<GarminMapBuilderWaypointHighlightOptions>,
     order?: number
   ): MapBuilder {
     mapBuilder
-      .withTextLayer(true)
+      .withTextLayer(true, order)
       .withModule(GarminMapKeys.WaypointHighlight, () => new MapWaypointHighlightModule())
       .withContext<{ [MapSystemKeys.TextManager]: MapCullableTextLabelManager }>(
         MapSystemKeys.WaypointRenderer, context => new MapWaypointRenderer(context[MapSystemKeys.TextManager])
       )
-      .withContext(GarminMapKeys.WaypointDisplayBuilder, () => new MapWaypointDisplayBuilderClass());
+      .withContext(GarminMapKeys.WaypointDisplayBuilder, () => new MapWaypointDisplayBuilderClass())
+      .withController<MapWaypointHighlightRenderController, MapWaypointHighlightRenderControllerModules, any, any, MapWaypointHighlightRenderControllerContext>(
+        GarminMapKeys.WaypointHighlightRender,
+        context => new MapWaypointHighlightRenderController(context)
+      );
 
     if (includeLine) {
       const waypointLocation = new GeoPoint(0, 0);
@@ -1437,6 +1535,8 @@ export class GarminMapBuilder {
 
       let controller: MapSystemGenericController;
 
+      const layerCount = mapBuilder.layerCount;
+
       mapBuilder
         .withLayer<
           MapLineLayer,
@@ -1445,9 +1545,18 @@ export class GarminMapBuilder {
             [MapSystemKeys.OwnAirplaneProps]: MapOwnAirplanePropsModule
           }
         >(GarminMapKeys.WaypointHighlightLine, context => {
-          const options = { ...lineOptions };
+          const lineOptions: WaypointHighlightLineOptions = {};
 
-          options.strokeDash ??= [5, 3, 2, 3];
+          if (options) {
+            lineOptions.strokeWidth = options.strokeWidth;
+            lineOptions.strokeStyle = options.strokeStyle;
+            lineOptions.strokeDash = options.strokeDash;
+            lineOptions.outlineWidth = options.outlineWidth;
+            lineOptions.outlineStyle = options.outlineStyle;
+            lineOptions.outlineDash = options.outlineDash;
+          }
+
+          lineOptions.strokeDash ??= [5, 3, 2, 3];
 
           return (
             <MapLineLayer
@@ -1455,10 +1564,11 @@ export class GarminMapBuilder {
               mapProjection={context.projection}
               start={context.model.getModule(MapSystemKeys.OwnAirplaneProps).position}
               end={waypointLocationSubject}
-              {...options}
+              {...lineOptions}
             />
           );
-        })
+        }, order)
+        .withLayerOrder(MapSystemKeys.TextLayer, order ?? layerCount)
         .withController<
           MapSystemGenericController<{ [GarminMapKeys.WaypointHighlight]: MapWaypointHighlightModule }>,
           { [GarminMapKeys.WaypointHighlight]: MapWaypointHighlightModule }
@@ -1495,29 +1605,154 @@ export class GarminMapBuilder {
         });
     }
 
-    const layerCount = mapBuilder.layerCount;
+    let layerKey: string;
+    if (options?.layerKey !== undefined) {
+      layerKey = options.layerKey;
+    } else {
+      layerKey = GarminMapKeys.WaypointHighlight;
 
-    return mapBuilder
-      .withLayer<MapWaypointHighlightLayer, MapWaypointHighlightLayerModules, { [MapSystemKeys.WaypointRenderer]: MapWaypointRenderer }>(
-        GarminMapKeys.WaypointHighlight,
-        (context): VNode => {
+      const layerCount = mapBuilder.layerCount;
+
+      mapBuilder
+        .withLayer(GarminMapKeys.WaypointHighlight, context => {
           return (
-            <MapWaypointHighlightLayer
+            <MapSyncedCanvasLayer
               model={context.model}
               mapProjection={context.projection}
-              waypointRenderer={context[MapSystemKeys.WaypointRenderer]}
+              collapseOnSleep
             />
           );
-        },
-        order
-      )
-      .withLayerOrder(MapSystemKeys.TextLayer, order ?? layerCount)
+        }, order)
+        .withLayerOrder(MapSystemKeys.TextLayer, order ?? layerCount);
+    }
+
+    return mapBuilder
       .withInit<
         any, any, any,
         { [GarminMapKeys.WaypointDisplayBuilder]: MapWaypointDisplayBuilderClass }
-      >('waypointHighlightLayerDisplayConfigure', context => {
+      >('waypointHighlightDisplayConfigure', context => {
         configure(context[GarminMapKeys.WaypointDisplayBuilder]);
       })
+      .withOnAfterRender<any, any, any, { [MapSystemKeys.WaypointRenderer]: MapWaypointRenderer }>(
+        GarminMapKeys.WaypointHighlightRender,
+        context => {
+          const layer = context.getLayer(layerKey) as MapLayer | undefined;
+          if (layer instanceof MapCanvasLayer) {
+            context[MapSystemKeys.WaypointRenderer].setCanvasContext(MapWaypointRenderRole.Highlight, layer.display.context);
+          }
+        }
+      )
+      .withController<
+        MapSystemGenericController,
+        any, any, any,
+        { [GarminMapKeys.WaypointDisplayBuilder]: MapWaypointDisplayBuilderClass, [MapSystemKeys.WaypointRenderer]: MapWaypointRenderer }
+      >(
+        MapSystemKeys.WaypointRenderer,
+        context => new MapSystemGenericController(context, {
+          onAfterMapRender: (): void => { context[GarminMapKeys.WaypointDisplayBuilder].apply(context[MapSystemKeys.WaypointRenderer]); },
+          onAfterUpdated: (): void => { context[MapSystemKeys.WaypointRenderer].update(context.projection); }
+        })
+      );
+  }
+
+  /**
+   * Configures a map builder to generate a map which supports displaying hovered waypoints.
+   * 
+   * If a new hovered waypoint layer is added as part of this step (i.e. if `options.layerKey` is not defined), then
+   * the text layer will be rendered above the new hovered waypoint layer.
+   * 
+   * Adds the following...
+   *
+   * Context properties:
+   * * `[MapSystemKeys.TextManager]: MapCullableTextLabelManager`
+   * * `[MapSystemKeys.WaypointRenderer]: MapWaypointRenderer`
+   * * `[GarminMapKeys.WaypointDisplayBuilder]: MapWaypointDisplayBuilder`
+   *
+   * Modules:
+   * * `[GarminMapKeys.WaypointHover]: MapWaypointHoverModule`
+   *
+   * Layers:
+   * * `[GarminMapKeys.WaypointHover]: MapSyncedCanvasLayer` (only if `options.layerKey` is not defined)
+   * * `[MapSystemKeys.TextLayer]: MapCullableTextLayer`
+   *
+   * Controllers:
+   * * `[MapSystemKeys.WaypointRenderer]: MapSystemGenericController` (handles initialization and updating of the
+   * waypoint renderer)
+   * * `[MapSystemKeys.WaypointHoverRender]: MapWaypointHoverRenderController`
+   * @param mapBuilder The map builder to configure.
+   * @param configure A function used to configure the display and styling of hovered waypoint icons and labels.
+   * @param options Additional options with which to configure the display of hovered waypoints.
+   * @param order The order to assign to the text layer and the hovered waypoint layer if it is added by this step
+   * (i.e. if `options.layerKey` is not defined). Layers with lower assigned order will be attached to the map before
+   * and appear below layers with greater assigned order values. Defaults to the number of layers already added to the
+   * map builder.
+   * @returns The map builder, after it has been configured.
+   */
+  public static waypointHover<MapBuilder extends MapSystemBuilder<{
+    [MapSystemKeys.WaypointRenderer]: MapWaypointRenderer
+  }>>(
+    mapBuilder: MapBuilder,
+    configure: (builder: MapWaypointDisplayBuilder) => void,
+    options?: Readonly<GarminMapBuilderWaypointHoverOptions>,
+    order?: number
+  ): MapBuilder {
+    mapBuilder
+      .withTextLayer(true, order)
+      .withModule(GarminMapKeys.WaypointHover, () => new MapWaypointHoverModule())
+      .withContext<{ [MapSystemKeys.TextManager]: MapCullableTextLabelManager }>(
+        MapSystemKeys.WaypointRenderer, context => new MapWaypointRenderer(context[MapSystemKeys.TextManager])
+      )
+      .withContext(GarminMapKeys.WaypointDisplayBuilder, () => new MapWaypointDisplayBuilderClass())
+      .withController<MapWaypointHoverRenderController, MapWaypointHoverRenderControllerModules, any, any, MapWaypointHoverRenderControllerContext>(
+        GarminMapKeys.WaypointHoverRender,
+        context => new MapWaypointHoverRenderController(context)
+      );
+
+    let layerKey: string;
+    if (options?.layerKey !== undefined) {
+      layerKey = options.layerKey;
+    } else {
+      layerKey = GarminMapKeys.WaypointHover;
+
+      const layerCount = mapBuilder.layerCount;
+
+      mapBuilder
+        .withLayer(GarminMapKeys.WaypointHover, context => {
+          return (
+            <MapSyncedCanvasLayer
+              model={context.model}
+              mapProjection={context.projection}
+              collapseOnSleep
+            />
+          );
+        }, order)
+        .withLayerOrder(MapSystemKeys.TextLayer, order ?? layerCount);
+    }
+
+    return mapBuilder
+      .withInit<
+        any, any, any,
+        { [GarminMapKeys.WaypointDisplayBuilder]: MapWaypointDisplayBuilderClass }
+      >('waypointHoverDisplayConfigure', context => {
+        configure(context[GarminMapKeys.WaypointDisplayBuilder]);
+      })
+      .withOnAfterRender<any, any, any, { [MapSystemKeys.WaypointRenderer]: MapWaypointRenderer }>(
+        GarminMapKeys.WaypointHoverRender,
+        context => {
+          const layer = context.getLayer(layerKey) as MapLayer | undefined;
+          if (layer instanceof MapCanvasLayer) {
+            context[MapSystemKeys.WaypointRenderer].setCanvasContext(MapWaypointRenderRole.Hover, layer.display.context);
+            context[MapSystemKeys.WaypointRenderer].setCanvasContext(MapWaypointRenderRole.Hover | MapWaypointRenderRole.Highlight, layer.display.context);
+            context[MapSystemKeys.WaypointRenderer].setCanvasContext(MapWaypointRenderRole.Hover | MapWaypointRenderRole.FlightPlanActive, layer.display.context);
+            context[MapSystemKeys.WaypointRenderer].setCanvasContext(MapWaypointRenderRole.Hover | MapWaypointRenderRole.FlightPlanInactive, layer.display.context);
+            context[MapSystemKeys.WaypointRenderer].setCanvasContext(MapWaypointRenderRole.Hover | MapWaypointRenderRole.ProcedurePreview, layer.display.context);
+            context[MapSystemKeys.WaypointRenderer].setCanvasContext(MapWaypointRenderRole.Hover | MapWaypointRenderRole.ProcedureTransitionPreview, layer.display.context);
+            context[MapSystemKeys.WaypointRenderer].setCanvasContext(MapWaypointRenderRole.Hover | MapWaypointRenderRole.Normal, layer.display.context);
+            context[MapSystemKeys.WaypointRenderer].setCanvasContext(MapWaypointRenderRole.Hover | MapWaypointRenderRole.Airway, layer.display.context);
+            context[MapSystemKeys.WaypointRenderer].setCanvasContext(MapWaypointRenderRole.Hover | MapWaypointRenderRole.VNav, layer.display.context);
+          }
+        }
+      )
       .withController<
         MapSystemGenericController,
         any, any, any,
@@ -1892,6 +2127,8 @@ export class GarminMapBuilder {
    * * `[GarminMapKeys.PanningRTR]: MapPanningRTRController`
    * * `[GarminMapKeys.Pointer]: MapPointerController` (can be used to control the behavior of the pointer)
    * * `[GarminMapKeys.PointerRTR]: MapPointerRTRController`
+   * * `[GarminMapKeys.PointerHover]: MapPointerHoverController`
+   * * `[GarminMapKeys.PointerColliderActive]: MapPointerColliderActiveController`
    * @param mapBuilder The map builder to configure.
    * @param pointerBoundsOffset The offset of the boundary surrounding the area in which the pointer can freely move,
    * from the edge of the projected map, excluding the dead zone, or a subscribable which provides it. Expressed as
@@ -1929,6 +2166,14 @@ export class GarminMapBuilder {
         context => {
           return new MapPointerRTRController(context, pointerBoundsOffset);
         }
+      )
+      .withController<MapPointerHoverController, MapPointerHoverControllerModules, any, any, MapPointerHoverControllerContext>(
+        GarminMapKeys.PointerHover,
+        context => new MapPointerHoverController(context)
+      )
+      .withController<MapPointerColliderActiveController, MapPointerColliderActiveControllerModules, any, MapPointerColliderActiveControllerControllers>(
+        GarminMapKeys.PointerColliderActive,
+        context => new MapPointerColliderActiveController(context)
       );
   }
 

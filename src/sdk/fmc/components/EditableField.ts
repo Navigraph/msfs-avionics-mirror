@@ -71,12 +71,15 @@ export abstract class EditableField<T, V = T> extends DisplayField<T> {
    */
   public bindSource(source: DataInterface<T, V>): this {
     if (SubscribableUtils.isSubscribable(source.input)) {
-      this.page.addBinding(source.input.sub((value) => this.takeValue(value, true), true));
+      source.input.sub((value) => this.takeValue(value, true), true)
+        .withLifecycle(this.page.defaultLifecycle);
     } else {
-      this.page.addBinding(source.input.handle((value) => this.takeValue(value, true)));
+      source.input.handle((value) => this.takeValue(value, true))
+        .withLifecycle(this.page.defaultLifecycle);
     }
 
-    this.page.addBinding(this.valueChanged.on((sender, data) => source.modify(data)));
+    this.valueChanged.on((sender, data) => source.modify(data))
+      .withLifecycle(this.page.defaultLifecycle);
 
     return this;
   }

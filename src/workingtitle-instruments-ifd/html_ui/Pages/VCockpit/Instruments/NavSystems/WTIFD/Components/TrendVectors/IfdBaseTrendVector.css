@@ -1,0 +1,10 @@
+.svs-page .wt-ifd-base-trend-vector-container,
+.svs-page .wt-ifd-base-arrow-vector-container {
+    position: absolute;
+}
+
+.svs-page svg.wt-ifd-base-trend-vector {
+    position: absolute;
+    stroke: none;
+    fill: var(--wtdyne-color-cyan);
+}

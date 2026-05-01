@@ -1,0 +1,12 @@
+/* Position for context-sensitive LSKs */
+.context-sensitive-lsks {
+  position: absolute;
+  bottom: 1px;
+  left: 0px;
+  z-index: 100;
+  width: 140px;
+  height: 154px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}

@@ -1,0 +1,14 @@
+.com-freq-dialog-input .cursor-input-cursor,
+.nav-freq-dialog-input .cursor-input-cursor {
+  background: none;
+}
+
+.com-freq-dialog-input .cursor-input-slot-character-empty,
+.nav-freq-dialog-input .cursor-input-slot-character-empty {
+  display: none;
+}
+
+.com-freq-dialog-input .reverse-color .cursor-input-slot-character-highlight,
+.com-freq-dialog-input .reverse-color .cursor-input-slot-character-highlight {
+  color: var(--wtdyne-color-black);
+}

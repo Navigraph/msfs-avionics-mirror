@@ -1,0 +1,34 @@
+.wt-ifd-tas-container {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    padding-left: 13px;
+    align-items: baseline;
+    color: var(--wtdyne-color-white);
+    pointer-events: none;
+    box-shadow: 1px 0 4px 2px rgba(0, 0, 0, 0.45);
+    background: rgba(0, 0, 0, 0.45);
+    bottom: 26px;
+    width: 130px;
+    height: 26px;
+    border-radius: 0 0 12px 14px;
+    line-height: 22px;
+}
+
+.wt-ifd-tas-container .prefix {
+    padding-right: 4px;
+}
+
+.wt-ifd-tas-container .suffix {
+    padding-left: 2px;
+}
+
+.wt-ifd-tas-container .big-text {
+    font-family: "Arial Bold", sans-serif;
+    font-size: 23px;
+}
+
+.wt-ifd-tas-container .small-text {
+    font-family: "Arial Bold", sans-serif;
+    font-size: 14px;
+}

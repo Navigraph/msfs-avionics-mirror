@@ -1,0 +1,32 @@
+{
+  "name": "workingtitle-instruments-ifd",
+  "version": "1.1.4",
+  "description": "Working Title IFD",
+  "main": "index.ts",
+  "scripts": {
+    "build": "npm run build:compile && npm run build:rollup && npm run build:copies",
+    "build:compile": "npx tspc",
+    "build:rollup": "robocopy html_ui *.css build/html_ui /s & npx rollup -c rollup.config.mjs",
+    "build:copies": "npm run build:copies:extras & npm run build:copies:msfssdk",
+    "build:copies:extras": "robocopy html_ui *.svg *.png *.html *.json *.ttf dist/workingtitle-instruments-ifd/html_ui /s",
+    "build:copies:msfssdk": "xcopy node_modules\\@microsoft\\msfs-sdk\\msfssdk-iife.js dist\\workingtitle-instruments-ifd\\html_ui\\Pages\\VCockpit\\Instruments\\NavSystems\\WTIFD\\Libraries\\msfssdk.js /Y /-I"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/msfs-avionics-mirror/"
+  },
+  "author": "Working Title Simulations, LLC",
+  "license": "Modified MIT",
+  "devDependencies": {
+    "@microsoft/msfs-sdk": "2.4.3",
+    "@microsoft/msfs-ts-transformer": "^1.0.0",
+    "@microsoft/msfs-types": "1.14.6",
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "@rollup/plugin-replace": "^5.0.5",
+    "@types/node": "^18.11.18",
+    "rollup": "^4.27.3",
+    "rollup-plugin-import-css": "^3.1.0",
+    "ts-patch": "^3.3.0",
+    "typescript": "5.8.3"
+  }
+}

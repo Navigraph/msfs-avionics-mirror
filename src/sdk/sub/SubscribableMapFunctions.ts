@@ -54,9 +54,9 @@ export class SubscribableMapFunctions {
   }
 
   /**
-   * Generates a function which maps an input boolean tuple to `false` if all tuple members are `true` and to `false`
+   * Generates a function which maps an input boolean tuple to `false` if all tuple members are `true` and to `true`
    * otherwise. A zero-length tuple is mapped to `true`.
-   * @returns A function which maps an input boolean tuple to `true` if all tuple members are `true` and to `false`
+   * @returns A function which maps an input boolean tuple to `false` if all tuple members are `true` and to `true`
    * otherwise.
    */
   public static nand(): (input: readonly boolean[]) => boolean {

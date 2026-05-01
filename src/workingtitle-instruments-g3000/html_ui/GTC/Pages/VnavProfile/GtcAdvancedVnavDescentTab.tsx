@@ -60,7 +60,7 @@ export class GtcAdvancedVnavDescentTab extends DisplayComponent<GtcAdvancedVnavD
       input: () => {
         return {
           inputData: this.selectScheduleInputData,
-          selectedValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentScheduleIndex').value,
+          selectedValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentScheduleIndex').get(),
           listItemHeightPx: this.dialogListItemHeightPx,
           listItemSpacingPx: this.dialogListItemSpacingPx,
           class: 'advanced-vnav-schedule-dialog'
@@ -85,9 +85,9 @@ export class GtcAdvancedVnavDescentTab extends DisplayComponent<GtcAdvancedVnavD
 
             const schedule = this.props.fmsSpeedSettingManager.descentSchedules[index];
 
-            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentScheduleIndex').value = index;
-            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentIas').value = schedule.ias;
-            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentMach').value = schedule.mach;
+            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentScheduleIndex').set(index);
+            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentIas').set(schedule.ias);
+            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentMach').set(schedule.mach);
 
             return false;
           }
@@ -102,7 +102,7 @@ export class GtcAdvancedVnavDescentTab extends DisplayComponent<GtcAdvancedVnavD
       input: () => {
         return {
           title: 'Descent Speed IAS',
-          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotDescentIas').value,
+          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotDescentIas').get(),
           unitsAllowed: 'ias'
         };
       },
@@ -115,7 +115,7 @@ export class GtcAdvancedVnavDescentTab extends DisplayComponent<GtcAdvancedVnavD
       input: () => {
         return {
           title: 'Descent Speed Mach',
-          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotDescentMach').value,
+          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotDescentMach').get(),
           unitsAllowed: 'mach',
         };
       }
@@ -145,12 +145,12 @@ export class GtcAdvancedVnavDescentTab extends DisplayComponent<GtcAdvancedVnavD
       const ias = (result.payload[1] as GtcDialogResultSubmitted<GtcFmsSpeedDialogOutput>).payload.value;
       const mach = (result.payload[2] as GtcDialogResultSubmitted<GtcFmsSpeedDialogOutput>).payload.value;
 
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotDescentIas').value = ias;
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotDescentMach').value = mach;
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotDescentIas').set(ias);
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotDescentMach').set(mach);
 
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentScheduleIndex').value = index;
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentIas').value = ias;
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentMach').value = mach;
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentScheduleIndex').set(index);
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentIas').set(ias);
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedDescentMach').set(mach);
     }
   }
 

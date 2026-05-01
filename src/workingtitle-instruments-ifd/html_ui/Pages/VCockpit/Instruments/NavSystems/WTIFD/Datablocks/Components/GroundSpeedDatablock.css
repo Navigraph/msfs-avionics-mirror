@@ -1,0 +1,13 @@
+.datablock.datablock-ground-speed {
+  width: 100%;
+  flex-direction: row;
+}
+
+.datablock-ground-speed .datablock-ground-speed-value {
+  flex-grow: 1;
+  text-align: right;
+}
+
+.datablock-ground-speed .datablock-ground-speed-unit {
+  padding-right: 15px;
+}

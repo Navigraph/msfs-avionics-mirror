@@ -1,0 +1,12 @@
+.wt-ifd-aux-timers-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 8px 5px;
+}
+
+.wt-ifd-aux-timers-container .ifd-list-scroll-bar {
+    background-color: var(--wtdyne-color-cyan);
+}

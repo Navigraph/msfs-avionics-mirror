@@ -251,4 +251,16 @@ export class MathUtils {
   public static driveExp(initialValue: number, targetValue: number, timeConstant: number, dt: number): number {
     return targetValue + (initialValue - targetValue) * Math.exp(-dt / timeConstant);
   }
+
+  /**
+   * Checks whether two numbers are equal to a given tolerance (meaning that the absolute difference between them is less than or equal to
+   * the tolerance).
+   * @param left The first number to compare.
+   * @param right The second number to compare.
+   * @param tolerance The tolerance within which the two numbers are considered equal.
+   * @returns Whether the two numbers are equal to the given tolerance.
+   */
+  public static fuzzyEquals(left: number, right: number, tolerance: number): boolean {
+    return Math.abs(left - right) <= tolerance;
+  }
 }

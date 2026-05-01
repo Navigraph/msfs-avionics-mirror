@@ -1,0 +1,56 @@
+#right-knob-label {
+  position: absolute;
+  z-index: 75;
+  bottom: 0;
+  right: 0;
+  width: 145px;
+  height: 28px;
+  font-size: 16px;
+  color: var(--wtdyne-color-mint);
+
+  border-color: var(--wtdyne-color-blue);
+  border-style: solid;
+  border-top-width: 3px;
+  border-left-width: 3px;
+  border-bottom-width: 0px;
+  border-right-width: 0px;
+  border-top-left-radius: 4px;
+}
+
+#right-knob-label.right-knob-label-solid {
+  background-color: var(--wtdyne-color-black);
+}
+
+#right-knob-label.right-knob-label-translucent {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-color: transparent;
+  border-top-left-radius: 8px;
+}
+
+#right-knob-label-left-element {
+  position: absolute;
+  top: 5px;
+  right: 88px;
+  transform: scaleX(0.95);
+}
+
+#right-knob-label-icon {
+  position: absolute;
+  top: 1px;
+  left: 60px;
+}
+
+#right-knob-label-right-element {
+  position: absolute;
+  top: 5px;
+  left: 85px;
+  transform: scaleX(0.95);
+}
+
+.right-knob-label-mint {
+  color: var(--wtdyne-color-mint);
+}
+
+.right-knob-label-green {
+  color: var(--wtdyne-color-green);
+}

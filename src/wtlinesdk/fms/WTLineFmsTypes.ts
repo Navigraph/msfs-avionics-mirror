@@ -1,4 +1,4 @@
-import { ExtendedApproachType, RnavTypeFlags, VorFacility } from '@microsoft/msfs-sdk';
+import { ExtendedApproachType, IcaoValue, OneWayRunway, RnavTypeFlags, VorFacility } from '@microsoft/msfs-sdk';
 
 /**
  * Interface used to group together flight plan index-related types
@@ -81,11 +81,11 @@ export type ApproachDetails = {
  * Procedure ident object for the WTLine FMS
  */
 export interface WTLineFlightPlanProcedureIdents {
-  /** The identifier of the departure procedure, or null if there isn't one selected */
-  departureIdent: string | null;
+  /** The identifier of the origin departure procedure, or null if there isn't one selected */
+  originDepartureIdent: string | null;
 
-  /** The identifier of the departure enroute transition, or null if there isn't one selected */
-  departureEnrouteTransitionIdent: string | null;
+  /** The identifier of the origin departure enroute transition, or null if there isn't one selected */
+  originDepartureEnrouteTransitionIdent: string | null;
 
   /** The identifier of the arrival procedure, or null if there isn't one selected */
   arrivalIdent: string | null;
@@ -96,6 +96,61 @@ export interface WTLineFlightPlanProcedureIdents {
   /** The identifier of the approach procedure, or null if there isn't one selected */
   approachIdent: string | null;
 
+  /** The identifier of the approach procedure, with a space instead of the approach suffix, or null if there isn't one selected */
+  paddedApproachIdent: string | null;
+
   /** The identifier of the approach transition, or null if there isn't one selected */
   approachTransitionIdent: string | null;
+
+  /** The identifier of the destination departure procedure, or null if there isn't one selected */
+  destinationDepartureIdent: string | null;
+
+  /** The identifier of the destination departure enroute transition, or null if there isn't one selected */
+  destinationDepartureEnrouteTransitionIdent: string | null;
+}
+
+/**
+ * Flight plan departure data for the WTLine FMS
+ */
+export interface WTLineFlightPlanDepartureData {
+  /** The ICAO of the departure airport, or undefined if there isn't one selected */
+  airportIcao: IcaoValue | null;
+
+  /** The departure runway, or undefined if there isn't one selected */
+  runway: OneWayRunway | null;
+
+  /** The departure procedure index, or -1 if there isn't one selected */
+  departureIndex: number;
+
+  /** The departure runway transition index, or -1 if there isn't one selected */
+  departureRunwayTransitionIndex: number;
+
+  /** The departure enroute transition index, or -1 if there isn't one selected */
+  departureEnrouteTransitionIndex: number;
+}
+
+/**
+ * Flight plan arrival data for the WTLine FMS
+ */
+export interface WTLineFlightPlanArrivalData {
+  /** The ICAO of the arrival airport, or undefined if there isn't one selected */
+  airportIcao: IcaoValue | null;
+
+  /** The arrival runway, or undefined if there isn't one selected */
+  runway: OneWayRunway | null;
+
+  /** The arrival procedure index, or -1 if there isn't one selected */
+  arrivalIndex: number;
+
+  /** The arrival runway transition index, or -1 if there isn't one selected */
+  arrivalRunwayTransitionIndex: number;
+
+  /** The arrival enroute transition index, or -1 if there isn't one selected */
+  arrivalEnrouteTransitionIndex: number;
+
+  /** The approach procedure index, or -1 if there isn't one selected */
+  approachTransitionIndex: number;
+
+  /** The approach index, or -1 if there isn't one selected */
+  approachIndex: number;
 }

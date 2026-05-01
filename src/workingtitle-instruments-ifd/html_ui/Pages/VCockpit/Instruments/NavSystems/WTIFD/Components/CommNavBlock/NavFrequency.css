@@ -1,0 +1,21 @@
+.wt-ifd-nav-frequency-container {
+  position: relative;
+}
+
+.wt-ifd-nav-frequency-container.active-freq{
+  border-bottom: 3px solid var(--wtdyne-color-blue);
+  height: 48px;
+}
+
+.wt-ifd-nav-frequency-container.standby-freq {
+  top: 0;
+  left: -1px;
+  height: 47px;
+  width: 132px;
+}
+
+.wt-ifd-frequency-facility-container {
+  position: absolute;
+  left: 2px;
+  top: 29px;
+}

@@ -1,4 +1,8 @@
-import { ComponentProps, DisplayComponent, DurationDisplay, DurationDisplayFormat, DurationDisplayOptions, FSComponent, NavAngleUnit, NavAngleUnitFamily, NumberFormatter, NumberUnitInterface, Subscribable, Unit, UnitFamily, UserSettingManager, VNode } from '@microsoft/msfs-sdk';
+import {
+  ComponentProps, DisplayComponent, DurationDisplay, DurationDisplayFormat, DurationDisplayOptions, FSComponent,
+  NavAngleUnit, NavAngleUnitFamily, NumberFormatter, NumberUnitInterface, Subscribable, Unit, UnitFamily,
+  UserSettingManager, VNode
+} from '@microsoft/msfs-sdk';
 
 import { DateTimeFormatSettingMode, DateTimeUserSettingTypes, TimeDisplayFormat } from '@microsoft/msfs-garminsdk';
 
@@ -59,7 +63,7 @@ export class MfdFplPageDataFieldRenderer {
       case FlightPlanDataFieldType.CumulativeFuel:
         return this.renderFuel(dataField as FlightPlanDataField<FlightPlanDataFieldType.CumulativeFuel>);
       case FlightPlanDataFieldType.Eta:
-        return this.renderEta(dataField as FlightPlanDataField<FlightPlanDataFieldType.Eta>);
+        return this.renderTime(dataField as FlightPlanDataField<FlightPlanDataFieldType.Eta>);
       case FlightPlanDataFieldType.FuelRemaining:
         return this.renderFuel(dataField as FlightPlanDataField<FlightPlanDataFieldType.FuelRemaining>);
       case FlightPlanDataFieldType.Dtk:
@@ -71,8 +75,9 @@ export class MfdFplPageDataFieldRenderer {
       case FlightPlanDataFieldType.LegFuel:
         return this.renderFuel(dataField as FlightPlanDataField<FlightPlanDataFieldType.LegFuel>);
       case FlightPlanDataFieldType.Sunrise:
-        return null;
+        return this.isCumulative ? null : this.renderTime(dataField as FlightPlanDataField<FlightPlanDataFieldType.Sunrise>);
       case FlightPlanDataFieldType.Sunset:
+        return this.isCumulative ? null : this.renderTime(dataField as FlightPlanDataField<FlightPlanDataFieldType.Sunset>);
       default:
         return null;
     }
@@ -120,11 +125,11 @@ export class MfdFplPageDataFieldRenderer {
   }
 
   /**
-   * Renders an ETA data field.
+   * Renders a time data field.
    * @param dataField The data field to render.
-   * @returns A rendered ETA data field, as a VNode.
+   * @returns A rendered time data field, as a VNode.
    */
-  private renderEta(dataField: FlightPlanDataField<FlightPlanDataFieldType.Eta>): VNode {
+  private renderTime(dataField: FlightPlanDataField<FlightPlanDataFieldType.Eta | FlightPlanDataFieldType.Sunrise | FlightPlanDataFieldType.Sunset>): VNode {
     return (
       <TimeDataField
         value={dataField.value}

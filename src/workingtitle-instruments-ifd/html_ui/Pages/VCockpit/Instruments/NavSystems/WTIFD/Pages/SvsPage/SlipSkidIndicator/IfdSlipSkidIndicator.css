@@ -1,0 +1,30 @@
+.wt-ifd-slip-skid-container {
+  position: relative;
+  display: flex;
+  flex-grow: inherit;
+  top: 50px;
+  height: 30px;
+  z-index: 1;
+}
+
+.wt-ifd-roll-pointer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  stroke-width: 3px;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+  stroke: var(--wtdyne-color-white);
+  fill: var(--wtdyne-color-white);
+}
+
+.wt-ifd-slip-skid-indicator {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  stroke-width: 3px;
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+  stroke: var(--wtdyne-color-white);
+  fill: var(--wtdyne-color-black);
+}

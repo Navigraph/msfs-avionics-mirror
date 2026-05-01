@@ -1,0 +1,41 @@
+.wt-ifd-aircraft-reference-symbol-container {
+    --ars-width: 220px;
+    --ars-height: 30px;
+    z-index: 1;
+    position: absolute;
+    width: var(--ars-width);
+    height: var(--ars-height);
+    left: calc(50% - var(--ars-width) / 2);
+    justify-content: center;
+}
+
+img.wt-ifd-svs-aircraft-reference-symbol {
+    position: absolute;
+    width: 220px;
+}
+
+svg.wt-ifd-aircraft-reference-symbol {
+    position: absolute;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    stroke: none;
+    fill: var(--wtdyne-color-orange);
+}
+
+svg.wt-ifd-aircraft-reference-symbol.shadow {
+    position: absolute;
+    stroke-width: 5px;
+    stroke-linejoin: miter;
+    stroke-linecap: butt;
+    stroke: var(--wtdyne-color-black);
+    fill: none;
+}
+
+svg.wt-ifd-aircraft-reference-symbol.shadow .left-bullet-path,
+svg.wt-ifd-aircraft-reference-symbol.shadow .right-bullet-path {
+    stroke-width: 3px;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+

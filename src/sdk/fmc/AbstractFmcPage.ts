@@ -1,11 +1,14 @@
-import { Subscription } from '../sub';
-import { FmcComponent } from './components';
 import { FmcOutputTemplate, FmcRenderTemplate, FmcRenderTemplateColumn, FmcRenderTemplateRow, PositionedFmcColumn, RenderedPositionedFmcColumn } from './FmcRenderer';
 import { FmcScreen } from './FmcScreen';
-import { ConsumerSubject, EventBus } from '../data';
-import { ClockEvents } from '../instruments';
 import { FmcPagingEvents, LineSelectKeyEvent } from './FmcInteractionEvents';
 import { FmcPageExtension } from './FmcScreenPluginContext';
+import { Subscription } from '../sub/Subscription';
+import { BasicLifecycle } from '../sub/BasicLifecycle';
+import { Lifecycle, ReadonlyLifecycle } from '../sub/Lifecycle';
+import { FmcComponent } from './components/FmcComponent';
+import { ConsumerSubject } from '../data/ConsumerSubject';
+import { EventBus } from '../data/EventBus';
+import { ClockEvents } from '../instruments/Clock';
 
 /**
  * A render callback given to an FMC page
@@ -47,6 +50,21 @@ export abstract class AbstractFmcPage<P extends object | null = any> {
   private readonly bindings: (Subscription | ConsumerSubject<any>)[] = [];
 
   private readonly pageExtensions: FmcPageExtension<this>[] = [];
+
+  private readonly _defaultLifecycle = this.createDefaultLifecycle();
+
+  /**
+   * The default lifecycle for this page
+   */
+  public readonly defaultLifecycle: ReadonlyLifecycle = this._defaultLifecycle;
+
+  /**
+   * Creates the page's default lifecycle.
+   * @returns A lifecycle to use as the default.
+   */
+  protected createDefaultLifecycle(): Lifecycle {
+    return new BasicLifecycle(true);
+  }
 
   public readonly params = new Map();
 
@@ -107,7 +125,7 @@ export abstract class AbstractFmcPage<P extends object | null = any> {
    * Use this for setting up subscriptions and such.
    */
   public init(): void {
-    this.addBinding(this.screen.currentSubpageIndex.sub(() => this.invalidate()));
+    this.screen.currentSubpageIndex.sub(() => this.invalidate()).withLifecycle(this.defaultLifecycle);
 
     for (const extension of this.pageExtensions) {
       extension.onPageInit?.();
@@ -127,6 +145,7 @@ export abstract class AbstractFmcPage<P extends object | null = any> {
    * Pauses the page and calls appropriate event handlers
    */
   public pause(): void {
+    this._defaultLifecycle.pause();
     for (const binding of this.bindings) {
       if (!binding.isAlive) {
         continue;
@@ -162,6 +181,7 @@ export abstract class AbstractFmcPage<P extends object | null = any> {
       this._props = props;
     }
 
+    this._defaultLifecycle.resume();
     for (const binding of this.bindings) {
       if (!binding.isAlive) {
         continue;
@@ -199,6 +219,7 @@ export abstract class AbstractFmcPage<P extends object | null = any> {
     this.isDirty = false;
     this.clockSub.destroy();
 
+    this._defaultLifecycle.destroy();
     for (const binding of this.bindings) {
       if (!binding.isAlive) {
         continue;
@@ -244,6 +265,9 @@ export abstract class AbstractFmcPage<P extends object | null = any> {
     }
 
     this.screen.currentSubpageCount.set(templates.length);
+    if (this.screen.currentSubpageIndex.get() > templates.length) {
+      this.screen.currentSubpageIndex.set(1);
+    }
 
     const template = templates[this.screen.currentSubpageIndex.get() - 1];
 
@@ -361,6 +385,8 @@ export abstract class AbstractFmcPage<P extends object | null = any> {
    * them when the page is destroyed.
    *
    * @param binding a subscription
+   *
+   * @deprecated use the lifecycle API with {@link defaultLifecycle} instead
    */
   public addBinding(binding: Subscription | ConsumerSubject<any>): void {
     this.bindings.push(binding);

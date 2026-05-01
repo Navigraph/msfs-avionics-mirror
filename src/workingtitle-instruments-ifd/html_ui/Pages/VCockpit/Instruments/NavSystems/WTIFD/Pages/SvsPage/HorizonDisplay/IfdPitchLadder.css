@@ -1,0 +1,46 @@
+.wt-ifd-horizon-display .pitch-ladder-container {
+    position: absolute;
+    overflow: hidden;
+}
+
+.wt-ifd-horizon-display .pitch-ladder {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    transform-origin: 0 0;
+}
+
+.wt-ifd-horizon-display .upper-extreme-pitch-indicator,
+.wt-ifd-horizon-display .lower-extreme-pitch-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    transform-origin: 0 0;
+    stroke: var(--wtdyne-color-light-cyan);
+    stroke-width: 3px;
+    fill: none;
+    stroke-linecap: butt;
+    stroke-linejoin: miter;
+}
+
+.wt-ifd-horizon-display .pitch-ladder-line {
+    stroke: var(--wtdyne-color-light-cyan);
+    stroke-width: 2px;
+    fill: none;
+}
+
+.wt-ifd-horizon-display .pitch-ladder-line.shadow {
+    stroke: var(--wtdyne-color-black);
+}
+
+.wt-ifd-horizon-display .pitch-ladder-text {
+    font-family: "Arial", sans-serif;
+    font-size: 15px;
+    paint-order: stroke;
+    fill: var(--wtdyne-color-white);
+    stroke: none;
+    stroke-width: 1px;
+    letter-spacing: 1px;
+}

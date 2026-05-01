@@ -1,0 +1,26 @@
+.wt-ifd-horizon-display-container {
+    position: absolute;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+.wt-ifd-horizon-display {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.wt-ifd-horizon-display canvas {
+}
+
+.wt-ifd-horizon-display .wt-ifd-horizon-line-container {
+    width: 100%;
+}
+
+.wt-ifd-horizon-line-container .wt-ifd-horizon-line {
+    stroke: var(--wtdyne-color-light-cyan);
+    stroke-width: 2px;
+    fill: none;
+}

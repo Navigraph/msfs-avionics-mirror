@@ -1,0 +1,583 @@
+/* Virtual Keyboard styling */
+.vkb-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  transition: transform 0.3s ease;
+  z-index: 1000;
+  font-family: 'Arial Bold', sans-serif;
+}
+
+.vkb-mode-numpad,
+.vkb-mode-xpdr,
+.vkb-mode-alpha,
+.vkb-mode-symbol {
+  background: linear-gradient(to bottom,
+      transparent 0%,
+      black 16.6%,
+      black 83.4%,
+      transparent 100%);
+}
+
+.vkb-hidden {
+  transform: translate3d(0, 100%, 0);
+}
+
+.vkb-mode-alpha .vkb-input-wrapper,
+.vkb-mode-symbol .vkb-input-wrapper {
+  width: 320px;
+  height: 34px;
+  margin: 3px;
+  margin-top: 10px;
+  margin-left: 11px;
+  position: absolute;
+  bottom: 55px;
+  left: 200px;
+}
+
+.vkb-mode-numpad .vkb-input-wrapper {
+  width: 116px;
+  height: 34px;
+  margin: 3px;
+  margin-top: 10px;
+  margin-left: 11px;
+  position: absolute;
+  right: 45px;
+  bottom: 50px;
+}
+
+.vkb-mode-xpdr .vkb-input-wrapper {
+  width: 132px;
+  height: 34px;
+  margin: 3px;
+  margin-top: 10px;
+  margin-left: 0px;
+  position: absolute;
+  right: 45px;
+  bottom: 50px;
+}
+
+.vkb-title {
+  text-align: center;
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #0af;
+  display: block;
+}
+
+.vkb-display-none {
+  display: none;
+}
+
+.vkb-mode-alpha .vkb-layout-alpha,
+.vkb-mode-symbol .vkb-layout-symbol,
+.vkb-mode-numpad .vkb-layout-numpad,
+.vkb-mode-xpdr .vkb-layout-xpdr {
+  display: block;
+}
+
+.vkb-layout-alpha,
+.vkb-layout-symbol,
+.vkb-layout-numpad {
+  padding-bottom: 32px;
+}
+
+.vkb-layout-xpdr {
+  padding-bottom: 38px;
+}
+
+.vkb-row-alpha-1,
+.vkb-row-alpha-2-3,
+.vkb-row-alpha-4 {
+  display: flex;
+  margin-bottom: 14px;
+}
+
+.vkb-row-numpad {
+  display: flex;
+  margin-bottom: 13px;
+  margin-left: 168px;
+}
+
+/* Base key styling */
+.vkb-key {
+  background: #202020;
+  border-top: 2px solid #353535;
+  border-right: 2px solid #292929;
+  border-left: 2px solid #3e3e3e;
+  border-bottom: 2px solid #1a1a1a;
+  border-radius: 5px;
+  color: var(--wtdyne-color-light-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s ease, transform 0.1s ease;
+  position: relative;
+}
+
+.vkb-shift-arrow {
+  width: 100%;
+  text-align: center;
+  bottom: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 18px;
+}
+
+.vkb-shift-arrow::before {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 11px solid transparent;
+  border-right: 11px solid transparent;
+  border-bottom: 12px solid var(--wtdyne-color-light-cyan);
+  position: absolute;
+  top: 18px;
+}
+
+.vkb-shift-arrow::after {
+  content: '';
+  display: block;
+  width: 12px;
+  height: 10px;
+  background-color: var(--wtdyne-color-light-cyan);
+  margin-top: 1px;
+  position: absolute;
+  top: 26px;
+}
+
+.vkb-backspace-icon {
+  position: absolute;
+  width: 100%;
+  bottom: 10px;
+  justify-content: center;
+  display: flex;
+  bottom: 20px;
+  left: 0px;
+}
+
+/* Alphanumeric key styling */
+.vkb-alphanumeric-key {
+  width: 53px;
+  height: 56px;
+}
+
+/* Numpad key styling */
+.vkb-alphanumeric-numpad-key {
+  width: 88px;
+  height: 88px;
+  margin-right: 16px;
+  font-size: 60px;
+}
+
+.vkb-key-press-effect.vkb-alphanumeric-numpad-key {
+  top: 36px;
+  left: 9px;
+}
+
+.vkb-row-alpha-1 .vkb-alphanumeric-key {
+  margin-right: 5px;
+}
+
+.vkb-row-alpha-2-3 .vkb-alphanumeric-key {
+  margin-right: 4px;
+}
+
+.vkb-key:hover {
+  background: linear-gradient(to bottom, #555555, #444444);
+}
+
+.vkb-key:active {
+  transform: translate3d(0, 1px, 0);
+  background: linear-gradient(to bottom, #333333, #222222);
+}
+
+.vkb-key.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.vkb-alphanumeric-close-key,
+.vkb-xpdr-close-key {
+  background: #3b1707;
+  border-top: 2px solid #61241f;
+  border-right: 2px solid #3f1d14;
+  border-left: 2px solid #702d25;
+  border-bottom: 2px solid #3e1b17;
+}
+
+.vkb-alphanumeric-close-key {
+  width: 48px;
+  height: 56px;
+  margin-left: 2px;
+}
+
+.vkb-alphanumeric-numpad-close-key {
+  width: 88px;
+  height: 86px;
+  margin-left: 27px;
+}
+
+
+.vkb-alphanumeric-close-key:hover,
+.vkb-xpdr-close-key:hover {
+  background: darkred;
+}
+
+.vkb-alphanumeric-close-key:active,
+.vkb-xpdr-close-key:active {
+  transform: translate3d(0, 1px, 0);
+  background: red;
+}
+
+.vkb-alphanumeric-close-key.disabled,
+.vkb-xpdr-close-key.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Button press effect styling */
+.vkb-key-press-effect {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.95;
+  font-size: 1.8em;
+  transform: translate(-28px, -95px) scale(1.37);
+}
+
+
+/* Apply font size based on keyboard type */
+.vkb-key-press-effect.vkb-key-press-effect-alpha-enlarged {
+  font-size: 2em;
+}
+
+/* XPDR Transponder Keyboard Styles */
+
+/* Container for the entire XPDR keypad */
+.vkb-xpdr-keyboard {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  margin: 0 auto;
+  background: transparent;
+}
+
+.vkb-xpdr-1-row,
+.vkb-xpdr-2-row {
+  display: flex;
+  justify-content: start;
+  margin-top: 8px;
+  margin-left: 4px;
+}
+
+.vkb-xpdr-2-row {
+  margin-left: 40px;
+}
+
+.vkb-xpdr-3-row {
+  display: flex;
+  justify-content: start;
+  margin-top: 8px;
+  margin-left: 4px;
+}
+
+.vkb-xpdr-1-row>* {
+  margin-right: 6px;
+}
+
+.vkb-xpdr-2-row>* {
+  margin-right: 8px;
+}
+
+.vkb-xpdr-3-row>* {
+  margin-right: 7px;
+}
+
+/* Base style for all XPDR keys */
+.xpdr-key {
+  align-items: center;
+  justify-content: center;
+  background: #202020;
+  border-top: 2px solid #353535;
+  border-right: 2px solid #292929;
+  border-left: 2px solid #3e3e3e;
+  border-bottom: 2px solid #1a1a1a;
+  border-radius: 5px;
+  color: var(--wtdyne-color-light-cyan);
+  transition: background 0.1s ease, transform 0.1s ease;
+  position: relative;
+  cursor: pointer;
+  padding-top: 4px;
+  font-size: 30px;
+}
+
+/* Numeric digit keys (0–7) */
+.vkb-xpdr-first-row-key {
+  width: 64px;
+  height: 62px;
+  font-size: 40px;
+  padding-top: 4px;
+  padding-left: 2px;
+}
+
+/* Mode keys (SBY, GND, ON, ALT) */
+.vkb-xpdr-mode-key {
+  width: 132px;
+  height: 62px;
+}
+
+/* Function keys (VFR, IDENT, CLR, ENT) */
+.vkb-xpdr-vfr-key {
+  width: 168px;
+  height: 62px;
+}
+
+.vkb-xpdr-ident-key {
+  width: 168px;
+  height: 62px;
+}
+
+.vkb-xpdr-clr-key {
+  width: 98px;
+  height: 62px;
+}
+
+/* No longer needed as this is handled by the class-specific selectors */
+/* Special keys with unique coloring */
+.vkb-xpdr-close-key {
+  background: #3b1707;
+  border-top: 2px solid #61241f;
+  border-right: 2px solid #3f1d14;
+  border-left: 2px solid #702d25;
+  border-bottom: 2px solid #3e1b17;
+  font-size: 28px;
+}
+
+.vkb-xpdr-ent-key {
+  background: #005599;
+  border-top: 2px solid #0066aa;
+  border-right: 2px solid #004477;
+  border-left: 2px solid #0077bb;
+  border-bottom: 2px solid #003366;
+}
+
+/* Display XPDR keyboard when type is set to XPDR */
+.vkb-mode-xpdr .vkb-layout-xpdr {
+  display: block;
+}
+
+/* XPDR key hover/active states are now handled by the common hover/active selectors */
+/* These are retained for backward compatibility */
+.xpdr-key:hover {
+  background: linear-gradient(to bottom, #555555, #444444);
+}
+
+.xpdr-key:active {
+  transform: translate3d(0, 1px, 0);
+  background: linear-gradient(to bottom, #333333, #222222);
+}
+
+.vkb-layout-xpdr {
+  display: none;
+}
+
+/* Function keys hover/active states are handled by the common .vkb-key selectors */
+
+.vkb-alphanumeric-backspace-key {
+  position: absolute;
+  right: 7px;
+  bottom: 154px;
+  width: 88px;
+  height: 90px;
+}
+
+.vkb-key-press-effect.vkb-alphanumeric-backspace-key {
+  right: -12px;
+  bottom: -40px;
+}
+
+.vkb-alphanumeric-numpad-backspace-key {
+  position: absolute;
+  right: 45px;
+  bottom: 250px;
+  width: 116px;
+  height: 88px;
+  font-size: 22px;
+}
+
+.vkb-key-press-effect.vkb-alphanumeric-numpad-backspace-key {
+  right: -8px;
+  bottom: -40px;
+}
+
+.vkb-alphanumeric-enter-key {
+  position: absolute;
+  right: 7px;
+  bottom: 48px;
+  width: 88px;
+  height: 90px;
+}
+
+.vkb-alphanumeric-numpad-enter-key {
+  position: absolute;
+  right: 45px;
+  bottom: 102px;
+  width: 116px;
+  height: 135px;
+  font-size: 22px;
+}
+
+.vkb-alphanumeric-mode-key {
+  width: 88px;
+  height: 56px;
+  font-size: 24px;
+}
+
+.vkb-alphanumeric-numpad-mode-key {
+  font-size: 22px;
+}
+
+.vkb-spacer-row-1 {
+  width: 3px;
+}
+
+.vkb-spacer-row-2-3 {
+  width: 21px;
+}
+
+.vkb-spacer-row-4 {
+  width: 3px;
+}
+
+.vkb-alphanumeric-space-key {
+  width: 106px;
+  margin-left: 6px;
+  height: 56px;
+}
+
+.vkb-key-press-effect.vkb-alphanumeric-space-key {
+  right: -12px;
+}
+
+.vkb-row-function {
+  margin-top: 14px;
+}
+
+.vkb-alphanumeric-mode-key:hover,
+.vkb-alphanumeric-numpad-mode-key:hover {
+  background: linear-gradient(to bottom, #0066aa, #004477);
+}
+
+.vkb-alphanumeric-mode-key:active,
+.vkb-alphanumeric-numpad-mode-key:active {
+  transform: translate3d(0, 1px, 0);
+  background: linear-gradient(to bottom, #005599, #003366);
+}
+
+.vkb-alphanumeric-mode-key.disabled,
+.vkb-alphanumeric-numpad-mode-key.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.vkb-input {
+  background: #00ffff;
+  border: 1px solid #007e7e;
+  border-radius: 6px;
+  color: black;
+  align-items: center;
+  font-size: 18px;
+  overflow: hidden;
+  white-space: nowrap;
+  height: 34px;
+  padding: 8px 5px 5px 12px;
+  display: block;
+}
+
+.vkb-input .numberunit-unit-small {
+  font-size: 17px;
+}
+
+.vkb-input-flex {
+  display: flex;
+  align-items: baseline;
+}
+
+/* Caret styling for reversed video effect */
+.vkb-caret-position {
+  background-color: #00ffff;
+  color: black;
+  border: none;
+  font-weight: bold;
+  display: inline-block;
+  background: black;
+  color: #00ffff;
+}
+
+/* Blinking caret at end of input */
+.vkb-caret-end {
+  display: inline-block;
+  animation: blink 1s step-end infinite;
+  font-weight: bold;
+  color: black;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.vkb-input-xpdr {
+  width: 132px;
+  height: 34px;
+  padding: 0 10px;
+  margin-left: 7px;
+  margin-top: 16px;
+}
+
+/* Numpad layout */
+.vkb-numpad-layout {
+  display: flex;
+  justify-content: center;
+}
+
+.vkb-numpad-group {
+  flex: 3;
+}
+
+.vkb-special-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.vkb-key-special {
+  margin: 3px;
+  width: 88px;
+  height: 56px;
+}
+
+.vkb-invalid-entry {
+  top: 130px;
+  left: 50%;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.vkb-invalid-entry span {
+  color: var(--wtdyne-color-cyan);
+  border: 1px solid var(--wtdyne-color-light-cyan);
+  background: var(--wtdyne-color-black);
+  border-radius: 10px;
+  padding: 10px;
+}

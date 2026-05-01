@@ -14,7 +14,7 @@ import {
 
 import { GtcConfig } from '../Config/GtcConfig';
 import { GtcUserSettings } from '../Settings/GtcUserSettings';
-import { GtcInteractionEvent, GtcInteractionEventUtils, GtcInteractionHandler } from './GtcInteractionEvent';
+import { GtcInteractionEvent, GtcInteractionHandler } from './GtcInteractionEvent';
 import { GtcKnobHandler } from './GtcKnobHandler';
 import { GtcKnobStatePluginOverrides, GtcKnobStates, GtcKnobStatesManager } from './GtcKnobStates';
 import { GtcView } from './GtcView';
@@ -212,9 +212,7 @@ export class GtcService {
   public readonly hasNavComMode = this.controlSetup === 'all' || this.controlSetup === 'pfd-navcom';
 
   /** Whether advanced VNAV is enabled. */
-  public readonly isAdvancedVnav = this.config.vnav.advanced;
-
-  private readonly hEventMap = GtcInteractionEventUtils.hEventMap(this.orientation, this.instrumentIndex);
+  public readonly isAdvancedVnav = this.avionicsConfig.vnav.advanced;
 
   private readonly _activeControlMode = Subject.create<GtcControlMode>('PFD');
   /** The currently active control mode. */
@@ -261,7 +259,7 @@ export class GtcService {
   public readonly gtcSettings = GtcUserSettings.getAliasedManager(this.bus, this.instrumentIndex as 1 | 2 | 3 | 4);
 
   /** An array containing the indexes of all enabled controllable display panes in ascending order. */
-  public readonly enabledControllablePanes: readonly ControllableDisplayPaneIndex[] = DisplayPaneUtils.getEnabledControllablePanes(this.config.gduDefs.pfdCount);
+  public readonly enabledControllablePanes: readonly ControllableDisplayPaneIndex[] = DisplayPaneUtils.getEnabledControllablePanes(this.avionicsConfig.gduDefs.pfdCount);
 
   /** The selected pane for this GTC. */
   public readonly thisGtcSelectedPane = ConsumerSubject.create(
@@ -339,7 +337,7 @@ export class GtcService {
    * Creates an instance of GtcService.
    * @param bus The event bus.
    * @param instrumentIndex The index of the GTC instrument to which this service belongs.
-   * @param config The general avionics configuration object.
+   * @param avionicsConfig The general avionics configuration object.
    * @param instrumentConfig The GTC instrument configuration object.
    * @param obsSuspDataProvider A provider of LNAV OBS/suspend data.
    * @throws Error if {@linkcode defaultControlMode} is incompatible with {@linkcode controlSetup}.
@@ -347,8 +345,8 @@ export class GtcService {
   public constructor(
     public readonly bus: EventBus,
     public readonly instrumentIndex: number,
-    private readonly config: AvionicsConfig,
-    private readonly instrumentConfig: GtcConfig,
+    public readonly avionicsConfig: AvionicsConfig,
+    public readonly instrumentConfig: GtcConfig,
     obsSuspDataProvider: ObsSuspDataProvider
   ) {
     switch (instrumentConfig.defaultControlMode) {

@@ -151,6 +151,9 @@ export type NextGenHsiMapOptions = {
   /** Configuration options for traffic icons. Required to display traffic. */
   trafficIconOptions?: NextGenHsiMapTrafficIconOptions;
 
+  /** Whether to include support for highlighted waypoints. Defaults to `true`. */
+  supportWaypointHighlight?: boolean;
+
   /** Whether to include the track vector display. Defaults to `true`. */
   includeTrackVector?: boolean;
 
@@ -272,6 +275,8 @@ export class NextGenHsiMapBuilder {
     options.rangeEndpoints ??= VecNMath.create(4, 0.5, 0.5, 0.5, 0);
 
     options.supportDataIntegrity ??= true;
+
+    options.supportWaypointHighlight ??= true;
 
     options.useRangeUserSettingByDefault ??= true;
 
@@ -435,18 +440,20 @@ export class NextGenHsiMapBuilder {
       );
     }
 
-    mapBuilder
-      .with(GarminMapBuilder.waypointHighlight,
-        false,
-        (builder: MapWaypointDisplayBuilder) => {
-          builder.withHighlightStyles(
-            options.waypointIconImageCache,
-            NextGenMapWaypointStyles.highlightIconStyles(5, options.waypointStyleScale),
-            NextGenMapWaypointStyles.highlightLabelStyles(5, options.waypointStyleFontType, options.waypointStyleScale)
-          );
-        }
-      );
-
+    if (options.supportWaypointHighlight) {
+      mapBuilder
+        .with(GarminMapBuilder.waypointHighlight,
+          false,
+          (builder: MapWaypointDisplayBuilder) => {
+            builder.withHighlightStyles(
+              options.waypointIconImageCache,
+              NextGenMapWaypointStyles.highlightIconStyles(5, options.waypointStyleScale),
+              NextGenMapWaypointStyles.highlightLabelStyles(5, options.waypointStyleFontType, options.waypointStyleScale)
+            );
+          }
+        );
+    }
+    
     if (options.includeTrackVector) {
       mapBuilder.with(GarminMapBuilder.trackVector,
         {

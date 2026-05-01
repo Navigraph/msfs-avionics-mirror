@@ -1,0 +1,74 @@
+.map-range-numbers {
+  position: relative;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  padding-top: 3px;
+}
+
+.map-range-numbers .range-number-inner {
+  position: absolute;
+  display: flex;
+  width: auto;
+  justify-content: left;
+  align-items: flex-end;
+  left: 30px;
+  bottom: 5px;
+  border-radius: 8px;
+  font-size: 25px;
+  padding: 3px 3px 0 3px;
+  line-height: 1;
+  color: var(--wtdyne-color-light-blue);
+  text-shadow: -1px -1px 0 var(--wtdyne-color-gray-4),
+  0 -1px 0 var(--wtdyne-color-gray-4), 1px -1px 0 var(--wtdyne-color-gray-4),
+  1px 0 0 var(--wtdyne-color-gray-4), 1px 1px 0 var(--wtdyne-color-gray-4),
+  0 1px 0 var(--wtdyne-color-gray-4), -1px 1px 0 var(--wtdyne-color-gray-4),
+  -1px 0 0 var(--wtdyne-color-gray-4);
+}
+
+.map-range-numbers .range-number-outer {
+  color: var(--wtdyne-color-light-blue);
+  text-shadow: -1px -1px 0 var(--wtdyne-color-gray-4),
+  0 -1px 0 var(--wtdyne-color-gray-4), 1px -1px 0 var(--wtdyne-color-gray-4),
+  1px 0 0 var(--wtdyne-color-gray-4), 1px 1px 0 var(--wtdyne-color-gray-4),
+  0 1px 0 var(--wtdyne-color-gray-4), -1px 1px 0 var(--wtdyne-color-gray-4),
+  -1px 0 0 var(--wtdyne-color-gray-4);
+  position: absolute;
+  width: auto;
+  height: 100%;
+  display: flex;
+  justify-content: left;
+  align-items: center;
+  left: 75px;
+  bottom: 77px;
+}
+
+.map-range-numbers .range-number-outer.range-active {
+  background-color: var(--wtdyne-color-light-blue);
+  color: var(--wtdyne-color-black);
+  font-size: 35px;
+  font-family: "Arial Bold", serif;
+  text-shadow: none;
+  border-radius: 6px;
+}
+
+.map-range-numbers .range-number-inner .numberunit-unit-small,
+.map-range-numbers .range-number-outer .numberunit-unit-small {
+  font-size: 15px;
+  padding-left: 5px;
+}
+
+.map-range-numbers .range-number-outer.range-active .numberunit-unit-small {
+  font-size: 28px;
+}
+
+.map-range-number-inner {
+  border: 3px solid transparent;
+  padding-left: 2px;
+}
+
+.map-range-zoom-active .map-range-number-inner {
+  border: 3px solid var(--wtdyne-color-cyan);
+  border-radius: 3px;
+  width: 95px;
+}

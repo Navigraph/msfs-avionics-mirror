@@ -4,12 +4,16 @@ import {
   Vec2Math
 } from '@microsoft/msfs-sdk';
 
-import { BearingDisplay, ObsSuspModes, TouchButton, UnitsUserSettingManager } from '@microsoft/msfs-garminsdk';
+import { BearingDisplay, NavReferenceSource, ObsSuspModes, TouchButton, UnitsUserSettingManager } from '@microsoft/msfs-garminsdk';
 
 import { SelectedCourseDialog } from '../../../MFD/Views/SelectedCourseDialog/SelectedCourseDialog';
 import { SelectedHeadingDialog } from '../../../MFD/Views/SelectedHeadingDialog/SelectedHeadingDialog';
 import { RadiosConfig } from '../../../Shared/AvionicsConfig/RadiosConfig';
 import { GduFormat } from '../../../Shared/CommonTypes';
+import { UiMessageDialog } from '../../../Shared/Dialogs/UiMessageDialog';
+import { G3XFplSource } from '../../../Shared/FlightPlan/G3XFplSourceTypes';
+import { G3XObsController } from '../../../Shared/Navigation/G3XObsController';
+import { G3XTouchNavSourceName } from '../../../Shared/NavReference/G3XTouchNavReference';
 import { GduUserSettingTypes } from '../../../Shared/Settings/GduUserSettings';
 import { PfdHsiUserSettingTypes } from '../../../Shared/Settings/PfdUserSettings';
 import { UiService } from '../../../Shared/UiSystem/UiService';
@@ -168,7 +172,30 @@ export class Hsi extends DisplayComponent<HSIProps> {
     this.props.dataProvider.activeNavIndicator.isCourseHeading
   ).pause();
 
-  private readonly isCrsButtonEnabled = Subject.create(false);
+  private readonly isCrsButtonEnabled = MappedSubject.create(
+    ([activeNavSource, isObsAvailable]) => {
+      return activeNavSource !== null && (
+        activeNavSource.getType() === NavSourceType.Nav
+        || (activeNavSource.name === 'GPSInt' && isObsAvailable)
+      );
+    },
+    this.props.dataProvider.activeNavIndicator.source,
+    this.props.dataProvider.isObsAvailable
+  ).pause();
+  private readonly crsButtonTitle = this.crsSourceState.map(([activeNavSource, obsSuspMode]) => {
+    return activeNavSource !== null && activeNavSource.getType() === NavSourceType.Gps && obsSuspMode === ObsSuspModes.OBS ? 'OBS' : 'CRS';
+  });
+
+  private readonly internalObsController = new G3XObsController(
+    this.props.uiService.bus,
+    {
+      internalSourceDef: this.props.dataProvider.internalSourceDef,
+      externalSourceDefs: this.props.dataProvider.externalSourceDefs,
+      externalSourceCount: this.props.dataProvider.externalFplSourceCount,
+    },
+    this.props.dataProvider.navSources,
+    G3XFplSource.Internal
+  );
 
   private readonly showUpperDeviationIndicator = MappedSubject.create(
     ([showSetting, declutter]) => showSetting && !declutter,
@@ -190,11 +217,9 @@ export class Hsi extends DisplayComponent<HSIProps> {
       if (source?.getType() === NavSourceType.Gps) {
         this.rootCssClass.add('hsi-active-nav-gps');
         this.rootCssClass.delete('hsi-active-nav-nav');
-        this.isCrsButtonEnabled.set(false);
       } else {
         this.rootCssClass.add('hsi-active-nav-nav');
         this.rootCssClass.delete('hsi-active-nav-gps');
-        this.isCrsButtonEnabled.set(true);
       }
     }, true);
 
@@ -249,6 +274,8 @@ export class Hsi extends DisplayComponent<HSIProps> {
 
       this.crsState.resume();
 
+      this.isCrsButtonEnabled.resume();
+
       this.isHdgCrsVisible.set(true);
     }
   }
@@ -267,6 +294,8 @@ export class Hsi extends DisplayComponent<HSIProps> {
     this.navCourseState.pause();
     this.navCoursePipe!.pause();
     this.obsCoursePipe!.pause();
+
+    this.isCrsButtonEnabled.pause();
   }
 
   /**
@@ -318,21 +347,77 @@ export class Hsi extends DisplayComponent<HSIProps> {
       return;
     }
 
+    if (activeNavSource.getType() === NavSourceType.Nav) {
+      this.selectNavCrs(activeNavSource);
+    } else if (activeNavSource.name === 'GPSInt') {
+      this.selectObsCrs(activeNavSource);
+    }
+  }
+
+  /**
+   * Opens a dialog to allow the user to select a course for the NAV radio that is the active navigation source.
+   * @param activeNavSource The active navigation source. Must be either `NAV1` or `NAV2`.
+   */
+  private async selectNavCrs(activeNavSource: NavReferenceSource<G3XTouchNavSourceName>): Promise<void> {
     const initialValue = this.crsValue.get().number;
 
     const result = await this.props.uiService
       .openMfdPopup<SelectedCourseDialog>(UiViewStackLayer.Overlay, UiViewKeys.SelectedCourseDialog, true)
       .ref.request({
         initialValue,
-        navSource: activeNavSource
+        navSource: activeNavSource,
       });
 
     if (!result.wasCancelled && this.props.dataProvider.activeNavIndicator.source.get() === activeNavSource) {
-      if (activeNavSource.getType() === NavSourceType.Nav) {
-        const simRadioIndex = this.props.radiosConfig.navDefinitions[activeNavSource.index]?.simIndex;
-        if (simRadioIndex !== undefined) {
-          SimVar.SetSimVarValue(`K:VOR${simRadioIndex}_SET`, SimVarValueType.Number, result.payload);
-        }
+      const simRadioIndex = this.props.radiosConfig.navDefinitions[activeNavSource.index]?.simIndex;
+      if (simRadioIndex !== undefined) {
+        SimVar.SetSimVarValue(`K:VOR${simRadioIndex}_SET`, SimVarValueType.Number, result.payload);
+      }
+    }
+  }
+
+  /**
+   * Opens a series of dialogs to allow the user to activate or deactivate GPS OBS mode and/or select the OBS course
+   * when the active navigation source is the internal GPS source.
+   * @param activeNavSource The active navigation source. Must be `GPSInt`.
+   */
+  private async selectObsCrs(activeNavSource: NavReferenceSource<G3XTouchNavSourceName>): Promise<void> {
+    const initialValue = this.crsValue.get().number;
+
+    if (this.props.dataProvider.obsSuspMode.get() !== ObsSuspModes.OBS) {
+      const confirmResult = await this.props.uiService
+        .openPfdPopup<UiMessageDialog>(UiViewKeys.MessageDialog1, true, { popupType: 'slideout-bottom-full', backgroundOcclusion: 'transparent' })
+        .ref.request({
+          message: 'Set OBS and hold?',
+          showRejectButton: true,
+          acceptButtonLabel: 'Yes',
+          rejectButtonLabel: 'No',
+          closeOnBackgroundTouch: true,
+          class: 'pfd-obs-confirm-dialog',
+        });
+
+      if (confirmResult.wasCancelled || !confirmResult.payload) {
+        return;
+      }
+    }
+
+    const result = await this.props.uiService
+      .openMfdPopup<SelectedCourseDialog>(UiViewStackLayer.Overlay, UiViewKeys.SelectedCourseDialog, true)
+      .ref.request({
+        initialValue,
+        navSource: activeNavSource,
+        isObsActive: this.props.dataProvider.obsSuspMode.get() === ObsSuspModes.OBS,
+      });
+
+    if (
+      !result.wasCancelled
+      && this.props.dataProvider.activeNavIndicator.source.get() === activeNavSource
+      && this.props.dataProvider.isObsAvailable.get()
+    ) {
+      if (isFinite(result.payload)) {
+        this.internalObsController.activateObs(result.payload);
+      } else {
+        this.internalObsController.deactivateObs();
       }
     }
   }
@@ -376,7 +461,7 @@ export class Hsi extends DisplayComponent<HSIProps> {
             onPressed={this.onCrsPressed.bind(this)}
             class='pfd-touch-button hsi-hdgcrs-button hsi-crs-button'
           >
-            <div class="hsi-hdgcrs-button-title">CRS</div>
+            <div class="hsi-hdgcrs-button-title">{this.crsButtonTitle}</div>
             <BearingDisplay
               ref={this.crsRef}
               value={this.crsValue}
@@ -409,6 +494,9 @@ export class Hsi extends DisplayComponent<HSIProps> {
     this.selectedHeadingState.destroy();
     this.crsSourceState.destroy();
     this.navCourseState.destroy();
+    this.isCrsButtonEnabled.destroy();
+
+    this.internalObsController.destroy();
 
     this.showUpperDeviationIndicator.destroy();
 

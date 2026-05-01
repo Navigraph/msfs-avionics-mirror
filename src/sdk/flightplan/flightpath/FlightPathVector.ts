@@ -4,10 +4,10 @@
 export type VectorTurnDirection = 'left' | 'right';
 
 /**
- * The transition type to which a flight path vector belongs.
+ * Bitflags describing properties of flight path vectors.
  */
 export enum FlightPathVectorFlags {
-  None,
+  None = 0,
 
   /** A turn to a specific course. */
   TurnToCourse = 1 << 0,
@@ -62,7 +62,10 @@ export enum FlightPathVectorFlags {
  * A flight path vector within a leg flight path calculation.
  */
 export interface FlightPathVector {
-  /** Bit flags describing the vector. */
+  /**
+   * Bit flags describing the vector.
+   * @see {@link FlightPathVectorFlags}
+   */
   flags: number;
 
   /** The latitude of the start of the vector. */

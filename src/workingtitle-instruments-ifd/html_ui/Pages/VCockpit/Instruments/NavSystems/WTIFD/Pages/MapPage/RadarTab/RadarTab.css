@@ -1,0 +1,103 @@
+.ifd-map-radar-tab {
+  width: 100%;
+  height: 100%;
+  font-size: 18px;
+}
+
+.ifd-map-radar-tab .weather-radar-bing-container {
+  position: absolute;
+}
+
+.ifd-map-radar-tab.weather-radar-horizontal .weather-radar-bing-container {
+  width: 530px;
+  height: 530px;
+  top: 100px;
+  left: -16px;
+}
+
+.ifd-map-radar-tab.weather-radar-vertical .weather-radar-bing-container {
+  width: 640px;
+  height: 640px;
+  top: -93px;
+  left: -240px;
+}
+
+.ifd-map-radar-tab .weather-radar-overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.ifd-map-radar-tab .weather-radar-range-line {
+  stroke: var(--wtdyne-color-gray-2);
+  stroke-width: 2;
+  stroke-dasharray: 2 4;
+  stroke-linecap: butt;
+  fill: none;
+}
+
+.ifd-map-radar-tab .weather-radar-range-labels {
+  position: absolute;
+  font-size: 14px;
+}
+
+.ifd-map-radar-tab .weather-radar-range-labels-horizontal {
+  top: 360px;
+  left: 290px;
+}
+
+.ifd-map-radar-tab .weather-radar-range-labels-vertical {
+  top: 168px;
+  left: 158px;
+}
+
+.ifd-map-radar-tab .weather-radar-range-label-horizontal {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: 42px;
+}
+
+.ifd-map-radar-tab .weather-radar-range-label-dist {
+  width: max-content;
+  color: var(--wtdyne-color-light-blue);
+}
+
+.ifd-map-radar-tab .weather-radar-range-label-dist-top {
+  font-size: 22px;
+}
+
+.ifd-map-radar-tab .weather-radar-range-label-dist-top-horizontal {
+  position: absolute;
+  top: -272px;
+  left: 66px;
+}
+
+.ifd-map-radar-tab .weather-radar-range-label-dist-top  .weather-radar-range-label-unit {
+  font-size: 16px;
+}
+
+.ifd-map-radar-tab .weather-radar-range-label-alt {
+  width: max-content;
+  color: var(--wtdyne-color-mint);
+}
+
+.ifd-map-radar-tab .weather-radar-range-label-unit {
+  font-size: 10px;
+}
+
+.ifd-map-radar-tab .weather-radar-plane-icon {
+  stroke: none;
+  fill: var(--wtdyne-color-white);
+}
+
+.ifd-map-radar-tab .weather-radar-plane-icon-horizontal {
+  transform: translate(248px, 381px) scale(0.65);
+}
+
+.ifd-map-radar-tab .weather-radar-plane-icon-vertical {
+  transform: translate(58px, 224px) scale(1.2);
+}

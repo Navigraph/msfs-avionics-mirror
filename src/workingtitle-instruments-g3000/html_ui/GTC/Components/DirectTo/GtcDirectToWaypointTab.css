@@ -1,0 +1,202 @@
+.gtc-dto-wpt-tab {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: center;
+
+  --touch-button-value-label-center-y: 30%;
+  --touch-button-value-value-center-y: 70%;
+}
+
+.gtc-horizontal .gtc-dto-wpt-tab {
+  font-size: 29px;
+
+  --gtc-dto-wpt-tab-select-waypoint-button-width: 502px;
+  --gtc-dto-wpt-tab-select-waypoint-button-height: 140px;
+
+  --gtc-dto-wpt-tab-data-width: 650px;
+  --gtc-dto-wpt-tab-data-height: 70px;
+  --gtc-dto-wpt-tab-data-margin: 15px 0px;
+
+  --gtc-dto-wpt-tab-data-location-left: 13px;
+  --gtc-dto-wpt-tab-data-location-width: 308px;
+
+  --gtc-dto-wpt-tab-data-bearing-center: 404px;
+  --gtc-dto-wpt-tab-data-bearing-width: 140px;
+  --gtc-dto-wpt-tab-data-bearing-display-margin-right: 5px;
+
+  --gtc-dto-wpt-tab-data-distance-center: 606px;
+  --gtc-dto-wpt-tab-data-distance-width: 140px;
+
+  --gtc-dto-wpt-tab-options-width: 627px;
+  --gtc-dto-wpt-tab-options-height: 295px;
+  --gtc-dto-wpt-tab-options-row-1-height: 150px;
+  --gtc-dto-wpt-tab-options-row-gap: 21px;
+  --gtc-dto-wpt-tab-options-column-gap: 31px;
+
+  --gtc-dto-wpt-tab-options-button-value-font-size: 36px;
+
+  --gtc-dto-wpt-tab-separator-width: 674px;
+  --gtc-dto-wpt-tab-separator-height: 2px;
+  --gtc-dto-wpt-tab-separator-margin: 15px 0px 7px;
+
+  --gtc-dto-wpt-tab-bottom-row-width: 678px;
+  --gtc-dto-wpt-tab-bottom-row-height: 124px;
+  --gtc-dto-wpt-tab-bottom-row-font-size: 27px;
+
+  --gtc-dto-wpt-tab-bottom-row-button-width: 224px;
+  --gtc-dto-wpt-tab-bottom-row-button-value-font-size: 32px;
+}
+
+.gtc-vertical .gtc-dto-wpt-tab {
+  font-size: 16px;
+
+  --gtc-dto-wpt-tab-select-waypoint-button-width: 270px;
+  --gtc-dto-wpt-tab-select-waypoint-button-height: 75px;
+
+  --gtc-dto-wpt-tab-data-width: 360px;
+  --gtc-dto-wpt-tab-data-height: 39px;
+  --gtc-dto-wpt-tab-data-margin: 6px 0px;
+
+  --gtc-dto-wpt-tab-data-location-left: 6px;
+  --gtc-dto-wpt-tab-data-location-width: 166px;
+
+  --gtc-dto-wpt-tab-data-bearing-center: 218px;
+  --gtc-dto-wpt-tab-data-bearing-width: 74px;
+  --gtc-dto-wpt-tab-data-bearing-display-margin-right: 2px;
+
+  --gtc-dto-wpt-tab-data-distance-center: 325px;
+  --gtc-dto-wpt-tab-data-distance-width: 74px;
+
+  --gtc-dto-wpt-tab-options-width: 337px;
+  --gtc-dto-wpt-tab-options-height: 158px;
+  --gtc-dto-wpt-tab-options-row-1-height: 82px;
+  --gtc-dto-wpt-tab-options-row-gap: 10px;
+  --gtc-dto-wpt-tab-options-column-gap: 17px;
+
+  --gtc-dto-wpt-tab-options-button-value-font-size: 21px;
+
+  --gtc-dto-wpt-tab-separator-width: 360px;
+  --gtc-dto-wpt-tab-separator-height: 2px;
+  --gtc-dto-wpt-tab-separator-margin: 6px 0px 4px;
+
+  --gtc-dto-wpt-tab-bottom-row-width: 364px;
+  --gtc-dto-wpt-tab-bottom-row-height: 66px;
+  --gtc-dto-wpt-tab-bottom-row-font-size: 15px;
+
+  --gtc-dto-wpt-tab-bottom-row-button-width: 120px;
+  --gtc-dto-wpt-tab-bottom-row-button-value-font-size: 18px;
+}
+
+.gtc-dto-wpt-tab-select-waypoint-button {
+  width: var(--gtc-dto-wpt-tab-select-waypoint-button-width);
+  height: var(--gtc-dto-wpt-tab-select-waypoint-button-height);
+  font-size: var(--gtc-dto-wpt-tab-font-size-medium);
+}
+
+.gtc-dto-wpt-tab-data {
+  position: relative;
+  width: var(--gtc-dto-wpt-tab-data-width);
+  height: var(--gtc-dto-wpt-tab-data-height);
+  margin: var(--gtc-dto-wpt-tab-data-margin);
+  font-size: var(--gtc-dto-wpt-tab-font-size-medium);
+}
+
+.gtc-dto-wpt-tab-data-location {
+  position: absolute;
+  left: var(--gtc-dto-wpt-tab-data-location-margin);
+  top: 0px;
+  width: var(--gtc-dto-wpt-tab-data-location-width);
+  overflow: hidden;
+}
+
+.gtc-dto-wpt-tab-data-bearing {
+  position: absolute;
+  left: var(--gtc-dto-wpt-tab-data-bearing-center);
+  top: 0px;
+  width: var(--gtc-dto-wpt-tab-data-bearing-width);
+  transform: translateX(-50%);
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: center;
+}
+
+.gtc-dto-wpt-tab-data-bearing-bottom {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.gtc-dto-wpt-tab-data-bearing-display {
+  margin-right: var(--gtc-dto-wpt-tab-data-bearing-display-margin-right);
+}
+
+.gtc-dto-wpt-tab-data-distance {
+  position: absolute;
+  left: var(--gtc-dto-wpt-tab-data-distance-center);
+  top: 0px;
+  width: var(--gtc-dto-wpt-tab-data-distance-width);
+  transform: translateX(-50%);
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: center;
+}
+
+.gtc-dto-wpt-tab-options {
+  position: relative;
+  width: var(--gtc-dto-wpt-tab-options-width);
+  height: var(--gtc-dto-wpt-tab-options-height);
+  display: grid;
+  grid-template-rows: var(--gtc-dto-wpt-tab-options-row-1-height) 1fr;
+  grid-template-columns: 1fr 1fr;
+  grid-row-gap: var(--gtc-dto-wpt-tab-options-row-gap);
+  grid-column-gap: var(--gtc-dto-wpt-tab-options-column-gap);
+}
+
+.gtc-dto-wpt-tab-options .touch-button-value-value {
+  font-size: var(--gtc-dto-wpt-tab-options-button-value-font-size);
+}
+
+.gtc-dto-wpt-tab-options-vnav-alt-button .altitude-constraint-display {
+  position: absolute;
+  top: 69%;
+  width: 100%;
+  height: 50%;
+  transform: translateY(-50%);
+  font-size: var(--gtc-dto-wpt-tab-options-button-value-font-size);
+}
+
+.gtc-dto-wpt-tab-separator {
+  width: var(--gtc-dto-wpt-tab-separator-width);
+  height: var(--gtc-dto-wpt-tab-separator-height);
+  margin: var(--gtc-dto-wpt-tab-separator-margin);
+  background: var(--g3000-color-white);
+}
+
+.gtc-dto-wpt-tab-bottom-row {
+  position: relative;
+  width: var(--gtc-dto-wpt-tab-bottom-row-width);
+  height: var(--gtc-dto-wpt-tab-bottom-row-height);
+  font-size: var(--gtc-dto-wpt-tab-bottom-row-font-size);
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: space-between;
+  align-items: stretch;
+}
+
+.gtc-dto-wpt-tab-bottom-row .touch-button {
+  width: var(--gtc-dto-wpt-tab-bottom-row-button-width);
+}
+
+.gtc-dto-wpt-tab-bottom-row .touch-button-value-value {
+  color: var(--g3000-color-white);
+  font-size: var(--gtc-dto-wpt-tab-bottom-row-button-value-font-size);
+}
+
+.gtc-dto-wpt-tab-bottom-row .gtc-dto-wpt-tab-cancel-button:not(.touch-button-disabled) .touch-button-value-value {
+  color: var(--g3000-color-magenta);
+}

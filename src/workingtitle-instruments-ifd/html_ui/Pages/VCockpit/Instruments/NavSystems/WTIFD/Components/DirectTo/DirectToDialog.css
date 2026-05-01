@@ -1,0 +1,77 @@
+.direct-to-dialog {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+
+  --pale-green: #329a67;
+  --light-green: #61af87;
+  --dark-green: #002a1c;
+  --info-popup-top-position: 2px;
+  --info-popup-width: 280px;
+}
+
+.direct-to-dialog > div {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  right: 0;
+  padding: 9px;
+  background-color: var(--pale-green);
+  border-radius: 5px;
+  border-style: solid;
+  border-width: 2px;
+  border-top-color: var(--wtdyne-color-white);
+  border-bottom-color: var(--dark-green);
+  border-left-color: var(--light-green);
+  border-right-color: var(--wtdyne-color-black);
+  color: var(--wtdyne-color-mint);
+  font-size: 20px;
+  font-family: "Arial Bold";
+  transition: transform 750ms;
+}
+
+.direct-to-dialog .details {
+  top: var(--info-popup-top-position);
+  width: var(--info-popup-width);
+}
+
+.direct-to-dialog .details-section {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  background-color: var(--dark-green);
+  border-radius: 5px;
+  padding: 5px;
+  line-height: 20px;
+}
+
+.direct-to-dialog .details-location-texts {
+  min-height: 65px;
+}
+
+.direct-to-dialog .ident-input-field {
+  /** Work around the SlotInput stuff messing up the layout */
+  height: 40px;
+}
+
+.direct-to-dialog .details-black-field {
+  background-color: var(--wtdyne-color-black);
+  border-radius: 5px;
+  width: 160px;
+  padding-top: 8px;
+  padding-bottom: 4px;
+  padding-left: 6px;
+  margin-top: 8px;
+  margin-bottom: 10px;
+  font-size: 28px;
+  color: var(--wtdyne-color-white);
+}
+
+.direct-to-dialog .details-white-text {
+  color: var(--wtdyne-color-white);
+}
+
+.direct-to-dialog .details-unit-text {
+  font-size: 14px;
+}

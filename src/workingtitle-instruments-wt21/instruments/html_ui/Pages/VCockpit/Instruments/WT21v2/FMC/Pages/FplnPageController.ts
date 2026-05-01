@@ -1,12 +1,12 @@
 import {
   AbstractFmcPage, AirportFacility, AirwayData, BitFlags, ComputedSubject, ConsumerSubject, DisplayField,
-  EventBus, FacilitySearchType, FacilityType,
-  FixTypeFlags, FlightPathUtils, FlightPlanActiveLegEvent, FlightPlanCalculatedEvent, FlightPlanCopiedEvent,
-  FlightPlanLegEvent, FlightPlannerEvents,
-  FlightPlanSegmentType, FlightPlanUserDataEvent, FmcListUtility, FmcRenderTemplate, FmcRenderTemplateRow, GeoPoint,
-  GNSSEvents, ICAO, LegDefinition, LegType,
-  Subject, TextInputField, UnitType
+  EventBus, FacilitySearchType, FacilityType, FixTypeFlags, FlightPathUtils, FlightPlan, FlightPlanActiveLegEvent,
+  FlightPlanCalculatedEvent, FlightPlanCopiedEvent, FlightPlanLegEvent, FlightPlannerEvents, FlightPlanSegmentType,
+  FlightPlanUserDataEvent, FmcListUtility, FmcRenderTemplate, FmcRenderTemplateRow, GeoPoint, GNSSEvents, ICAO,
+  LegDefinition, LegType, Subject, TextInputField, UnitType,
 } from '@microsoft/msfs-sdk';
+
+import { WTLineFmsUtils, WTLineLegacyFlightPlans } from '@microsoft/msfs-wtlinesdk';
 
 import { PilotWaypointError, WT21PilotWaypointUtils } from '@microsoft/msfs-wt21-shared';
 
@@ -98,7 +98,13 @@ export class FplnPageController {
       });
       const name = new DisplayField(this.page, {
         formatter: RawFormatter,
-        onSelected: (scratchpadContents) => this.onWaypointInput(data, scratchpadContents, false),
+        onSelected: async (scratchpadContents) => {
+          if (scratchpadContents.length === 0) {
+            return data.legDefinition?.name ?? '';
+          }
+
+          return this.onWaypointInput(data, scratchpadContents, false);
+        },
         onDelete: () => this.onWaypointInput(data, '', true),
       });
       const header = new DisplayField(this.page, {
@@ -154,16 +160,15 @@ export class FplnPageController {
     private readonly page: WT21FmcPage,
     private readonly wptAlreadyExistsPrompt: WaypointAlreadyExistsPrompt,
   ) {
-
-    this.page.addBinding(this.legChangeConsumerFpln.handle(this.handleFlightPlanChangeEvent));
-    this.page.addBinding(this.activeLegChangeConsumerFpln.handle(this.handleFlightPlanChangeEvent));
-    this.page.addBinding(this.originDestinationChangeConsumerFpln.handle(this.handleFlightPlanChangeEvent));
-    this.page.addBinding(this.planCopiedConsumerFpln.handle(this.handleFlightPlanCopiedEvent));
-    this.page.addBinding(this.planCalculatedConsumerFpln.handle(this.handleFlightPlanCalculated));
-    this.page.addBinding(this.planUserDataSetConsumerFpln.handle(this.handleFlightPlanUserDataSet));
-    this.page.addBinding(this.currentPage.sub(this.handleCurrentPageChange));
-    this.page.addBinding(this.listConsumer.sub(this.handleOnListUpdate));
-    this.page.addBinding(this.destinationConsumer.sub(this.handleDestinationChanged));
+    this.legChangeConsumerFpln.handle(this.handleFlightPlanChangeEvent).withLifecycle(this.page.defaultLifecycle);
+    this.activeLegChangeConsumerFpln.handle(this.handleFlightPlanChangeEvent).withLifecycle(this.page.defaultLifecycle);
+    this.originDestinationChangeConsumerFpln.handle(this.handleFlightPlanChangeEvent).withLifecycle(this.page.defaultLifecycle);
+    this.planCopiedConsumerFpln.handle(this.handleFlightPlanCopiedEvent).withLifecycle(this.page.defaultLifecycle);
+    this.planCalculatedConsumerFpln.handle(this.handleFlightPlanCalculated).withLifecycle(this.page.defaultLifecycle);
+    this.planUserDataSetConsumerFpln.handle(this.handleFlightPlanUserDataSet).withLifecycle(this.page.defaultLifecycle);
+    this.currentPage.sub(this.handleCurrentPageChange).withLifecycle(this.page.defaultLifecycle);
+    this.listConsumer.sub(this.handleOnListUpdate).withLifecycle(this.page.defaultLifecycle);
+    this.destinationConsumer.sub(this.handleDestinationChanged).withLifecycle(this.page.defaultLifecycle);
   }
 
   /**
@@ -249,26 +254,28 @@ export class FplnPageController {
    * Method to get the flight plan data on initial open.
    */
   private getData(): void {
-    if (this.fms.hasFlightPlan(this.fms.getPlanIndexForFmcPage())) {
-      const plan = this.fms.getPlanForFmcRender();
-      this.store.origin.set(plan.originAirport ? ICAO.getIdent(plan.originAirport) : null);
-      this.store.destination.set(plan.destinationAirport ? ICAO.getIdent(plan.destinationAirport) : null);
-      this.store.altn.set(plan.getUserData('wt21.altn') ? ICAO.getIdent(plan.getUserData(WT21FmsUtils.USER_DATA_KEY_ALTN) as string) : null);
-      if (plan.originAirport && plan.destinationAirport) {
-        const originFac = this.fms.facilityInfo.originFacility;
-        const destFac = this.fms.facilityInfo.destinationFacility;
-        if (originFac && destFac) {
-          this.calculateDistance(originFac, destFac);
-        }
-      } else {
-        this.store.distance.set(0);
+    const plan = this.fms.getPlanToDisplay(WTLineLegacyFlightPlans.Active);
+
+    this.store.origin.set(plan.originAirportIcao?.ident ?? null);
+    this.store.destination.set(plan.destinationAirportIcao?.ident ?? null);
+    this.store.altn.set(WTLineFmsUtils.getFlightPlanAlternate(plan)?.ident ?? null);
+
+    if (plan.originAirportIcao && plan.destinationAirportIcao) {
+      const originFac = this.fms.facilityInfo.originFacility;
+      const destFac = this.fms.facilityInfo.destinationFacility;
+
+      if (originFac && destFac) {
+        this.calculateDistance(originFac, destFac);
       }
+    } else {
+      this.store.distance.set(0);
     }
+
     this.airwayInEdit = undefined;
     this.airwayInEditRow = -1;
     this.airwayEntryLeg = undefined;
     this.planChanged = false;
-    this.loadLegs();
+    this.loadLegs(plan);
   }
 
   /**
@@ -284,9 +291,11 @@ export class FplnPageController {
 
   /**
    * Method to populate the legs array with the flight plan legs.
+   * @param plan The flight plan to load legs from.
    */
-  private loadLegs(): void {
-    const plan = this.fms.getPlanForFmcRender();
+  private loadLegs(plan: FlightPlan): void {
+    const procedureIdents = WTLineFmsUtils.getFlightPlanProcedureIdents(plan);
+
     const legs: RoutePageLegItem[] = [];
     let lastLegWasDiscontinuity = false;
 
@@ -319,6 +328,7 @@ export class FplnPageController {
     const activeSegmentIndex = plan.getSegmentIndex(activeLegIndex);
     const activeSegment = plan.getSegment(activeSegmentIndex);
 
+    // FIXME this all needs re-done to iterate over segments and not legs
     for (let s = activeSegmentIndex; s < plan.segmentCount; s++) {
       const segment = plan.getSegment(s);
       const segmentType = segment.segmentType;
@@ -372,22 +382,57 @@ export class FplnPageController {
             procedureEndIndex--;
           }
 
-          const procedureIndexes = WT21FmsUtils.getProcedureIndexAndTransitionIndexFromSegmentType(segmentType, plan);
-
-          if (!isDiscontinuity() && segmentType !== FlightPlanSegmentType.Departure) {
+          // If the segment starts with a discontinuity, we add another segment item before with the initial waypoint as the TO
+          if (isDiscontinuity() && (segmentType === FlightPlanSegmentType.Arrival || segmentType === FlightPlanSegmentType.Approach)) {
             legs.push(new RoutePageLegItem(
               segment.offset + l,
               segment.segmentIndex,
               l,
-              false,
+              isDiscontinuity(),
               false,
               isFirstRow(),
               (segment.offset + l === activeLegIndex),
               segmentType,
               leg,
-              'DIRECT'
+              '------'
             ));
             lastLegWasDiscontinuity = false;
+          }
+
+          let procedureIdent = '';
+          if (procedureIdents !== undefined) {
+            switch (segmentType) {
+              case FlightPlanSegmentType.Departure:
+                if (procedureIdents.originDepartureIdent !== null) {
+                  procedureIdent = procedureIdents.originDepartureIdent;
+                }
+
+                if (procedureIdents.originDepartureEnrouteTransitionIdent !== null) {
+                  procedureIdent += `.${procedureIdents.originDepartureEnrouteTransitionIdent}`;
+                }
+                break;
+              case FlightPlanSegmentType.Arrival:
+                if (procedureIdents.arrivalIdent !== null) {
+                  procedureIdent = procedureIdents.arrivalIdent;
+                }
+
+                if (procedureIdents.arrivalEnrouteTransitionIdent !== null) {
+                  procedureIdent = `${procedureIdents.arrivalEnrouteTransitionIdent}.${procedureIdent}`;
+                }
+                break;
+              case FlightPlanSegmentType.Approach:
+                if (procedureIdents.approachIdent !== null) {
+                  procedureIdent = procedureIdents.approachIdent;
+                }
+
+                if (procedureIdents.approachTransitionIdent !== null) {
+                  procedureIdent = `${procedureIdents.approachTransitionIdent}.${procedureIdent}`;
+                }
+                break;
+              case FlightPlanSegmentType.MissedApproach:
+                procedureIdent = 'MISSED APPROACH';
+                break;
+            }
           }
 
           legs.push(new RoutePageLegItem(
@@ -400,44 +445,10 @@ export class FplnPageController {
             (activeLegIndex >= segment.offset + l && activeLegIndex <= segment.offset + procedureEndIndex),
             segmentType,
             segment.legs[procedureEndIndex],
-            WT21FmsUtils.getProcedureNameAsString(segmentType,
-              segmentType === FlightPlanSegmentType.Departure ? this.fms.facilityInfo.originFacility : this.fms.facilityInfo.destinationFacility,
-              procedureIndexes[0],
-              procedureIndexes[1]
-            )));
+            procedureIdent,
+          ));
           procedureAdded = true;
           lastLegWasDiscontinuity = false;
-
-          if (segmentType === FlightPlanSegmentType.Approach && procedureAdded) {
-
-            for (let m = procedureEndIndex + 1; m < segment.legs.length; m++) {
-              if (BitFlags.isAll(segment.legs[m].leg.fixTypeFlags, FixTypeFlags.MAHP)) {
-
-                procedureEndIndex = m;
-
-                const nextLeg = segment.legs[procedureEndIndex + 1];
-
-                if (nextLeg !== undefined && nextLeg.leg.fixIcao === segment.legs[m].leg.fixIcao) {
-                  procedureEndIndex++;
-                }
-
-                legs.push(new RoutePageLegItem(
-                  segment.offset + procedureEndIndex,
-                  segment.segmentIndex,
-                  procedureEndIndex,
-                  isDiscontinuity(),
-                  false,
-                  isFirstRow(),
-                  (activeLegIndex >= segment.offset + l && activeLegIndex <= segment.offset + procedureEndIndex),
-                  segmentType,
-                  segment.legs[procedureEndIndex],
-                  'MISSED APPROACH'));
-                lastLegWasDiscontinuity = false;
-                break;
-              }
-            }
-
-          }
 
           if (procedureEndIndex >= segment.legs.length - 1) {
             break;

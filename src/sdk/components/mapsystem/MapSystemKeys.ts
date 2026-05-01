@@ -44,6 +44,8 @@ export class MapSystemKeys {
 
   public static readonly LabelFactory = 'labelFactory' as const;
 
+  public static readonly MapColliderCollection = 'mapColliderCollection' as const;
+
   public static readonly NearestWaypoints = 'nearestWaypoints' as const;
 
   public static readonly FlightPlanWaypoints = 'flightPlanWaypoints' as const;

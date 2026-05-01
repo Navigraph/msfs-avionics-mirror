@@ -1,0 +1,13 @@
+.vor-info-page2 .vor-info {
+  position: absolute;
+}
+
+.gtc-horizontal .vor-info-page2 .vor-info {
+  left: calc(50% - 685px / 2);
+  top: 55px;
+}
+
+.gtc-vertical .vor-info-page2 .vor-info {
+  left: calc(50% - 365px / 2);
+  top: 27px;
+}

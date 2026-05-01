@@ -1,0 +1,42 @@
+/* This sizing and positioning is reliant on the scaling of the svs compass container */
+.svs-heading-display {
+  position: absolute;
+  /* IF THIS POSITION CHANGES, UPDATE THE CONST ACCORDINGLY AT THE TOP OF IfdTotalVelocityVector */
+  top: 41px;
+  left: calc(50% - 30px);
+  width: 60px;
+  height: 42px;
+  display: flex;
+  justify-content: center;
+}
+
+.svs-heading-display .svs-heading-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.svs-heading-display .svs-heading-frame .svs-heading-frame-outline {
+  stroke: var(--wtdyne-color-black);
+  stroke-width: 2px;
+  fill: none;
+}
+
+.svs-heading-display .svs-heading-frame .svs-heading-frame-border {
+  stroke: var(--wtdyne-color-light-cyan);
+  stroke-width: 1px;
+  fill: var(--wtdyne-color-black);
+}
+
+.svs-heading-display .heading-value {
+  position: relative;
+  color: var(--wtdyne-color-white);
+  font-size: 1.36em;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  font-family: "Arial Bold", sans-serif;
+  text-align: center;
+}

@@ -126,7 +126,12 @@ export class G3000MapBuilder {
     mapBuilder: MapBuilder,
     options: Omit<
       NextGenNavMapOptions,
-      'waypointIconImageCache' | 'waypointStyleFontType' | 'runwayDesignationImageCache' | 'userFacilityScopeFilter' | 'noGpsBannerText'
+      'waypointIconImageCache'
+      | 'waypointStyleFontType'
+      | 'runwayDesignationImageCache'
+      | 'userFacilityScopeFilter'
+      | 'noGpsBannerText'
+      | 'supportWaypointHighlight'
     > & G3000MapDataSourceOptions
   ): MapBuilder {
     mapBuilder.with(NextGenNavMapBuilder.build, {
@@ -135,7 +140,8 @@ export class G3000MapBuilder {
       waypointStyleFontType: 'DejaVu',
       runwayDesignationImageCache: G3000MapRunwayDesignationImageCache.getCache(),
       userFacilityScopeFilter: scope => scope === G3000FacilityUtils.USER_FACILITY_SCOPE,
-      noGpsBannerText: 'NO FMS POSITION'
+      noGpsBannerText: 'NO FMS POSITION',
+      supportWaypointHighlight: false,
     });
 
     if (options.supportDataIntegrity ?? true) {
@@ -161,7 +167,11 @@ export class G3000MapBuilder {
     mapBuilder: MapBuilder,
     options: Omit<
       NextGenHsiMapOptions,
-      'waypointIconImageCache' | 'waypointStyleFontType' | 'runwayDesignationImageCache' | 'userFacilityScopeFilter'
+      'waypointIconImageCache'
+      | 'waypointStyleFontType'
+      | 'runwayDesignationImageCache'
+      | 'userFacilityScopeFilter'
+      | 'supportWaypointHighlight'
     > & G3000MapDataSourceOptions
   ): MapBuilder {
     mapBuilder.with(NextGenHsiMapBuilder.build, {
@@ -170,6 +180,7 @@ export class G3000MapBuilder {
       waypointStyleFontType: 'DejaVu',
       runwayDesignationImageCache: G3000MapRunwayDesignationImageCache.getCache(),
       userFacilityScopeFilter: scope => scope === G3000FacilityUtils.USER_FACILITY_SCOPE,
+      supportWaypointHighlight: false,
     });
 
     if (options.supportDataIntegrity ?? true) {
@@ -353,7 +364,12 @@ export class G3000MapBuilder {
     mapBuilder: MapBuilder,
     options: Omit<
       NextGenConnextMapOptions,
-      'waypointIconImageCache' | 'waypointStyleFontType' | 'runwayDesignationImageCache' | 'userFacilityScopeFilter' | 'noGpsBannerText'
+      'waypointIconImageCache'
+      | 'waypointStyleFontType'
+      | 'runwayDesignationImageCache'
+      | 'userFacilityScopeFilter'
+      | 'noGpsBannerText'
+      | 'supportWaypointHighlight'
     > & G3000MapDataSourceOptions
   ): MapBuilder {
     mapBuilder.with(NextGenConnextMapBuilder.build, {
@@ -362,7 +378,8 @@ export class G3000MapBuilder {
       waypointStyleFontType: 'DejaVu',
       runwayDesignationImageCache: G3000MapRunwayDesignationImageCache.getCache(),
       userFacilityScopeFilter: scope => scope === G3000FacilityUtils.USER_FACILITY_SCOPE,
-      noGpsBannerText: 'NO FMS POSITION'
+      noGpsBannerText: 'NO FMS POSITION',
+      supportWaypointHighlight: false,
     });
 
     if (options.supportDataIntegrity ?? true) {

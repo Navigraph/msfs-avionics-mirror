@@ -1,0 +1,112 @@
+.new-waypoint-dialog-background {
+  background-color: rgba(0, 0, 0, 0.7);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.new-waypoint-dialog {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  width: 450px;
+  right: 2px;
+  top: 5px;
+
+  padding: 9px;
+  background-color: #329a67;
+  border-radius: 5px;
+  border-style: solid;
+  border-width: 2px;
+  border-top-color: var(--wtdyne-color-white);
+  border-bottom-color: #002a1c;
+  border-left-color: #61af87;
+  border-right-color: var(--wtdyne-color-black);
+  color: var(--wtdyne-color-mint);
+
+  transition: transform 750ms;
+}
+
+.new-waypoint-dialog-content {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  background-color: #002a1c;
+  border-radius: 5px;
+
+  padding: 2px 2px 2px 10px;
+  line-height: 20px;
+}
+
+.new-waypoint-dialog,
+.new-waypoint-dialog p {
+  font-size: 20px;
+  font-family: "Arial Bold";
+}
+
+.new-waypoint-info-container {
+  height: 25px;
+
+  background-color: var(--wtdyne-color-black);
+  border-radius: 5px;
+}
+
+.new-waypoint-info-container.ident {
+  width: 150px;
+  font-size: 24px;
+}
+
+.new-waypoint-info-container.name {
+  width: 380px;
+}
+
+.new-waypoint-loc-container {
+  display: flex;
+  flex-direction: row;
+  column-gap: 10px;
+}
+
+.new-waypoint-loc-container>div {
+  padding-right: 10px;
+}
+
+.new-waypoint-info-container.lat {
+  width: 300px;
+}
+
+.new-waypoint-info-container.fix {
+  width: 100px;
+}
+
+.new-waypoint-info-container.rad,
+.new-waypoint-info-container.dist {
+  width: 85px;
+}
+
+.new-waypoint-info-container .cursor-input {
+  width: 100%;
+  height: 100%;
+
+  background: unset;
+}
+
+.new-waypoint-info-container .cursor-input .cursor-input-active,
+.new-waypoint-info-container .cursor-input .cursor-input-inactive {
+  padding-left: 5px;
+}
+
+.new-waypoint-info-container.selected .cursor-input .cursor-input-inactive {
+  background-color: var(--wtdyne-color-cyan);
+  color: var(--wtdyne-color-black);
+  border-radius: 5px;
+}
+
+.new-waypoint-info-container.selected .cursor-input .cursor-input-cursor {
+  left: 5px !important;
+}
+
+.wpt-input-invalid .new-waypoint-fix-container div {
+  color: var(--wtdyne-color-orange)
+}

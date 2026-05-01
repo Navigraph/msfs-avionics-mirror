@@ -166,6 +166,23 @@ export abstract class MapCanvasLayer
   }
 
   /**
+   * Sets the size of the canvas element.
+   * @param width The new width, in pixels.
+   * @param height The new height, in pixels.
+   */
+  public setSize(width: number, height: number): void {
+    if (width === this.width && height === this.height) {
+      return;
+    }
+
+    this.width = width;
+    this.height = height;
+    if (this.isInit) {
+      this.updateCanvasSize();
+    }
+  }
+
+  /**
    * Copies the contents of the buffer to the display. Has no effect if this layer does not have a buffer.
    */
   public copyBufferToDisplay(): void {

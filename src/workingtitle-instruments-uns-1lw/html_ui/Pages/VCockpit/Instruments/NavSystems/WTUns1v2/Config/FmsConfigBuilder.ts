@@ -57,11 +57,11 @@ export class FmsConfigBuilder extends ConfigBuilder<UnsFmsConfigInterface> {
       this.baseInstrument,
       this.errorsMap,
     ).getConfig(),
-    autopilot: new AutopilotConfigBuilder(
+    autopilot: ConfigParser.getChildElements(this.configElement, 'Autopilot').length > 0 ? new AutopilotConfigBuilder(
       this.configElement,
       this.baseInstrument,
       this.errorsMap,
-    ).getConfig(),
+    ).getConfig() : undefined,
     sensors: new SensorsConfigBuilder(
       this.configElement,
       this.baseInstrument,

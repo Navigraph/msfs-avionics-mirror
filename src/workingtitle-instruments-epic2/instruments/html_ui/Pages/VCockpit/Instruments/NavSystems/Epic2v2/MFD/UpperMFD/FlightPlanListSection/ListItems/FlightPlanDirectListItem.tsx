@@ -34,15 +34,15 @@ export class FlightPlanDirectListItem extends DisplayComponent<FlightPlanLegList
   private readonly airwaySubs = [] as Subscription[];
 
   /** Runs when the outlined element is selected */
-  private onMouseDown(): void {
+  private onClick = (): void => {
     const isThisSelected = this.props.store.selectedEnrouteWaypoint.get() == this.props.listData;
     this.props.store.selectedEnrouteWaypoint.set(!isThisSelected ? this.props.listData : undefined);
-  }
+  };
 
   /** @inheritdoc */
   public override onAfterRender(): void {
     if (this.outlineRef.getOrDefault()?.outlineElement.getOrDefault()) {
-      this.outlineRef.instance.outlineElement.instance.addEventListener('mousedown', () => this.onMouseDown());
+      this.outlineRef.instance.outlineElement.instance.addEventListener('click', this.onClick);
       this.props.store.selectedEnrouteWaypoint.sub((legListData) => {
         const isThisSelected = legListData == this.props.listData;
         this.outlineRef.instance.forceOutline(isThisSelected);
@@ -75,6 +75,8 @@ export class FlightPlanDirectListItem extends DisplayComponent<FlightPlanLegList
 
   /** @inheritdoc */
   public override destroy(): void {
+    this.outlineRef.getOrDefault()?.outlineElement.getOrDefault()?.removeEventListener('click', this.onClick);
+
     this.listItemRef.getOrDefault()?.destroy();
 
     this.subs.forEach(sub => { sub.destroy(); });

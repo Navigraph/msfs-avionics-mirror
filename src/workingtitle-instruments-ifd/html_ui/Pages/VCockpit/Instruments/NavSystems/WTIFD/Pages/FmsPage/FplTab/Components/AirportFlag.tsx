@@ -1,0 +1,32 @@
+import { FSComponent, LifecycleComponent, Subscribable, VNode } from '@microsoft/msfs-sdk';
+
+
+import './AirportFlag.css';
+
+/** The properties for the {@link AirportFlag} component. */
+export interface AirportFlagProps {
+  /** The RGB hex code for the flag color */
+  readonly flagColor: string;
+  /** The Airport ICAO */
+  readonly airportICAO: Subscribable<string>;
+}
+
+/** The AirportFlag component. */
+export class AirportFlag extends LifecycleComponent<AirportFlagProps> {
+  /** @inheritdoc */
+  public render(): VNode {
+    return (
+      <div class="leg-block-airport-flag">
+        <svg width="28" height="17" version="1.1" viewBox="0 0 28 17">
+          <path
+            d="m6.5517 3.0483c1.3194.72796 3.0275 1.4973 4.1858 1.7289 1.5924.31848 3.3857.14445 5.0502-.45498 1.9239-.69285 2.6602-1.164 4.9138-1.3194 1.3194-.090996 2.3204.77346 2.3204.77346v11.738h-1.8199v-4.3678s-.36398-.72796-1.5014-.50048c-.97846.19569-2.6389.77346-4.4133.77346s-4.9138-1.001-6.2787-2.0929c-1.3649-1.0919-2.0474-1.8199-2.4569-2.9119-.40948-1.0919-.63697-2.8209-1e-7-3.3668z"
+            fill={`#${this.props.flagColor}`}
+            stroke="#000"
+            stroke-width=".5"
+          />
+        </svg>
+        <div>{this.props.airportICAO}</div>
+      </div>
+    );
+  }
+}

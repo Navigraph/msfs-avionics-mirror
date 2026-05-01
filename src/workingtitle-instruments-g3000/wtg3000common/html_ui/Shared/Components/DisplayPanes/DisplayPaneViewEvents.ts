@@ -20,12 +20,16 @@ export interface DisplayPaneViewEventTypes {
   display_pane_map_pointer_move: [number, number];
 }
 
-/** An event targeting the active view in a specific display pane. */
+/**
+ * An event targeting the active view in a specific display pane.
+ */
 export interface DisplayPaneViewEvent<T extends DisplayPaneViewEventTypes = DisplayPaneViewEventTypes, P extends keyof T & string = keyof T & string> {
-  /** Which display pane this event is for. */
-  displayPaneIndex: DisplayPaneIndex,
+  /** The index of the target display pane. */
+  displayPaneIndex: DisplayPaneIndex;
+
   /** The event type.*/
-  eventType: P,
+  eventType: P;
+
   /** The event data. */
-  eventData: T[P],
+  eventData: T[P];
 }

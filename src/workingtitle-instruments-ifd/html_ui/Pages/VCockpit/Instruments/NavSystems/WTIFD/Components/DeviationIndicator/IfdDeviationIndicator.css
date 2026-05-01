@@ -1,0 +1,63 @@
+.ifd-page {
+  --deviation-indicator-height: 212px;
+}
+
+.ifd-page .deviation-indicator,
+.ifd-page .deviation-indicator svg.scale {
+  position: absolute;
+  height: var(--deviation-indicator-height);
+  width: 42px;
+}
+
+.ifd-page .deviation-indicator.vertical {
+  /* IF THIS POSITION CHANGES, UPDATE THE CONST ACCORDINGLY AT THE TOP OF IfdTotalVelocityVector */
+  right: calc(50% - 148px);
+  top: calc(50% - var(--deviation-indicator-height) / 2);
+}
+
+.ifd-page .deviation-indicator.horizontal {
+  /* IF THIS POSITION CHANGES, UPDATE THE CONST ACCORDINGLY AT THE TOP OF IfdTotalVelocityVector */
+  bottom: -10px;
+  left: calc(50% - 22px);
+  transform: rotate(90deg);
+}
+
+.ifd-page .deviation-indicator svg.scale {
+  position: absolute;
+  fill: black;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ifd-page .deviation-indicator svg.indicator {
+  position: absolute;
+  top: -12px;
+  left: 0;
+  width: 30px;
+  height: 24px;
+}
+
+.ifd-page .deviation-indicator .background {
+  width: 30px;
+  height: 100%;
+}
+
+.ifd-page .deviation-indicator .tick {
+  stroke: white;
+  stroke-width: 2px;
+}
+
+.ifd-page .deviation-indicator .centerline {
+  stroke-width: 4px;
+}
+
+.ifd-page .deviation-indicator .centermark {
+  fill: white;
+}
+
+.ifd-page .deviation-indicator .indicator {
+  stroke: black;
+  stroke-width: 2px;
+}

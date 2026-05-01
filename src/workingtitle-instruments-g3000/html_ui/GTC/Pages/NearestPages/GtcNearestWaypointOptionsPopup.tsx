@@ -5,10 +5,11 @@ import { G3000FilePaths, NearestWaypointFacilityType, NearestWaypointTypeMap } f
 import { GtcImgTouchButton } from '../../Components/TouchButton/GtcImgTouchButton';
 import { GtcToggleTouchButton } from '../../Components/TouchButton/GtcToggleTouchButton';
 import { GtcTouchButton } from '../../Components/TouchButton/GtcTouchButton';
+import { WaypointSelectType } from '../../Components/TouchButton/GtcWaypointSelectButton';
 import { GtcView, GtcViewProps } from '../../GtcService/GtcView';
 import { GtcViewKeys } from '../../GtcService/GtcViewKeys';
 import { GtcDirectToPage } from '../DirectToPage/GtcDirectToPage';
-import { GtcWaypointInfoPage } from '../WaypointInfoPages/GtcWaypointInfoPage';
+import { GtcWaypointInfoPage2 } from '../WaypointInfoPages/GtcWaypointInfoPage2';
 
 import './GtcNearestWaypointOptionsPopup.css';
 
@@ -89,7 +90,7 @@ export class GtcNearestWaypointOptionsPopup<T extends NearestWaypointFacilityTyp
 
     if (selected !== null) {
       this.props.gtcService.goBack();
-      this.props.gtcService.changePageTo<GtcWaypointInfoPage<any>>(this.props.waypointInfoViewKey)
+      this.props.gtcService.changePageTo<GtcWaypointInfoPage2<WaypointSelectType>>(this.props.waypointInfoViewKey)
         .ref.initSelection(selected.facility.get());
     }
   }

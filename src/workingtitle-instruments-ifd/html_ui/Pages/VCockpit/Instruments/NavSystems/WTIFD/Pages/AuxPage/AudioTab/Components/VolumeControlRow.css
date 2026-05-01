@@ -1,0 +1,50 @@
+.volume-control-row {
+  flex-grow: 1;
+  height: 39px;
+  display: flex;
+  margin-right: 40px;
+  margin-top: -6px;
+  color: var(--wtdyne-color-mint);
+  border-style: solid;
+  border-width: 3px;
+  border-color: transparent;
+  border-radius: 4px;
+  padding-top: 3px;
+  font-family: "Arial Bold";
+}
+
+.volume-control-row-selected {
+  border-color: var(--wtdyne-color-cyan);
+}
+
+.volume-control-label {
+  width: 180px;
+  text-align: right;
+  padding-right: 12px;
+}
+
+.volume-control-slider {
+  width: 172px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  border-style: solid;
+  border-width: 3px;
+  border-color: var(--wtdyne-color-blue);
+  border-radius: 4px;
+}
+
+.volume-control-slider-bar {
+  height: 100%;
+  border-radius: 8px;
+  background-color: var(--wtdyne-color-pale-green);
+}
+
+.volume-control-slider-bar-selected {
+  background-color: var(--wtdyne-color-mint);
+}
+
+.volume-control-option {
+  flex-grow: 1;
+  text-align: right;
+  padding-right: 5px;
+}

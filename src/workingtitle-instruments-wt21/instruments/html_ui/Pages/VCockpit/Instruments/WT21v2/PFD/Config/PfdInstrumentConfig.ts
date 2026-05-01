@@ -11,8 +11,14 @@ export class PfdInstrumentConfig extends InstrumentConfig {
   constructor(instrument: BaseInstrument) {
     super(instrument);
 
-    const horizonStyleTag = instrument.instrumentXmlConfig.querySelector(':scope>ArtificialHorizonStyle');
-    this.artificialHorizonStyle = horizonStyleTag ? this.parseArtificialHorizonConfig(horizonStyleTag) : 'Full';
+    const rootTag = instrument.instrumentXmlConfig?.querySelector(':scope>PfdConfig');
+
+    if (rootTag) {
+      const horizonStyleTag = rootTag.querySelector(':scope>ArtificialHorizonStyle');
+      this.artificialHorizonStyle = horizonStyleTag ? this.parseArtificialHorizonConfig(horizonStyleTag) : 'Full';
+    } else {
+      this.artificialHorizonStyle = 'Full';
+    }
   }
 
   /**

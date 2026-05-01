@@ -52,7 +52,7 @@ export class GtcAdvancedVnavCruiseTab extends DisplayComponent<GtcAdvancedVnavCr
       input: () => {
         return {
           inputData: this.selectScheduleInputData,
-          selectedValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseScheduleIndex').value,
+          selectedValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseScheduleIndex').get(),
           listItemHeightPx: this.dialogListItemHeightPx,
           listItemSpacingPx: this.dialogListItemSpacingPx,
           class: 'advanced-vnav-schedule-dialog'
@@ -77,9 +77,9 @@ export class GtcAdvancedVnavCruiseTab extends DisplayComponent<GtcAdvancedVnavCr
 
             const schedule = this.props.fmsSpeedSettingManager.cruiseSchedules[index];
 
-            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseScheduleIndex').value = index;
-            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseIas').value = schedule.ias;
-            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseMach').value = schedule.mach;
+            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseScheduleIndex').set(index);
+            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseIas').set(schedule.ias);
+            this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseMach').set(schedule.mach);
 
             return false;
           }
@@ -94,7 +94,7 @@ export class GtcAdvancedVnavCruiseTab extends DisplayComponent<GtcAdvancedVnavCr
       input: () => {
         return {
           title: 'Cruise Speed IAS',
-          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotCruiseIas').value,
+          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotCruiseIas').get(),
           unitsAllowed: 'ias'
         };
       },
@@ -107,7 +107,7 @@ export class GtcAdvancedVnavCruiseTab extends DisplayComponent<GtcAdvancedVnavCr
       input: () => {
         return {
           title: 'Cruise Speed Mach',
-          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotCruiseMach').value,
+          initialValue: this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotCruiseMach').get(),
           unitsAllowed: 'mach',
         };
       }
@@ -137,12 +137,12 @@ export class GtcAdvancedVnavCruiseTab extends DisplayComponent<GtcAdvancedVnavCr
       const ias = (result.payload[1] as GtcDialogResultSubmitted<GtcFmsSpeedDialogOutput>).payload.value;
       const mach = (result.payload[2] as GtcDialogResultSubmitted<GtcFmsSpeedDialogOutput>).payload.value;
 
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotCruiseIas').value = ias;
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotCruiseMach').value = mach;
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotCruiseIas').set(ias);
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedPilotCruiseMach').set(mach);
 
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseScheduleIndex').value = index;
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseIas').value = ias;
-      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseMach').value = mach;
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseScheduleIndex').set(index);
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseIas').set(ias);
+      this.props.fmsSpeedSettingManager.getSetting('fmsSpeedCruiseMach').set(mach);
     }
   }
 

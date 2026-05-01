@@ -4,6 +4,7 @@ import { GeoProjection } from '../../../geo/GeoProjection';
 import { ClippedPathStream } from '../../../graphics/path/ClippedPathStream';
 import { GeoCylindricalClippedPathStream } from '../../../graphics/path/GeoCylindricalClippedPathStream';
 import { NullPathStream } from '../../../graphics/path/PathStream';
+import { BitFlags } from '../../../math/BitFlags';
 import { VecNSubject } from '../../../math/VectorSubject';
 import { DefaultFacilityWaypointCache } from '../../../navigation/DefaultFacilityWaypointCache';
 import { AirportFacilityDataFlags, Facility, LegType } from '../../../navigation/Facilities';
@@ -16,7 +17,7 @@ import { GeoProjectionPathStreamStack } from '../../map/GeoProjectionPathStreamS
 import { MapCachedCanvasLayer } from '../../map/layers/MapCachedCanvasLayer';
 import { MapSyncedCanvasLayer } from '../../map/layers/MapSyncedCanvasLayer';
 import { MapLayer, MapLayerProps } from '../../map/MapLayer';
-import { MapProjection } from '../../map/MapProjection';
+import { MapProjection, MapProjectionChangeType } from '../../map/MapProjection';
 import { MapSystemKeys } from '../MapSystemKeys';
 import { MapSystemPlanRenderer } from '../MapSystemPlanRenderer';
 import { MapSystemWaypointRoles } from '../MapSystemWaypointRoles';
@@ -118,7 +119,9 @@ export class MapSystemFlightPlanLayer extends MapLayer<MapSystemFlightPlanLayerP
 
   protected updateScheduled = false;
 
-  /** @inheritdoc */
+  protected isAwake = true;
+
+  /** @inheritDoc */
   public onAttached(): void {
     this.flightPathLayerRef.instance.onAttached();
     this.waypointLayerRef.instance.onAttached();
@@ -135,7 +138,7 @@ export class MapSystemFlightPlanLayer extends MapLayer<MapSystemFlightPlanLayerP
     this.planModule.getPlanSubjects(this.props.planIndex).activeLeg.sub(() => this.updateScheduled = true);
     this.props.waypointRenderer.onRolesAdded.on(() => this.initWaypointRenderer());
 
-    super.onAttached();
+    this.updateClipBounds();
   }
 
   /**
@@ -161,7 +164,46 @@ export class MapSystemFlightPlanLayer extends MapLayer<MapSystemFlightPlanLayerP
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.isAwake = true;
+
+    this.flightPathLayerRef.instance.onWake();
+    this.waypointLayerRef.instance.onWake();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.isAwake = false;
+
+    this.flightPathLayerRef.instance.onSleep();
+    this.waypointLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
+  public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
+    this.flightPathLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
+    this.waypointLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
+
+    if (this.isAwake && BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
+      this.updateClipBounds();
+    }
+  }
+
+  /**
+   * Updates this sublayer's post-projection clipping bounds.
+   */
+  private updateClipBounds(): void {
+    const size = this.flightPathLayerRef.instance.getSize();
+    this.clipBounds.set(
+      -MapSystemFlightPlanLayer.CLIP_BOUNDS_BUFFER,
+      -MapSystemFlightPlanLayer.CLIP_BOUNDS_BUFFER,
+      size + MapSystemFlightPlanLayer.CLIP_BOUNDS_BUFFER,
+      size + MapSystemFlightPlanLayer.CLIP_BOUNDS_BUFFER
+    );
+  }
+
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     this.flightPathLayerRef.instance.onUpdated(time, elapsed);
     this.waypointLayerRef.instance.onUpdated(time, elapsed);
@@ -211,21 +253,7 @@ export class MapSystemFlightPlanLayer extends MapLayer<MapSystemFlightPlanLayerP
     );
   }
 
-  /** @inheritdoc */
-  public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
-    this.flightPathLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
-    this.waypointLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
-
-    const size = this.flightPathLayerRef.instance.getSize();
-    this.clipBounds.set(
-      -MapSystemFlightPlanLayer.CLIP_BOUNDS_BUFFER,
-      -MapSystemFlightPlanLayer.CLIP_BOUNDS_BUFFER,
-      size + MapSystemFlightPlanLayer.CLIP_BOUNDS_BUFFER,
-      size + MapSystemFlightPlanLayer.CLIP_BOUNDS_BUFFER
-    );
-  }
-
-  /** @inheritdoc */
+  /** @inheritDoc */
   public setVisible(val: boolean): void {
     super.setVisible(val);
     this.waypointLayerRef.instance.setVisible(val);
@@ -403,12 +431,25 @@ export class MapSystemFlightPlanLayer extends MapLayer<MapSystemFlightPlanLayerP
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
       <>
-        <MapCachedCanvasLayer ref={this.flightPathLayerRef} model={this.props.model} mapProjection={this.props.mapProjection} overdrawFactor={Math.SQRT2} class={this.props.class ?? ''} />
-        <MapSyncedCanvasLayer ref={this.waypointLayerRef} model={this.props.model} mapProjection={this.props.mapProjection} class={this.props.class ?? ''} />
+        <MapCachedCanvasLayer
+          ref={this.flightPathLayerRef}
+          model={this.props.model}
+          mapProjection={this.props.mapProjection}
+          overdrawFactor={Math.SQRT2}
+          collapseOnSleep
+          class={this.props.class ?? ''}
+        />
+        <MapSyncedCanvasLayer
+          ref={this.waypointLayerRef}
+          model={this.props.model}
+          mapProjection={this.props.mapProjection}
+          collapseOnSleep
+          class={this.props.class ?? ''}
+        />
       </>
     );
   }

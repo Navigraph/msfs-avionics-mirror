@@ -140,12 +140,14 @@ export class BingComponent extends DisplayComponent<BingComponentProps> {
   private mapListener!: ViewListener.ViewListener;
   private isListenerRegistered = false;
   private readonly imgRef = FSComponent.createRef<HTMLImageElement>();
-  private binder?: BingMapsBinder;
-  private uid = 0;
+
+  private readonly mapBoundHandler = this.onMapBound.bind(this);
+  private readonly mapUpdateHandler = this.onMapUpdate.bind(this);
 
   private _isBound = false;
-  private _isAwake = true;
+  private uid = -1;
 
+  private _isAwake = true;
   private isDestroyed = false;
 
   private pos = new LatLong(0, 0);
@@ -265,48 +267,72 @@ export class BingComponent extends DisplayComponent<BingComponentProps> {
       return;
     }
 
-    this.mapListener.on('MapBinded', this.onMapBound);
-    this.mapListener.on('MapUpdated', this.onMapUpdate);
+    this.mapListener.on('MapBinded', this.mapBoundHandler);
+    this.mapListener.on('MapUpdated', this.mapUpdateHandler);
 
     this.isListenerRegistered = true;
     this.mapListener.trigger('JS_BIND_BINGMAP', this.props.id, this.bingFlags);
   }
 
   /**
-   * A callback called when the listener is fully bound.
-   * @param binder The binder from the listener.
-   * @param uid The unique ID of the bound map.
+   * A callback that is called when a Bing instance is newly bound to a Bing ID or when the instance bound to a Bing ID
+   * changes.
+   * @param binder An object that identifies the Bing ID to which the Bing instance is bound.
+   * @param uid The unique ID of the bound Bing instance.
    */
-  private onMapBound = (binder: BingMapsBinder, uid: number): void => {
+  private onMapBound(binder: BingMapsBinder, uid: number): void {
     if (this.isDestroyed) {
       return;
     }
 
     if (binder.friendlyName === this.props.id) {
-      this.binder = binder;
-      this.uid = uid;
-
-      if (this._isBound) {
+      if (this._isBound && this.uid === uid) {
         return;
       }
 
-      this._isBound = true;
+      const isInitialBinding = !this._isBound;
 
-      Coherent.call('SHOW_MAP', uid, true);
+      this._isBound = true;
+      this.uid = uid;
+
+      if (isInitialBinding) {
+        Coherent.call('SHOW_MAP', uid, true);
+      }
+
+      // Even if this is not the first time this component's Bing instance is bound, we want to send all the parameters
+      // to the Bing instance again (if this component is awake) because when the Bing instance is re-bound, there is a
+      // chance that some previous parameters we sent in were lost while the Bing instance was being switched around.
 
       const pause = !this._isAwake;
 
-      this.earthColorsSub = this.earthColors.sub(this.onEarthColorsChanged.bind(this), true, pause);
-      this.earthColorsElevationRangeSub = this.earthColorsElevationRange.sub(this.sendEarthColorsElevationRange.bind(this), true, pause);
-      this.skyColorSub = this.skyColor.sub(this.onSkyColorChanged.bind(this), true, pause);
-      this.referenceSub = this.reference.sub(this.onReferenceChanged.bind(this), true, pause);
-      this.wxrModeSub = this.wxrMode.sub(this.onWxrModeChanged.bind(this), true, pause);
-      this.wxrColorsSub = this.wxrColors.sub(this.onWxrColorsChanged.bind(this), true, pause);
-      this.resolutionSub = this.resolution.sub(this.onResolutionChanged.bind(this), true, pause);
-      this.isoLinesSub = this.isoLines.sub(this.onShowIsoLinesChanged.bind(this), true, pause);
+      if (isInitialBinding) {
+        this.earthColorsSub = this.earthColors.sub(this.onEarthColorsChanged.bind(this), true, pause);
+        this.earthColorsElevationRangeSub = this.earthColorsElevationRange.sub(this.sendEarthColorsElevationRange.bind(this), true, pause);
+        this.skyColorSub = this.skyColor.sub(this.onSkyColorChanged.bind(this), true, pause);
+        this.referenceSub = this.reference.sub(this.onReferenceChanged.bind(this), true, pause);
+        this.wxrModeSub = this.wxrMode.sub(this.onWxrModeChanged.bind(this), true, pause);
+        this.wxrColorsSub = this.wxrColors.sub(this.onWxrColorsChanged.bind(this), true, pause);
+        this.resolutionSub = this.resolution.sub(this.onResolutionChanged.bind(this), true, pause);
+        this.isoLinesSub = this.isoLines.sub(this.onShowIsoLinesChanged.bind(this), true, pause);
+      } else if (this._isAwake) {
+        // NOTE: we will *not* send in a resolution update if this is not the first time this component's Bing instance
+        // is bound. Sending a resolution update (even if the resolution is the same as the current resolution) causes
+        // the Bing instance to be re-bound. Therefore, sending a resolution update in response to a re-bind would
+        // cause an infinite loop. This does mean that changes to resolution are still vulnerable to being lost around
+        // the time of re-binds. However, there is nothing we can do about that until a sim-side change to how
+        // resolution updates are handled is made.
+
+        this.onEarthColorsChanged();
+        this.sendEarthColorsElevationRange();
+        this.onSkyColorChanged(this.skyColor.get());
+        this.onReferenceChanged(this.reference.get());
+        this.onWxrModeChanged(this.wxrMode.get());
+        this.onWxrColorsChanged();
+        this.onShowIsoLinesChanged(this.isoLines.get());
+      }
 
       if (BitFlags.isAll(this.bingFlags, BingMapsFlags.FL_BINGMAP_3D)) {
-        if (this.fov) {
+        if (isInitialBinding && this.fov) {
           this.fovSub = this.fov.sub(this.sendFov.bind(this), true, pause);
         } else if (this._isAwake) {
           this.sendFov();
@@ -321,22 +347,24 @@ export class BingComponent extends DisplayComponent<BingComponentProps> {
         this.sendCameraTransform();
       }
 
-      this.props.onBoundCallback && this.props.onBoundCallback(this);
-    }
-  };
-
-  /**
-   * A callback called when the map image is updated.
-   * @param uid The unique ID of the bound map.
-   * @param imgSrc The img tag src attribute to assign to the bing map image.
-   */
-  private onMapUpdate = (uid: number, imgSrc: string): void => {
-    if (this.binder !== undefined && this.uid === uid && this.imgRef.instance !== null) {
-      if (this.imgRef.instance.src !== imgSrc) {
-        this.imgRef.instance.src = imgSrc;
+      if (isInitialBinding && this.props.onBoundCallback) {
+        this.props.onBoundCallback(this);
       }
     }
-  };
+  }
+
+  /**
+   * A callback that is called when the image URL of a Bing instance changes.
+   * @param uid The unique ID of the Bing instance.
+   * @param url The new image URL.
+   */
+  private onMapUpdate(uid: number, url: string): void {
+    if (this._isBound && this.uid === uid && this.imgRef.getOrDefault() !== null) {
+      if (this.imgRef.instance.src !== url) {
+        this.imgRef.instance.src = url;
+      }
+    }
+  }
 
   /**
    * Calls the position and radius set function to set map parameters.
@@ -672,8 +700,8 @@ export class BingComponent extends DisplayComponent<BingComponentProps> {
     this.isoLinesSub?.destroy();
     this.fovSub?.destroy();
 
-    this.mapListener?.off('MapBinded', this.onMapBound);
-    this.mapListener?.off('MapUpdated', this.onMapUpdate);
+    this.mapListener?.off('MapBinded', this.mapBoundHandler);
+    this.mapListener?.off('MapUpdated', this.mapUpdateHandler);
     if (!this.props.skipUnbindOnDestroy) {
       this.mapListener?.trigger('JS_UNBIND_BINGMAP', this.props.id);
     }

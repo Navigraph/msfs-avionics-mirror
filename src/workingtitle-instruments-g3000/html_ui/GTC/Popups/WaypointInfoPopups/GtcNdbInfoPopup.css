@@ -1,0 +1,18 @@
+.gtc-horizontal .ndb-info-popup {
+  --ndb-info-popup-info-left: calc(50% - 685px / 2);
+  --ndb-info-popup-info-top: 53px;
+}
+
+.gtc-vertical .ndb-info-popup {
+  --ndb-info-popup-info-left: calc(50% - 365px / 2);
+  --ndb-info-popup-info-top: 25px;
+}
+
+.ndb-info-popup .ndb-info {
+  position: absolute;
+}
+
+.ndb-info-popup .ndb-info {
+  left: var(--ndb-info-popup-info-left);
+  top: var(--ndb-info-popup-info-top);
+}

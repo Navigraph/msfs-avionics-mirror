@@ -1,18 +1,22 @@
 import { UserSettingManager, VNode } from '@microsoft/msfs-sdk';
 
 import {
-  DateTimeUserSettingTypes, GenericNavDataFieldRenderer, NavDataFieldRenderer, NavDataFieldType, NavDataFieldTypeModelMap
+  DateTimeUserSettingTypes, GenericNavDataFieldRenderer, NavDataFieldRenderer, NavDataFieldType,
+  NavDataFieldTypeModelMap
 } from '@microsoft/msfs-garminsdk';
 
 import { G3XUnitsUserSettingManager } from '../../../Settings/G3XUnitsUserSettings';
 import {
-  G3XNavDataFieldAglRenderer, G3XNavDataFieldBrgRenderer, G3XNavDataFieldCabinAltitudeRenderer, G3XNavDataFieldClgRenderer, G3XNavDataFieldClmRenderer,
-  G3XNavDataFieldDensityAltitudeRenderer, G3XNavDataFieldDistRenderer, G3XNavDataFieldDistdRenderer, G3XNavDataFieldDtkRenderer, G3XNavDataFieldEcoRenderer,
-  G3XNavDataFieldEdrRenderer, G3XNavDataFieldEtaRenderer, G3XNavDataFieldEtadRenderer, G3XNavDataFieldEteRenderer, G3XNavDataFieldEtedRenderer,
-  G3XNavDataFieldFlightLevelRenderer, G3XNavDataFieldFodRenderer, G3XNavDataFieldFuelFlowRenderer, G3XNavDataFieldGMeterRenderer,
-  G3XNavDataFieldGpsAltitudeRenderer, G3XNavDataFieldGsRenderer, G3XNavDataFieldIsaRenderer, G3XNavDataFieldLclRenderer, G3XNavDataFieldMachRenderer,
-  G3XNavDataFieldOatRenderer, G3XNavDataFieldRatRenderer, G3XNavDataFieldRemRenderer, G3XNavDataFieldTasRenderer, G3XNavDataFieldTrkRenderer,
-  G3XNavDataFieldUtcRenderer, G3XNavDataFieldVsrRenderer, G3XNavDataFieldWptRenderer, G3XNavDataFieldXtkRenderer
+  G3XNavDataFieldAglRenderer, G3XNavDataFieldBrgRenderer, G3XNavDataFieldCabinAltitudeRenderer,
+  G3XNavDataFieldClgRenderer, G3XNavDataFieldClmRenderer, G3XNavDataFieldDensityAltitudeRenderer,
+  G3XNavDataFieldDistRenderer, G3XNavDataFieldDistdRenderer, G3XNavDataFieldDtkRenderer, G3XNavDataFieldEcoRenderer,
+  G3XNavDataFieldEdrRenderer, G3XNavDataFieldEtaRenderer, G3XNavDataFieldEtadRenderer, G3XNavDataFieldEteRenderer,
+  G3XNavDataFieldEtedRenderer, G3XNavDataFieldFlightLevelRenderer, G3XNavDataFieldFodRenderer,
+  G3XNavDataFieldFuelFlowRenderer, G3XNavDataFieldGMeterRenderer, G3XNavDataFieldGpsAltitudeRenderer,
+  G3XNavDataFieldGsRenderer, G3XNavDataFieldIsaRenderer, G3XNavDataFieldLclRenderer, G3XNavDataFieldMachRenderer,
+  G3XNavDataFieldOatRenderer, G3XNavDataFieldRatRenderer, G3XNavDataFieldRemRenderer, G3XNavDataFieldTasRenderer,
+  G3XNavDataFieldTrkRenderer, G3XNavDataFieldUtcRenderer, G3XNavDataFieldVsrRenderer, G3XNavDataFieldWptRenderer,
+  G3XNavDataFieldWxAltimRenderer, G3XNavDataFieldXtkRenderer
 } from '../../NavDataField/G3XNavDataFieldTypeRenderers';
 
 /**
@@ -64,7 +68,7 @@ export class G3XNavDataBarFieldRenderer implements NavDataFieldRenderer {
     this.renderer.register(NavDataFieldType.UtcTime, new G3XNavDataFieldUtcRenderer());
     this.renderer.register(NavDataFieldType.VerticalSpeedRequired, new G3XNavDataFieldVsrRenderer(unitsSettingManager));
     this.renderer.register(NavDataFieldType.Waypoint, new G3XNavDataFieldWptRenderer());
-    // this.renderer.register(NavDataFieldType.WXAltimeter, ); // NO DATA, CAN'T IMPLEMENT
+    this.renderer.register(NavDataFieldType.WeatherAltimeter, new G3XNavDataFieldWxAltimRenderer(unitsSettingManager));
     // this.renderer.register(NavDataFieldType.WXWind, ); // NO DATA, CAN'T IMPLEMENT
     this.renderer.register(NavDataFieldType.CrossTrack, new G3XNavDataFieldXtkRenderer(unitsSettingManager));
   }

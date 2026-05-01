@@ -19,6 +19,7 @@ import { MapAirspaceLayer, MapAirspaceLayerModules, MapAirspaceLayerProps } from
 import { MapBingLayer } from '../map/layers/MapBingLayer';
 import { MapCullableTextLayer } from '../map/layers/MapCullableTextLayer';
 import { MapOwnAirplaneLayer, MapOwnAirplaneLayerModules } from '../map/layers/MapOwnAirplaneLayer';
+import { MapOwnAirplaneWithGhostIconLayer, GhostIconRotationMode } from '../map/layers/MapOwnAirplaneWithGhostIconLayer';
 import { MapSyncedCanvasLayer } from '../map/layers/MapSyncedCanvasLayer';
 import { MapAirspaceRenderer } from '../map/MapAirspaceRenderer';
 import { MapCullableTextLabelManager } from '../map/MapCullableTextLabel';
@@ -263,6 +264,50 @@ export type MapSystemBuilderTrafficOffScaleOobOptions = {
    * center of the map. Defaults to `[0, 0, 0, 0]`.
    */
   oobOffset?: ReadonlyFloat64Array | Subscribable<ReadonlyFloat64Array>,
+}
+
+/**
+ * Options for adding an own airplane icon layer with ghost icon to a map.
+ */
+export type MapSystemOwnAirplaneWithGhostIconLayerOptions = {
+  /**
+   * Whether the ghost icon is enabled. The ghost icon appears when the main airplane icon is out of bounds and
+   * is located where a great circle path originating from the map center and ending at the airplane's position
+   * intersects one of the map edges. Its rotation mode is controlled by {@link ghostIconBearingReferenceMode}.
+   *
+   * Defaults to a constant `true`.
+   */
+  enableGhostIcon?: Subscribable<boolean>;
+
+  /** The rotation mode of the ghost icon. Defaults to {@link GhostIconRotationMode.BearingFromEdge}. */
+  ghostIconBearingReferenceMode?: GhostIconRotationMode;
+
+  /** Whether to clamp the ghost icon so that it's axis-aligned bounding box (AABB) is always within the map viewport. */
+  ghostIconClamp?: boolean;
+
+  /** The path to the icon's image file. */
+  imageFilePath: string | Subscribable<string>;
+
+  /** The path to the ghost icon's image file. If undefined, {@link imageFilePath} will be used. */
+  ghostIconImageFilePath?: string | Subscribable<string>;
+
+  /** The size of the airplane icon, in pixels. */
+  iconSize: number | Subscribable<number>;
+
+  /** The size of the ghost airplane icon, in pixels. If undefined, {@link iconSize} will be used. */
+  ghostIconSize?: number | Subscribable<number>;
+
+  /**
+   * The point on the icon which is anchored to the airplane's position, expressed relative to the icon's width and
+   * height, with [0, 0] at the top left and [1, 1] at the bottom right.
+   */
+  iconAnchor: ReadonlyFloat64Array | Subscribable<ReadonlyFloat64Array>;
+
+  /**
+   * The point on the ghost icon which is anchored to the edge of the screen, expressed relative to the icon's width and
+   * height, with [0, 0] at the top left and [1, 1] at the bottom right. If `undefined`, {@link iconAnchor} will be used.
+   */
+  ghostIconAnchor?: ReadonlyFloat64Array | Subscribable<ReadonlyFloat64Array>;
 }
 
 /**
@@ -785,6 +830,45 @@ export class MapSystemBuilder<
   }
 
   /**
+   * Configures this builder to generate a map which displays an icon depicting the position of the player airplane.
+   * Includes a configurable "ghost" icon which appears when the player airplane is out of bounds.
+   *
+   * Adds the following...
+   *
+   * Modules:
+   * * `[MapSystemKeys.OwnAirplaneProps]: MapOwnAirplanePropsModule`
+   * * `[MapSystemKeys.OwnAirplaneIcon]: MapOwnAirplaneIconModule`
+   *
+   * Layers:
+   * * `[MapSystemKeys.OwnAirplaneIcon]: MapOwnAirplaneWithGhostIconLayer`
+   * @param options The options for this layer.
+   * @param cssClass The CSS class(es) to apply to the root of the airplane icon layer.
+   * @param order The order assigned to the icon layer. Layers with lower assigned order will be attached to the map
+   * before and appear below layers with greater assigned order values. Defaults to the number of layers already added
+   * to this builder.
+   * @returns This builder, after it has been configured.
+   */
+  public withOwnAirplaneIconAndGhostIcon(
+    options: MapSystemOwnAirplaneWithGhostIconLayerOptions,
+    cssClass?: string | SubscribableSet<string>,
+    order?: number
+  ): this {
+    return this
+      .withModule(MapSystemKeys.OwnAirplaneProps, () => new MapOwnAirplanePropsModule())
+      .withModule(MapSystemKeys.OwnAirplaneIcon, () => new MapOwnAirplaneIconModule())
+      .withLayer<MapOwnAirplaneLayer, MapOwnAirplaneLayerModules>(MapSystemKeys.OwnAirplaneIcon, (context): VNode => {
+        return (
+          <MapOwnAirplaneWithGhostIconLayer
+            model={context.model}
+            mapProjection={context.projection}
+            {...options}
+            class={cssClass}
+          />
+        );
+      }, order);
+  }
+
+  /**
    * Configures this builder to add a controller which controls and optimizes the orientation of the own airplane icon
    * in response to a desired orientation and the map rotation type. If the desired orientation matches the map
    * rotation (e.g. both Heading Up), the icon orientation is set to Map Up; otherwise the orientation is set to the
@@ -1015,11 +1099,11 @@ export class MapSystemBuilder<
   /**
    * Configures this builder to generate a map which displays waypoints near the map center or target. Waypoints
    * displayed in this manner are rendered by a {@link MapSystemWaypointsRenderer}.
-   * 
+   *
    * If a facility loader has been added to the map context under the `MapSystemKeys.FacilityLoader` key, then it will
    * be used to retrieve facilities for the display of nearest waypoints. Otherwise, a new default facility loader
    * instance will be used instead.
-   * 
+   *
    * Airport waypoints registered to the waypoint renderer by the waypoints layer will have at least as much data
    * available from them as described by the `AirportFacilityDataFlags` bitflags saved to the map context's
    * `MapSystemKeys.WaypointRendererAirportDataFlags` property. If the context property does not exist, then all
@@ -1115,11 +1199,11 @@ export class MapSystemBuilder<
   /**
    * Configures this builder to generate a map which displays a flight plan. Waypoints displayed as part of the flight
    * plan are rendered by a {@link MapSystemWaypointsRenderer}.
-   * 
+   *
    * If a facility loader has been added to the map context under the `MapSystemKeys.FacilityLoader` key, then it will
    * be used to retrieve facilities for the display of flight pan waypoints. Otherwise, a new default facility loader
    * instance will be used instead.
-   * 
+   *
    * Airport waypoints registered to the waypoint renderer by the flight plan layer will have at least as much data
    * available from them as described by the `AirportFacilityDataFlags` bitflags saved to the map context's
    * `MapSystemKeys.WaypointRendererAirportDataFlags` property. If the context property does not exist, then all
@@ -1246,7 +1330,7 @@ export class MapSystemBuilder<
   /**
    * Configures this builder to generate a map which displays flight plans using a shared layer. Waypoints displayed as
    * part of the flight plan are rendered by a {@link MapSystemWaypointsRenderer}.
-   * 
+   *
    * Airport waypoints registered to the waypoint renderer by the flight plan layer will have at least as much data
    * available from them as described by the `AirportFacilityDataFlags` bitflags saved to the map context's
    * `MapSystemKeys.WaypointRendererAirportDataFlags` property. If the context property does not exist, then all
@@ -1254,13 +1338,13 @@ export class MapSystemBuilder<
    *
    * If a text layer has already been added to the builder, then its order will be changed so that it is rendered above
    * the flight plan layer. Otherwise, a text layer will be added to the builder after the flight plan layer.
-   * 
+   *
    * The flight plans to display are taken from the map context property under the `MapSystemKeys.FlightPlan` key. The
    * property should be a map of {@link MapSystemSharedFlightPlanDefinition} objects, keyed by flight plan index. Each
    * definition object describes the display of a single flight plan. It is recommended to use the
    * {@link withSharedFlightPlanDefinition | withSharedFlightPlanDefinition()} build step to add flight plans to
    * display.
-   * 
+   *
    * Requires the following context properties:
    * * `[MapSystemKeys.FacilityLoader]: FacilityLoader`
    *
@@ -1425,6 +1509,7 @@ export class MapSystemBuilder<
           <MapSyncedCanvasLayer
             model={context.model}
             mapProjection={context.projection}
+            collapseOnSleep
             class={waypointLayerCssClass}
           />
         );
@@ -1478,7 +1563,7 @@ export class MapSystemBuilder<
 
   /**
    * Configures this builder to generate a map which displays airspaces.
-   * 
+   *
    * If a facility loader has been added to the map context under the `MapSystemKeys.FacilityLoader` key, then it will
    * be used to retrieve airspaces. Otherwise, a new default facility loader instance will be used instead.
    *

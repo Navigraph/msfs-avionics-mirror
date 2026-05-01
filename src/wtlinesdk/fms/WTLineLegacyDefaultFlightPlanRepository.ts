@@ -41,6 +41,7 @@ export class WTLineLegacyDefaultFlightPlanRepository implements WTLineFlightPlan
     this.flightPlanner.createFlightPlan(WTLineLegacyFlightPlans.Secondary);
 
     WTLineFmsUtils.emptyFlightPlan(this.getFlightPlan(WTLineLegacyFlightPlans.Active));
+    WTLineFmsUtils.emptyFlightPlan(this.getFlightPlan(WTLineLegacyFlightPlans.Mod));
     WTLineFmsUtils.emptyFlightPlan(this.getFlightPlan(WTLineLegacyFlightPlans.Secondary));
   }
 
@@ -50,20 +51,10 @@ export class WTLineLegacyDefaultFlightPlanRepository implements WTLineFlightPlan
   }
 
   /** @inheritDoc */
-  public emptyModFlightPlans(): void {
-    WTLineFmsUtils.emptyFlightPlan(this.getFlightPlan(WTLineLegacyFlightPlans.Mod));
+  public emptyOrDeleteModFlightPlans(): void {
+    const plan = this.getFlightPlan(WTLineLegacyFlightPlans.Mod);
 
-    WTLineFmsUtils.setFlightPlanProcedureIdents(
-      this.getFlightPlan(WTLineLegacyFlightPlans.Mod),
-      {
-        departureIdent: null,
-        departureEnrouteTransitionIdent: null,
-        arrivalIdent: null,
-        arrivalEnrouteTransitionIdent: null,
-        approachIdent: null,
-        approachTransitionIdent: null,
-      },
-    );
+    WTLineFmsUtils.emptyFlightPlan(plan);
   }
 
   /**

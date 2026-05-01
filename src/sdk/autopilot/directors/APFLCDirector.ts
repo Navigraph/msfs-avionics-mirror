@@ -1,6 +1,5 @@
 import { SimVarValueType } from '../../data/SimVars';
 import { AeroMath } from '../../math/AeroMath';
-import { MathUtils } from '../../math/MathUtils';
 import { UnitType } from '../../math/NumberUnit';
 import { APValues } from '../APValues';
 import { GenericFlcComputer } from '../calculators/GenericFlcComputer';
@@ -25,14 +24,18 @@ export type APFLCDirectorSetSpeedCommand = {
  */
 export type APFLCDirectorOptions = {
   /**
-   * The maximum absolute pitch up angle, in degrees, supported by the director, or a function which returns it.
+   * The maximum absolute pitch up angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `15`.
    */
-  maxPitchUpAngle: number | (() => number);
+  maxPitchUpAngle?: number | null | (() => number | null);
 
   /**
-   * The maximum absolute pitch down angle, in degrees, supported by the director, or a function which returns it.
+   * The maximum absolute pitch down angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `15`.
    */
-  maxPitchDownAngle: number | (() => number);
+  maxPitchDownAngle?: number | null | (() => number | null);
 
   /**
    * A function which commands the director to set selected speed targets when the director is activated. The function
@@ -44,7 +47,7 @@ export type APFLCDirectorOptions = {
    * The function should use the command object to set certain selected IAS and mach targets, and whether the selected
    * speed target should be in mach. Any undefined commands will leave the current settings unchanged.
    */
-  setSpeedOnActivation: (currentIas: number, currentMach: number, isSelectedSpeedInMach: boolean, command: APFLCDirectorSetSpeedCommand) => void;
+  setSpeedOnActivation?: (currentIas: number, currentMach: number, isSelectedSpeedInMach: boolean, command: APFLCDirectorSetSpeedCommand) => void;
 
   /**
    * Whether the director should use mach number calculated from the impact pressure derived from indicated airspeed
@@ -63,7 +66,7 @@ export type APFLCDirectorOptions = {
  * An autopilot director that generates flight director pitch commands to hold an indicated airspeed or mach. Sets the
  * `AUTOPILOT FLIGHT LEVEL CHANGE` SimVar state to true (1) when it is armed or activated, and to false (0) when it is
  * deactivated.
- * 
+ *
  * The director requires valid pitch, indicated airspeed, mach, and indicated altitude data to arm or activate.
  */
 export class APFLCDirector implements PlaneDirector {
@@ -82,7 +85,7 @@ export class APFLCDirector implements PlaneDirector {
   public onDeactivate?: () => void;
 
   /** @inheritDoc */
-  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean) => void;
+  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number, maxNoseDownPitch?: number, maxNoseUpPitch?: number) => void;
 
   private readonly setSpeedCommand: APFLCDirectorSetSpeedCommand = {
     ias: undefined,
@@ -90,8 +93,8 @@ export class APFLCDirector implements PlaneDirector {
     isSelectedSpeedInMach: undefined
   };
 
-  private readonly maxPitchUpAngleFunc: () => number;
-  private readonly maxPitchDownAngleFunc: () => number;
+  private readonly maxPitchUpAngleFunc: () => number | undefined;
+  private readonly maxPitchDownAngleFunc: () => number | undefined;
   private readonly setSpeedOnActivationFunc: (currentIas: number, currentMach: number, isSelectedSpeedInMach: boolean, command: APFLCDirectorSetSpeedCommand) => void;
 
   private readonly useIndicatedMach: boolean;
@@ -105,36 +108,11 @@ export class APFLCDirector implements PlaneDirector {
   /**
    * Creates a new instance of APFLCDirector.
    * @param apValues Autopilot values from this director's parent autopilot.
-   * @param options Options to configure the new director. Option values default to the following if not defined:
-   * * `maxPitchUpAngle`: `15`
-   * * `maxPitchDownAngle`: `15`
-   * * `setSpeedOnActivation`: A function which sets the selected IAS or mach target to the airplane's current IAS or
-   * mach, depending on whether IAS or mach is currently being targeted.
+   * @param options Options with which to configure the new director.
    */
-  constructor(private readonly apValues: APValues, options?: Partial<Readonly<APFLCDirectorOptions>>) {
-    const maxPitchUpAngleOpt = options?.maxPitchUpAngle ?? undefined;
-    switch (typeof maxPitchUpAngleOpt) {
-      case 'number':
-        this.maxPitchUpAngleFunc = () => maxPitchUpAngleOpt;
-        break;
-      case 'function':
-        this.maxPitchUpAngleFunc = maxPitchUpAngleOpt;
-        break;
-      default:
-        this.maxPitchUpAngleFunc = () => 15;
-    }
-
-    const maxPitchDownAngleOpt = options?.maxPitchDownAngle ?? undefined;
-    switch (typeof maxPitchDownAngleOpt) {
-      case 'number':
-        this.maxPitchDownAngleFunc = () => maxPitchDownAngleOpt;
-        break;
-      case 'function':
-        this.maxPitchDownAngleFunc = maxPitchDownAngleOpt;
-        break;
-      default:
-        this.maxPitchDownAngleFunc = () => 15;
-    }
+  public constructor(private readonly apValues: APValues, options?: Readonly<APFLCDirectorOptions>) {
+    this.maxPitchUpAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchUpAngle);
+    this.maxPitchDownAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchDownAngle);
 
     this.setSpeedOnActivationFunc = options?.setSpeedOnActivation ?? APFLCDirector.defaultSetSpeedOnActivation;
 
@@ -142,6 +120,22 @@ export class APFLCDirector implements PlaneDirector {
 
     this.state = DirectorState.Inactive;
     this.flcComputer = options?.flcComputer ?? new GenericFlcComputer({ kP: 2, kI: 0, kD: 0, maxOut: 90, minOut: -90, apDataProvider: apValues.dataProvider });
+  }
+
+  /**
+   * Creates a function that returns the maximum pitch angle limit defined by an option.
+   * @param option The option that defines the maximum pitch angle limit.
+   * @returns A function that returns the maximum pitch angle limit defined by the specified option.
+   */
+  private createMaxPitchAngleFunc(option: number | null | (() => number | null) = 15): () => number | undefined {
+    switch (typeof option) {
+      case 'number':
+        return () => option;
+      case 'function':
+        return () => option() ?? undefined;
+      default:
+        return () => undefined;
+    }
   }
 
   /**
@@ -268,7 +262,7 @@ export class APFLCDirector implements PlaneDirector {
 
     if (pitchTarget !== null) {
       // The pitch target from the FLC computer does not need to be adjusted for AOA or vertical wind.
-      this.drivePitch && this.drivePitch(MathUtils.clamp(pitchTarget, -this.maxPitchUpAngleFunc(), this.maxPitchDownAngleFunc()), false, false);
+      this.drivePitch && this.drivePitch(pitchTarget, false, false, undefined, this.maxPitchDownAngleFunc(), this.maxPitchUpAngleFunc());
     } else {
       this.deactivate();
     }

@@ -1,6 +1,5 @@
 export * from './AudioConfig';
 export * from './AuralAlertsConfig';
-export * from './AutopilotConfig';
 export * from './AvionicsConfig';
 export * from './EngineConfig';
 export * from './FmsConfig';

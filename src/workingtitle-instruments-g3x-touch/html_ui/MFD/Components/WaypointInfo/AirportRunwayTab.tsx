@@ -1,11 +1,13 @@
 import {
-  AirportRunway, CompiledMapSystem, DebounceTimer, Facility, FacilityLoader, FacilityType, FacilityUtils, FSComponent, MapIndexedRangeModule, MappedSubject,
-  MapSystemBuilder, MathUtils, Metar, MetarWindSpeedUnits, NodeReference, ReadonlyFloat64Array, RunwaySurfaceCategory, RunwayUtils, Subject, Subscribable,
-  Subscription, Unit, UnitFamily, UnitType, UserSettingManager, Vec2Math, Vec2Subject, Vec3Math, Vec3Subject, VecNMath, VNode
+  AirportRunway, CompiledMapSystem, DebounceTimer, FacilityLoader, FacilityType, FacilityUtils, FSComponent,
+  MapIndexedRangeModule, MappedSubject, MapSystemBuilder, MathUtils, MetarWindSpeedUnits, NodeReference,
+  ReadonlyFloat64Array, RunwaySurfaceCategory, RunwayUtils, Subject, Subscribable, Subscription, Unit, UnitFamily,
+  UnitType, UserSettingManager, Vec2Math, Vec2Subject, Vec3Math, Vec3Subject, VecNMath, VNode
 } from '@microsoft/msfs-sdk';
 
 import {
-  AirportWaypoint, GarminMapKeys, MapRangeController, TouchPad, WaypointInfoStore, WaypointMapRTRController, WaypointMapSelectionModule
+  AirportWaypoint, GarminMapKeys, MapRangeController, TouchPad, WaypointInfoStore, WaypointMapRTRController,
+  WaypointMapSelectionModule
 } from '@microsoft/msfs-garminsdk';
 
 import { G3XWaypointMapBuilder } from '../../../Shared/Components/Map/Assembled/G3XWaypointMapBuilder';
@@ -28,6 +30,7 @@ import { UiViewKeys } from '../../../Shared/UiSystem/UiViewKeys';
 import { UiViewStackLayer } from '../../../Shared/UiSystem/UiViewTypes';
 import { UiListDialogParams } from '../../Dialogs/UiListDialog';
 import { UiListSelectTouchButton } from '../TouchButton/UiListSelectTouchButton';
+import { WaypointInfoAirportWeatherData, WaypointInfoAirportWeatherProvider } from './WaypointInfoAirportWeatherProvider';
 
 import './AirportRunwayTab.css';
 
@@ -49,6 +52,9 @@ export interface AirportRunwayTabProps extends TabbedContentProps {
 
   /** Information on the waypoint to display. */
   waypointInfo: WaypointInfoStore;
+
+  /** A provider of airport weather for the waypoint to display. */
+  airportWeatherProvider: WaypointInfoAirportWeatherProvider;
 
   /** The dimensions of the tab's content area, as `[width, height]` in pixels. */
   tabContentDimensions: Subscribable<ReadonlyFloat64Array>;
@@ -206,7 +212,6 @@ export class AirportRunwayTab extends AbstractTabbedContent<AirportRunwayTabProp
     this.props.unitsSettingManager.distanceUnitsSmall
   ).pause();
 
-  private readonly metar = Subject.create<Metar | undefined>(undefined);
   private readonly runwayWindData = Vec3Subject.create(Vec3Math.create(NaN, NaN, NaN)); // [headwind, rightxwind, gust factor]
 
   private readonly windTitleText = Subject.create('');
@@ -247,8 +252,6 @@ export class AirportRunwayTab extends AbstractTabbedContent<AirportRunwayTabProp
       this.props.unitsSettingManager.speedUnits
     );
 
-    const updateMetarSub = this.props.waypointInfo.facility.sub(this.updateMetar.bind(this), false, true);
-
     const selectRunwayButtonFocusState = MappedSubject.create(
       this.props.allowKnobPush,
       this.facilityRunways
@@ -256,22 +259,22 @@ export class AirportRunwayTab extends AbstractTabbedContent<AirportRunwayTabProp
 
     const updateSelectRunwayButtonFocusSub = selectRunwayButtonFocusState.sub(this.updateSelectRunwayButtonFocus.bind(this), false, true);
 
+    const runwayWeatherState = MappedSubject.create(
+      this.selectedRunway,
+      this.props.airportWeatherProvider.weatherData
+    );
+
     this.subscriptions.push(
-      updateMetarSub,
+      runwayWeatherState,
       windTextState,
       selectRunwayButtonFocusState
     );
 
     this.pauseable.push(
-      updateMetarSub,
+      runwayWeatherState.sub(this.updateRunwayWindData.bind(this), false, true),
       windTextState.sub(this.onRunwayWindDataChanged.bind(this), false, true),
       updateSelectRunwayButtonFocusSub
     );
-
-    MappedSubject.create(
-      this.selectedRunway,
-      this.metar
-    ).sub(this.updateRunwayWindData.bind(this), true);
 
     this.facilityRunways.sub(this.onFacilityRunwaysChanged.bind(this), true);
   }
@@ -286,6 +289,8 @@ export class AirportRunwayTab extends AbstractTabbedContent<AirportRunwayTabProp
     this.selectedRunwayPipe.resume(true);
 
     this.mapWptRTRController.tryTargetWaypoint(true);
+
+    this.props.airportWeatherProvider.refresh();
   }
 
   /** @inheritDoc */
@@ -394,34 +399,14 @@ export class AirportRunwayTab extends AbstractTabbedContent<AirportRunwayTabProp
     }
   }
 
-  private updateMetarOpId = 0;
-
-  /**
-   * Updates METAR data for the displayed facility.
-   * @param facility The displayed facility.
-   */
-  private async updateMetar(facility: Facility | null): Promise<void> {
-    const opId = ++this.updateMetarOpId;
-
-    this.metar.set(undefined);
-
-    if (facility && FacilityUtils.isFacilityType(facility, FacilityType.Airport)) {
-      const metar = await this.props.facLoader.getMetar(facility);
-
-      if (opId !== this.updateMetarOpId) {
-        return;
-      }
-
-      this.metar.set(metar);
-    }
-  }
-
   /**
    * Updates wind data for the selected runway.
    * @param state The wind data input state, as `[selected runway, METAR data]`.
    */
-  private updateRunwayWindData(state: readonly [AirportRunway | null, Metar | undefined]): void {
-    const [runway, metar] = state;
+  private updateRunwayWindData(state: readonly [AirportRunway | null, WaypointInfoAirportWeatherData | null]): void {
+    const [runway, weatherData] = state;
+
+    const metar = weatherData?.metar;
 
     if (!runway || !metar) {
       this.runwayWindData.set(NaN, NaN, NaN);

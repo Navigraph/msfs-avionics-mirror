@@ -250,7 +250,7 @@ export class WT21_FMC_Instrument implements FsInstrument {
       if (DefaultsUserSettings.getManager(this.bus).getSetting('flightLogOnLanding').value === true) {
         // listen for ftl log event to show flt log page
         this.bus.getSubscriber<WT21ControlEvents>().on('show_flt_log').handle(() => {
-          // this.router.navigateTo('/flt-log');
+          this.cduScreenRef.instance.fmcScreen?.navigateTo('/flt-log');
         });
       }
     }

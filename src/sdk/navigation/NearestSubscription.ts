@@ -197,7 +197,7 @@ export abstract class AbstractNearestSubscription<T extends Facility, TAdded, TR
    */
   protected addFacility(facility: T, key: string): void {
     if (this.facilityIndex.has(key)) {
-      console.warn(`Facility ${key} is already in the collection.`);
+      return;
     }
 
     this.facilities.push(facility);
@@ -863,13 +863,14 @@ export class AdaptiveNearestSubscription<InnerType extends NearestSubscription<a
     // Remove every item from the old array that is not in the new array.
 
     for (let i = 0; i < newArray.length; i++) {
-      this.diffMap.set(newArray[i].icao, newArray[i]);
+      this.diffMap.set(ICAO.getUid(newArray[i].icaoStruct), newArray[i]);
     }
 
     for (let i = this.facilities.length - 1; i >= 0; i--) {
       const old = this.facilities[i];
-      if (this.diffMap.has(old.icao)) {
-        this.diffMap.delete(old.icao);
+      const oldIcaoUid = ICAO.getUid(old.icaoStruct);
+      if (this.diffMap.has(oldIcaoUid)) {
+        this.diffMap.delete(oldIcaoUid);
       } else {
         this.facilities.splice(i, 1);
         this.notify(i, SubscribableArrayEventType.Removed, old);

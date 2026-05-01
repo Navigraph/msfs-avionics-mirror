@@ -1,0 +1,36 @@
+.wt-ifd-aoa-container {
+    position: absolute;
+    bottom: 134px;
+    left: 131px;
+}
+
+.wt-ifd-aoa-container .aoa-gauge-container {
+    position: relative;
+    stroke: var(--wtdyne-color-white);
+    stroke-linecap: square;
+    fill: none;
+}
+
+.wt-ifd-aoa-container svg.aoa-number-display {
+    position: absolute;
+}
+
+.wt-ifd-aoa-container .aoa-number-display text {
+    text-align: right;
+    font-size: 32px;
+    font-family: "Arial Bold", sans-serif;
+    fill: var(--wtdyne-color-white);
+    stroke: none;
+    letter-spacing: -2px;
+}
+
+.wt-ifd-aoa-container .aoa-number-display text.shadow {
+    fill: none;
+    stroke: var(--wtdyne-color-black);
+    stroke-width: 1.5px;
+}
+
+.wt-ifd-aoa-container .aoa-gauge-container .aoa-arc,
+.wt-ifd-aoa-container .aoa-gauge-container .aoa-needle {
+    position: absolute;
+}

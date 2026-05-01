@@ -1,0 +1,30 @@
+.datablock-traffic-thumbnail .map-system {
+  overflow: hidden;
+}
+
+.datablock-traffic-thumbnail {
+  width: 135px;
+  height: 140px;
+}
+
+.datablock-traffic-thumbnail .traffic-toggle {
+  font-size: 18px;
+  font-family: "Arial Bold", sans-serif;
+  color: var(--wtdyne-color-light-cyan);
+  position: absolute;
+  bottom: 0;
+  padding-bottom: 5px;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+.datablock-traffic-thumbnail-orientation {
+  font-size: 15px;
+  font-family: "Arial", sans-serif;
+  color: var(--wtdyne-color-mint);
+  position: absolute;
+  top: 2px;
+  left: 10px;
+  z-index: 1;
+}

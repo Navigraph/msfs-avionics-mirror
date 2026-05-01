@@ -1,3 +1,7 @@
+export * from './colliders';
+export * from './layers';
+export * from './modules';
+
 export * from './AbstractFlightPathLegRenderer';
 export * from './AbstractFlightPathPlanRenderer';
 export * from './CustomFlightPathLegRenderer';
@@ -25,29 +29,3 @@ export * from './MapTextLabel';
 export * from './MapWaypoint';
 export * from './MapWaypointIcon';
 export * from './MapWaypointRenderer';
-
-export * from './modules/MapAirspaceModule';
-export * from './modules/MapAutopilotPropsModule';
-export * from './modules/MapDataIntegrityModule';
-export * from './modules/MapIndexedRangeModule';
-export * from './modules/MapIndexedScaleFactorModule';
-export * from './modules/MapOwnAirplaneIconModule';
-export * from './modules/MapOwnAirplanePropsModule';
-export * from './modules/MapRangeModule';
-
-export * from './layers/GenericMapSharedCanvasSubLayer';
-export * from './layers/MapAirspaceLayer';
-export * from './layers/MapAltitudeArcLayer';
-export * from './layers/MapBingLayer';
-export * from './layers/MapCachedCanvasLayer';
-export * from './layers/MapCanvasLayer';
-export * from './layers/MapCullableTextLayer';
-export * from './layers/MapGenericLayer';
-export * from './layers/MapLabeledRingCanvasSubLayer';
-export * from './layers/MapLabeledRingLayer';
-export * from './layers/MapLineLayer';
-export * from './layers/MapNearestWaypointsLayer';
-export * from './layers/MapOwnAirplaneLayer';
-export * from './layers/MapSharedCachedCanvasLayer';
-export * from './layers/MapSharedCanvasLayer';
-export * from './layers/MapSyncedCanvasLayer';

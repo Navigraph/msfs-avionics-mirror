@@ -23,7 +23,7 @@ export class DefaultFlightPlanDataFieldFactory implements FlightPlanDataFieldFac
       case FlightPlanDataFieldType.CumulativeFuel:
       case FlightPlanDataFieldType.FuelRemaining:
       case FlightPlanDataFieldType.LegFuel:
-        value = NumberUnitSubject.create(UnitType.GALLON_FUEL.createNumber(NaN)) as unknown as FlightPlanDataFieldTypeValueMap[T];
+        value = NumberUnitSubject.create(UnitType.KILOGRAM.createNumber(NaN)) as unknown as FlightPlanDataFieldTypeValueMap[T];
         break;
       case FlightPlanDataFieldType.Eta:
       case FlightPlanDataFieldType.Sunrise:

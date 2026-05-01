@@ -129,7 +129,8 @@ export interface TouchButtonProps extends ComponentProps {
   onHoldTick?: <B extends TouchButton = TouchButton>(button: B, dt: number, totalTime: number, timeSinceLastPress: number) => TouchButtonHoldAction;
 
   /**
-   * A function which is called when the button exits the held state.
+   * A function which is called when the button exits the held state. If not defined, then the button will default to
+   * taking no specific action when it exits the held state.
    * @param button The button that was held.
    * @param totalHoldDuration The total amount of time, in milliseconds, that the button was held.
    * @param endReason The reason that the button exited the held state.

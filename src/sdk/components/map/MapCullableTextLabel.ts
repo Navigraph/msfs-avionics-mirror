@@ -15,7 +15,7 @@ export interface MapCullableTextLabel extends MapTextLabel {
   /** Whether this label is immune to culling. */
   readonly alwaysShow: Subscribable<boolean>;
 
-  /** The bounding box of this label. */
+  /** The bounding box of this label, as [left, top, right, bottom]. */
   readonly bounds: Float64Array;
 
   /** An invalidation event. */

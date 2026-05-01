@@ -102,11 +102,13 @@ export class FlightPlanLegListItem extends DisplayComponent<FlightPlanLegListIte
     }
   }
 
-  /** Runs when the outlined element is selected */
-  private onMouseDown(): void {
+  /**
+   * Runs when the outlined element is selected
+   */
+  private onClick = (): void => {
     const isThisSelected = this.props.store.selectedEnrouteWaypoint.get() == this.props.legListData;
     this.props.store.selectedEnrouteWaypoint.set(!isThisSelected ? this.props.legListData : undefined);
-  }
+  };
 
   /** @inheritdoc */
   public override onAfterRender(): void {
@@ -119,7 +121,7 @@ export class FlightPlanLegListItem extends DisplayComponent<FlightPlanLegListIte
     this.props.legListData.isBeingRemoved.sub(removing => this.classList.toggle('removing-leg', removing));
 
     if (this.outlineRef.getOrDefault()) {
-      this.outlineRef.instance.outlineElement.instance.addEventListener('mousedown', () => this.onMouseDown());
+      this.outlineRef.instance.outlineElement.instance.addEventListener('click', this.onClick);
       this.props.store.selectedEnrouteWaypoint.sub((legListData) => {
         const isThisSelected = legListData == this.props.legListData;
         this.outlineRef.instance.forceOutline(isThisSelected);
@@ -351,6 +353,8 @@ export class FlightPlanLegListItem extends DisplayComponent<FlightPlanLegListIte
 
   /** @inheritdoc */
   public override destroy(): void {
+    this.outlineRef.getOrDefault()?.outlineElement.getOrDefault()?.removeEventListener('click', this.onClick);
+
     this.listItemRef.getOrDefault()?.destroy();
 
     this.subs.forEach(sub => { sub.destroy(); });

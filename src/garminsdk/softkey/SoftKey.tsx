@@ -12,7 +12,7 @@ export interface SoftKeyProps extends ComponentProps {
 
   /**
    * The amount of time, in milliseconds, to display the softkey pressed animation after the softkey has been pressed.
-   * Defaults to {@link SoftKey.DEFAULT_PRESSED_DURATION}.
+   * Defaults to 150 milliseconds.
    */
   pressedDuration?: number;
 
@@ -27,11 +27,16 @@ export class SoftKey extends DisplayComponent<SoftKeyProps> {
   private static readonly DEFAULT_PRESSED_DURATION = 150; // milliseconds
 
   private static readonly RESERVED_CSS_CLASSES = [
-    'softkey', 'softkey-disabled', 'softkey-highlighted', 'softkey-pressed',
-    'softkey-value-text-show', 'softkey-value-toggle-show'
+    'softkey',
+    'softkey-disabled',
+    'softkey-highlighted',
+    'softkey-pressed',
+    'softkey-value-text-show',
+    'softkey-value-toggle-show',
   ] as const;
 
   private readonly rootCssClass = SetSubject.create(['softkey']);
+  private readonly menuItemCssClass = SetSubject.create<string>();
 
   private readonly label = Subject.create('');
   private readonly disabled = Subject.create(true);
@@ -46,6 +51,7 @@ export class SoftKey extends DisplayComponent<SoftKeyProps> {
 
   private cssClassSub?: Subscription;
   private menuItemSub?: Subscription;
+  private menuItemCssClassPipe?: Subscription;
   private labelPipe?: Subscription;
   private disabledPipe?: Subscription;
   private highlightedPipe?: Subscription;
@@ -56,38 +62,50 @@ export class SoftKey extends DisplayComponent<SoftKeyProps> {
 
   /** @inheritdoc */
   public onAfterRender(): void {
+    FSComponent.bindCssClassSet(this.rootCssClass, this.menuItemCssClass, SoftKey.RESERVED_CSS_CLASSES);
+
     this.disabled.sub(this.onDisabledChanged.bind(this), true);
     this.highlighted.sub(this.onHighlightedChanged.bind(this), true);
     this.value.sub(this.onValueChanged.bind(this), true);
 
-    this.menuItemSub = this.props.menuItem.sub(menuItem => {
-      this.unsubscribeFromMenuItem();
-
-      if (menuItem !== null) {
-        this.labelPipe = menuItem.label.pipe(this.label);
-        this.disabledPipe = menuItem.disabled.pipe(this.disabled);
-        this.highlightedPipe = menuItem.highlighted.pipe(this.highlighted);
-        this.valuePipe = menuItem.value.pipe(this.value);
-        this.pressedSub = menuItem.pressed.on(this.onPressedHandler);
-      } else {
-        this.label.set('');
-        this.disabled.set(true);
-        this.highlighted.set(false);
-        this.value.set(undefined);
-      }
-    }, true);
+    this.menuItemSub = this.props.menuItem.sub(this.onMenuItemChanged.bind(this), true);
   }
 
   /**
-   * Unsubscribes from change events on the menu item.
+   * Responds to when this softkey's menu item changes.
+   * @param menuItem The new menu item.
+   */
+  private onMenuItemChanged(menuItem: SoftKeyMenuItem | null): void {
+    this.unsubscribeFromMenuItem();
+
+    if (menuItem !== null) {
+      this.menuItemCssClassPipe = menuItem.cssClass.pipe(this.menuItemCssClass);
+      this.labelPipe = menuItem.label.pipe(this.label);
+      this.disabledPipe = menuItem.disabled.pipe(this.disabled);
+      this.highlightedPipe = menuItem.highlighted.pipe(this.highlighted);
+      this.valuePipe = menuItem.value.pipe(this.value);
+      this.pressedSub = menuItem.pressed.on(this.onPressedHandler);
+    } else {
+      this.label.set('');
+      this.disabled.set(true);
+      this.highlighted.set(false);
+      this.value.set(undefined);
+    }
+  }
+
+  /**
+   * Unsubscribes from this softkey's last-subscribed menu item.
    */
   private unsubscribeFromMenuItem(): void {
+    this.menuItemCssClassPipe?.destroy();
+    this.menuItemCssClass.clear();
     this.labelPipe?.destroy();
     this.disabledPipe?.destroy();
     this.highlightedPipe?.destroy();
     this.valuePipe?.destroy();
     this.pressedSub?.destroy();
 
+    this.menuItemCssClassPipe = undefined;
     this.labelPipe = undefined;
     this.disabledPipe = undefined;
     this.highlightedPipe = undefined;
@@ -115,7 +133,7 @@ export class SoftKey extends DisplayComponent<SoftKeyProps> {
     if (isHighlighted) {
       this.rootCssClass.add('softkey-highlighted');
     } else {
-      this.rootCssClass.add('softkey-highlighted');
+      this.rootCssClass.delete('softkey-highlighted');
     }
   }
 
@@ -176,10 +194,10 @@ export class SoftKey extends DisplayComponent<SoftKeyProps> {
 
   /** @inheritdoc */
   public destroy(): void {
-    super.destroy();
-
     this.cssClassSub?.destroy();
     this.menuItemSub?.destroy();
     this.unsubscribeFromMenuItem();
+
+    super.destroy();
   }
 }

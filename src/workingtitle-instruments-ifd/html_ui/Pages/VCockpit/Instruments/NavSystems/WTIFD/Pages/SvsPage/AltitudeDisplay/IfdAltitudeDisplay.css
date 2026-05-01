@@ -1,0 +1,95 @@
+.wt-ifd-altitude-container .ifd-digital-box {
+    position: relative;
+    padding-top: 69px;
+    height: 101px;
+}
+
+.wt-ifd-altitude-container .digital-box-border {
+    position: absolute;
+    transform: translate3d(7px, 0, 0);
+}
+
+.wt-ifd-altitude-container .digital-box-tumblers {
+    position: absolute;
+    right: 8px;
+    color: var(--wtdyne-color-white);
+    font-family: "Arial Bold", sans-serif;
+}
+
+.wt-ifd-altitude-container .ifd-digit-scroller {
+    overflow: hidden;
+    position: absolute;
+    width: 35px;
+}
+
+.wt-ifd-altitude-container .ten-thousands-scroller {
+    --digit-scroller-line-offset-y: 1px;
+    --digit-scroller-line-height: 40px;
+    top: 49px;
+    height: 28px;
+}
+
+.wt-ifd-altitude-container .thousands-scroller {
+    --digit-scroller-line-offset-y: 1px;
+    --digit-scroller-line-height: 40px;
+    top: 49px;
+    height: 28px;
+}
+
+.wt-ifd-altitude-container .hundreds-scroller {
+    --digit-scroller-line-offset-y: 2px;
+    --digit-scroller-line-height: 28px;
+    top: 47px;
+    height: 28px;
+}
+
+.wt-ifd-altitude-container .tens-scroller {
+    --digit-scroller-line-offset-y: 0px;
+    --digit-scroller-line-height: 26px;
+    top: 22px;
+    height: 78px;
+    right: 1px;
+}
+
+.wt-ifd-altitude-container .ten-thousands-scroller,
+.wt-ifd-altitude-container .thousands-scroller {
+    font-size: 38px;
+}
+
+.wt-ifd-altitude-container .hundreds-scroller,
+.wt-ifd-altitude-container .tens-scroller {
+    font-size: 32px;
+}
+
+.wt-ifd-altitude-container .ten-thousands-scroller {
+    right: 61px;
+}
+
+.wt-ifd-altitude-container .thousands-scroller {
+    right: 40px;
+}
+
+.wt-ifd-altitude-container .hundreds-scroller {
+    right: 19px;
+}
+
+.wt-ifd-altitude-container .scroller-fade-mask-top,
+.wt-ifd-altitude-container .scroller-fade-mask-bottom {
+    position: absolute;
+    z-index: 3;
+    right: 9px;
+    height: 13px;
+    width: 34px;
+    pointer-events: none;
+    border-radius: 1px;
+}
+
+.wt-ifd-altitude-container .scroller-fade-mask-top {
+    top: 91px;
+    background: linear-gradient(to bottom, var(--wtdyne-color-black), transparent);
+}
+
+.wt-ifd-altitude-container .scroller-fade-mask-bottom {
+    top: 158px;
+    background: linear-gradient(to top, var(--wtdyne-color-black), transparent);
+}

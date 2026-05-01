@@ -1,0 +1,57 @@
+.wt-ifd-transponder-data-block {
+  position: relative;
+}
+
+
+.wt-ifd-transponder-data-block .wt-ifd-transponder-block-container {
+  position: relative;
+}
+
+.wt-ifd-transponder-data-block .wt-ifd-xpdr-mode-title,
+.wt-ifd-transponder-data-block .wt-ifd-xpdr-code-title {
+  color: var(--wtdyne-color-light-cyan);
+  padding-left: 6px;
+  font-family: "Arial", sans-serif;
+  font-size: 15px;
+}
+
+.wt-ifd-transponder-data-block .wt-ifd-xpdr-mode-value,
+.wt-ifd-transponder-data-block .wt-ifd-xpdr-code-value {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  font-family: "Arial Bold", sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.wt-ifd-transponder-data-block .wt-ifd-xpdr-mode-value {
+  color: var(--wtdyne-color-mint);
+  font-size: 30px;
+}
+
+.wt-ifd-transponder-data-block .wt-ifd-xpdr-code-value {
+  color: var(--wtdyne-color-light-cyan);
+  font-size: 38px;
+}
+
+.wt-ifd-transponder-data-block .wt-ifd-xpdr-code-value.wt-ifd-freq-is-being-edited {
+  display: flex;
+  border-radius: 6px;
+  width: 131px;
+  background: var(--wtdyne-color-light-cyan) !important;
+  color: var(--wtdyne-color-black) !important;
+}
+
+.wt-ifd-transponder-data-block .wt-ifd-xpdr-ident-button-container {
+  display: flex;
+  position: absolute;
+  left: -3px;
+  width: 140px;
+}
+
+.wt-ifd-transponder-data-block .wt-ifd-xpdr-ident-button-container .lsk-button {
+  border: 3px solid var(--wtdyne-color-cyan);
+  border-radius: 40px / 13px;
+  font-size: 24px;
+  color: var(--wtdyne-color-cyan);
+}

@@ -1,24 +1,32 @@
-import { FSComponent, MappedSubject, MathUtils, ReadonlyFloat64Array, Subject, Vec2Math, VNode } from '@microsoft/msfs-sdk';
+import {
+  ConsumerSubject, DebounceTimer, Facility, FacilityLoader, FacilityType, FSComponent, ICAO, MathUtils, ReadonlyFloat64Array,
+  Subscription, UserSetting, Vec2Math, VNode
+} from '@microsoft/msfs-sdk';
 
 import { TouchPad } from '@microsoft/msfs-garminsdk';
 
 import {
-  DisplayPaneControlEvents, DisplayPaneIndex, G3000FilePaths, MapPointerJoystickDirection, MapPointerJoystickHandler,
-  PfdMapLayoutSettingMode, PfdUserSettings
+  ControllableDisplayPaneIndex, DisplayPaneControlEvents, DisplayPanesUserSettings, DisplayPaneViewDataEvents,
+  G3000FilePaths, GtcViewKeys
 } from '@microsoft/msfs-wtg3000-common';
 
 import { ImgTouchButton } from '../../Components/TouchButton/ImgTouchButton';
 import { TouchButton } from '../../Components/TouchButton/TouchButton';
-import { GtcInteractionEvent } from '../../GtcService/GtcInteractionEvent';
 import { GtcView, GtcViewProps } from '../../GtcService/GtcView';
-import { GtcSidebar } from '../../GtcService/Sidebar';
+import { GtcDirectToPopup } from '../DirectToPopup/GtcDirectToPopup';
+import {
+  GtcAirportInfoPopup, GtcIntersectionInfoPopup, GtcNdbInfoPopup, GtcUserWaypointInfoPopup, GtcVorInfoPopup
+} from '../WaypointInfoPopups';
 
 import './GtcMapPointerControlPopup.css';
 
 /**
- * Component props for GtcMapPointerControlPopup.
+ * Component props for {@link GtcMapPointerControlPopup}.
  */
 export interface GtcMapPointerControlPopupProps extends GtcViewProps {
+  /** The facility loader. */
+  facLoader: FacilityLoader;
+
   /**
    * A function which maps mouse drag distances on the touchpad to map pointer move distances.
    * @param distance A touchpad mouse drag distance, in pixels.
@@ -39,6 +47,8 @@ export class GtcMapPointerControlPopup extends GtcView<GtcMapPointerControlPopup
 
   private static readonly vec2Cache = [Vec2Math.create()];
 
+  private readonly displayPaneIndex: ControllableDisplayPaneIndex;
+
   private readonly touchPadRef = FSComponent.createRef<TouchPad>();
 
   private readonly touchDragDistanceMap = this.props.touchDragDistanceMap
@@ -46,97 +56,91 @@ export class GtcMapPointerControlPopup extends GtcView<GtcMapPointerControlPopup
 
   private readonly publisher = this.bus.getPublisher<DisplayPaneControlEvents>();
 
-  private readonly pfdInstrumentPaneIndex = this.gtcService.pfdControlIndex === 1 ? DisplayPaneIndex.LeftPfdInstrument : DisplayPaneIndex.RightPfdInstrument;
-  private readonly displayPaneIndex = this.props.displayPaneIndex === undefined
-    ? MappedSubject.create(
-      ([isPfdPaneVisible, pfdMapLayout]): DisplayPaneIndex => {
-        if (isPfdPaneVisible && pfdMapLayout !== PfdMapLayoutSettingMode.Hsi) {
-          return this.gtcService.pfdPaneIndex;
-        } else {
-          return this.pfdInstrumentPaneIndex;
-        }
-      },
-      this.props.gtcService.pfdPaneSettings.getSetting('displayPaneVisible'),
-      PfdUserSettings.getAliasedManager(this.gtcService.bus, this.gtcService.pfdControlIndex).getSetting('pfdMapLayout')
-    )
-    : Subject.create(this.props.displayPaneIndex);
+  private readonly hoveredWaypointIcao = ConsumerSubject.create(null, ICAO.emptyValue(), ICAO.valueEquals);
+  private readonly hasHoveredWaypoint = this.hoveredWaypointIcao.map(icao => ICAO.isValueFacility(icao));
+  private hoveredWaypointOpId = 0;
 
-  private readonly joystickHandler = new MapPointerJoystickHandler();
+  private readonly isPointerActive: UserSetting<boolean>;
+  private readonly pointerActiveCheckDebounce = new DebounceTimer();
 
-  /** @inheritdoc */
-  public onAfterRender(): void {
-    this._title.set('Map Pointer Control');
-    this._sidebarState.mapKnobLabel.set(this.props.gtcService.isHorizontal ? '−Range+\nPush:\nPan Off' : GtcSidebar.hidePanesString + '− Range +\nPush:Pan');
-    if (this.props.gtcService.isHorizontal) {
-      this._sidebarState.dualConcentricKnobLabel.set('panPointPushPanOff');
+  private isPointerActiveSub?: Subscription;
+
+  /**
+   * Creates a new instance of GtcMapPointerControlPopup.
+   * @param props This component's props.
+   * @throws Error if a display pane index is not defined for this view.
+   */
+  public constructor(props: GtcMapPointerControlPopupProps) {
+    super(props);
+
+    if (this.props.displayPaneIndex === undefined) {
+      throw new Error('GtcMapPointerControlPopup: display pane index was not defined');
     }
+
+    this.displayPaneIndex = this.props.displayPaneIndex;
+
+    this.isPointerActive = DisplayPanesUserSettings.getDisplayPaneManager(this.props.gtcService.bus, this.displayPaneIndex).getSetting('displayPaneMapPointerActive');
   }
 
-  /** @inheritdoc */
-  public onOpen(): void {
+  /** @inheritDoc */
+  public onAfterRender(): void {
+    this._title.set('Map Pointer Control');
+
+    this.hoveredWaypointIcao.setConsumer(this.bus.getSubscriber<DisplayPaneViewDataEvents>().on(`display_pane_comm_map_hovered_waypoint_icao_${this.displayPaneIndex}`));
+
+    this.isPointerActiveSub = this.isPointerActive.sub(this.onPointerActiveChanged.bind(this), false, true);
+  }
+
+  /** @inheritDoc */
+  public onInUse(): void {
     this.publisher.pub('display_pane_view_event', {
-      displayPaneIndex: this.displayPaneIndex.get(),
+      displayPaneIndex: this.displayPaneIndex,
       eventType: 'display_pane_map_pointer_active_set',
       eventData: true
     }, true, false);
   }
 
-  /** @inheritdoc */
-  public onClose(): void {
+  /** @inheritDoc */
+  public onOutOfUse(): void {
     this.publisher.pub('display_pane_view_event', {
-      displayPaneIndex: this.displayPaneIndex.get(),
+      displayPaneIndex: this.displayPaneIndex,
       eventType: 'display_pane_map_pointer_active_set',
       eventData: false
     }, true, false);
   }
 
-  /** @inheritdoc */
-  public onGtcInteractionEvent(event: GtcInteractionEvent): boolean {
-    switch (event) {
-      case GtcInteractionEvent.OuterKnobDec:
-      case GtcInteractionEvent.JoystickLeft: {
-        if (this.props.gtcService.isHorizontal || event === GtcInteractionEvent.JoystickLeft) {
-          const delta = this.joystickHandler.onInput(MapPointerJoystickDirection.Left, GtcMapPointerControlPopup.vec2Cache[0]);
-          this.sendMoveEvent(delta[0], delta[1]);
-          return true;
-        }
-        break;
-      }
-      case GtcInteractionEvent.OuterKnobInc:
-      case GtcInteractionEvent.JoystickRight: {
-        if (this.props.gtcService.isHorizontal || event === GtcInteractionEvent.JoystickRight) {
-          const delta = this.joystickHandler.onInput(MapPointerJoystickDirection.Right, GtcMapPointerControlPopup.vec2Cache[0]);
-          this.sendMoveEvent(delta[0], delta[1]);
-          return true;
-        }
-        break;
-      }
-      case GtcInteractionEvent.InnerKnobDec:
-      case GtcInteractionEvent.JoystickDown: {
-        if (this.props.gtcService.isHorizontal || event === GtcInteractionEvent.JoystickDown) {
-          const delta = this.joystickHandler.onInput(MapPointerJoystickDirection.Down, GtcMapPointerControlPopup.vec2Cache[0]);
-          this.sendMoveEvent(delta[0], delta[1]);
-          return true;
-        }
-        break;
-      }
-      case GtcInteractionEvent.InnerKnobInc:
-      case GtcInteractionEvent.JoystickUp: {
-        if (this.props.gtcService.isHorizontal || event === GtcInteractionEvent.JoystickUp) {
-          const delta = this.joystickHandler.onInput(MapPointerJoystickDirection.Up, GtcMapPointerControlPopup.vec2Cache[0]);
-          this.sendMoveEvent(delta[0], delta[1]);
-          return true;
-        }
-        break;
-      }
-      case GtcInteractionEvent.InnerKnobPush:
-      case GtcInteractionEvent.InnerKnobPushLong:
-      case GtcInteractionEvent.MapKnobPush:
-        this.props.gtcService.goBack();
-        return true;
-    }
+  /** @inheritDoc */
+  public onResume(): void {
+    this.hoveredWaypointIcao.resume();
 
-    return false;
+    // Schedule a delayed check for whether the pointer is active for this popup's controlled display pane. If the
+    // the pointer is not active, then we will close the popup. We need to delay the check after the popup is resumed
+    // in order to allow the command to activate the pointer that is sent when the popup is opened sufficient time to
+    // be received by the display pane.
+    this.pointerActiveCheckDebounce.schedule(() => {
+      this.isPointerActiveSub!.resume(true);
+    }, 1000);
+  }
+
+  /** @inheritDoc */
+  public onPause(): void {
+    this.pointerActiveCheckDebounce.clear();
+    this.isPointerActiveSub!.pause();
+
+    this.hoveredWaypointIcao.pause();
+
+    // Increment the operation ID for hovered waypoint actions to make sure we abort all pending actions.
+    ++this.hoveredWaypointOpId;
+  }
+
+  /**
+   * Responds to when whether the map pointer is active changes.
+   * @param isActive Whether the map pointer is active.
+   */
+  private onPointerActiveChanged(isActive: boolean): void {
+    if (!isActive) {
+      this.props.gtcService.goBack();
+    }
   }
 
   /**
@@ -177,24 +181,109 @@ export class GtcMapPointerControlPopup extends GtcView<GtcMapPointerControlPopup
    */
   private sendMoveEvent(dx: number, dy: number): void {
     this.publisher.pub('display_pane_view_event', {
-      displayPaneIndex: this.displayPaneIndex.get(),
+      displayPaneIndex: this.displayPaneIndex,
       eventType: 'display_pane_map_pointer_move',
       eventData: [dx, dy]
     }, true, false);
   }
 
-  /** @inheritdoc */
+  /**
+   * Responds to when this popup's Direct To button is pressed.
+   */
+  private async onDirectToButtonPressed(): Promise<void> {
+    const opId = ++this.hoveredWaypointOpId;
+
+    const facility = await this.getHoveredWaypointFacility();
+
+    if (opId !== this.hoveredWaypointOpId) {
+      return;
+    }
+
+    if (facility) {
+      this.props.gtcService.openPopup<GtcDirectToPopup>(GtcViewKeys.DirectToPopup, 'slideout-right-full')
+        .ref.setWaypoint({ facility });
+    }
+  }
+
+  /**
+   * Responds to when this popup's Info button is pressed.
+   */
+  private async onInfoButtonPressed(): Promise<void> {
+    ++this.hoveredWaypointOpId;
+
+    const icao = this.hoveredWaypointIcao.get();
+
+    if (ICAO.isValueFacility(icao)) {
+      switch (ICAO.getFacilityTypeFromValue(icao)) {
+        case FacilityType.Airport:
+          this.props.gtcService.openPopup<GtcAirportInfoPopup>(GtcViewKeys.AirportInfoPopup, 'slideout-right-full')
+            .ref.setWaypoint(icao);
+          break;
+        case FacilityType.VOR:
+          this.props.gtcService.openPopup<GtcVorInfoPopup>(GtcViewKeys.VorInfoPopup, 'slideout-right-full')
+            .ref.setWaypoint(icao);
+          break;
+        case FacilityType.NDB:
+          this.props.gtcService.openPopup<GtcNdbInfoPopup>(GtcViewKeys.NdbInfoPopup, 'slideout-right-full')
+            .ref.setWaypoint(icao);
+          break;
+        case FacilityType.Intersection:
+          this.props.gtcService.openPopup<GtcIntersectionInfoPopup>(GtcViewKeys.IntersectionInfoPopup, 'slideout-right-full')
+            .ref.setWaypoint(icao);
+          break;
+        case FacilityType.USR:
+          this.props.gtcService.openPopup<GtcUserWaypointInfoPopup>(GtcViewKeys.UserWaypointInfoPopup, 'slideout-right-full')
+            .ref.setWaypoint(icao);
+          break;
+      }
+    }
+  }
+
+  /**
+   * Gets the facility for the currently hovered waypoint.
+   * @returns A Promise which fulfills with the facility for the currently hovered waypoint, or `null` if there is no
+   * hovered waypoint or a facility could not be retrieved for the waypoint.
+   */
+  private async getHoveredWaypointFacility(): Promise<Facility | null> {
+    const icao = this.hoveredWaypointIcao.get();
+
+    if (!ICAO.isValueFacility(icao)) {
+      return null;
+    }
+
+    return this.props.facLoader.tryGetFacility(ICAO.getFacilityTypeFromValue(icao), icao);
+  }
+
+  /** @inheritDoc */
   public render(): VNode {
     return (
       <div class='pointer-control'>
         <div class='pointer-control-header'>
           <ImgTouchButton
             imgSrc={`${G3000FilePaths.ASSETS_PATH}/Images/GTC/icon_small_direct_to.png`}
-            isEnabled={false}
+            isEnabled={this.hasHoveredWaypoint}
+            onPressed={this.onDirectToButtonPressed.bind(this)}
           />
           <TouchButton
             label='Info'
-            isEnabled={false}
+            // TODO: support runway and visual approach facilities.
+            isEnabled={this.hoveredWaypointIcao.map(icao => {
+              if (!ICAO.isValueFacility(icao)) {
+                return false;
+              }
+
+              switch (ICAO.getFacilityTypeFromValue(icao)) {
+                case FacilityType.Airport:
+                case FacilityType.VOR:
+                case FacilityType.NDB:
+                case FacilityType.Intersection:
+                case FacilityType.USR:
+                  return true;
+                default:
+                  return false;
+              }
+            })}
+            onPressed={this.onInfoButtonPressed.bind(this)}
           />
           <TouchButton
             label={'Insert in\nFPL'}
@@ -221,13 +310,14 @@ export class GtcMapPointerControlPopup extends GtcView<GtcMapPointerControlPopup
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
+    this.pointerActiveCheckDebounce.clear();
+    this.isPointerActiveSub?.destroy();
+
     this.touchPadRef.getOrDefault()?.destroy();
 
-    if (this.displayPaneIndex instanceof MappedSubject) {
-      this.displayPaneIndex.destroy();
-    }
+    this.hoveredWaypointIcao.destroy();
 
     super.destroy();
   }

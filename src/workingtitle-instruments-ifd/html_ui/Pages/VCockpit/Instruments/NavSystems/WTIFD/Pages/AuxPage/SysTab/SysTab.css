@@ -1,0 +1,122 @@
+.sys-tab {
+  --pale-green-1: #688c63;
+  --pale-green-2: #3d5b39;
+  --pale-green-3: #049835;
+
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: var(--wtdyne-color-mint);
+  font-family: "Arial Bold";
+  font-size: 20px;
+  white-space: pre;
+}
+
+.sys-tab-light-cyan-text {
+  color: var(--wtdyne-color-light-cyan);
+  font-size: 24px;
+}
+
+.sys-tab-unit-text {
+  font-size: 14px;
+  color: var(--wtdyne-color-mint);
+}
+
+.sys-tab-big-unit-text {
+  font-size: 18px;
+  color: var(--wtdyne-color-mint);
+}
+
+.sys-tab-column-row {
+  display: flex;
+  align-items: baseline;
+}
+
+.sys-tab-column-label {
+  text-align: right;
+}
+
+.sys-tab-column-data {
+  flex-grow: 1;
+  color: var(--wtdyne-color-light-cyan);
+  white-space: normal;
+  font-size: 24px;
+  line-height: 33px;
+}
+
+.sys-tab-divider {
+  border-width: 0px;
+  border-top-width: 2px;
+  border-style: solid;
+  border-color: var(--wtdyne-color-blue);
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+.sys-tab-software {
+  padding-top: 24px;
+}
+
+.sys-tab-sw-column-label {
+  width: 120px;
+  margin-right: 8px;
+  margin-left: 2px;
+  font-size: 24px;
+  line-height: 36px;
+}
+
+.sys-tab-sw-disclaimer {
+  white-space: normal;
+  color: var(--pale-green-1);
+  margin-left: 32px;
+  margin-right: 40px;
+  margin-top: 20px;
+  font-size: 21px;
+  line-height: 21px;
+}
+
+.sys-tab-software .sys-tab-column-data {
+  color: var(--wtdyne-color-white);
+}
+
+.sys-tab-options-area {
+  display: flex;
+}
+
+.sys-tab-options-column {
+  width: 108px;
+}
+
+.sys-tab-option {
+  color: var(--pale-green-2);
+  width: max-content;
+  padding-left: 8px;
+  padding-right: 6px;
+  font-size: 24px;
+  line-height: 24px;
+}
+
+.sys-tab-option-selected {
+  background-color: var(--pale-green-3);
+  color: var(--wtdyne-color-white);
+}
+
+.sys-tab-database {
+  padding-top: 10px;
+}
+
+.sys-tab-database .sys-tab-column-data {
+  color: var(--wtdyne-color-white);
+}
+
+.sys-tab-database .sys-tab-column-data {
+  line-height: 36px;
+}
+
+.sys-tab-column-data-subtext {
+  font-size: 19px;
+}

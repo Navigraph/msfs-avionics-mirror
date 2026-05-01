@@ -1,0 +1,76 @@
+.info-item.procedures-item {
+  border: 2px solid #333333;
+  padding: 4px;
+  padding-left: 4px;
+  margin-bottom: 0;
+  margin-right: 0;
+  font-size: 16px;
+  border-radius: 4px;
+}
+
+.info-item.procedures-item.selected {
+  border-color: var(--wtdyne-color-cyan);
+}
+
+.info-item.procedures-item .header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.procedures-item .name {
+  margin-right: 10px;
+  padding-left: 2px;
+  padding-right: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.procedures-item .clickable {
+  background-color: black;
+  padding: 1px;
+}
+
+.procedures-item .chevron-button {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  background-color: black;
+}
+
+.procedures-item .chevron-button img {
+  width: 15px;
+  height: 15px;
+}
+
+.procedures-item .chevron-button.selected {
+  background-color: var(--wtdyne-color-cyan);
+}
+
+.procedures-item .chevron-button:not(.collapsed) {
+  transform: scaleX(-1);
+}
+
+.procedures-item .procedure-preview {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  flex-basis: 100%;
+  overflow: hidden;
+  position: relative;
+  height: 215px;
+  margin: 3px;
+}
+
+.procedure-preview .map-compass-overlay {
+  display: none;
+}
+
+.procedures-item .name .selected {
+  background-color: var(--wtdyne-color-cyan);
+  color: black;
+}

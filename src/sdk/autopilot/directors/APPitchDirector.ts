@@ -4,15 +4,26 @@ import { MathUtils } from '../../math/MathUtils';
 import { APValues } from '../APValues';
 import { DirectorState, PlaneDirector } from './PlaneDirector';
 
-/** Options for {@link APPitchDirector} */
+/**
+ * Options for {@link APPitchDirector}.
+ */
 export type APPitchDirectorOptions = {
   /** The pitch increment, in degrees, to use when the user presses the pitch inc/dec keys, or a function that returns it (default: 0.5). */
   pitchIncrement?: number | (() => number);
-  /** The negative minimum pitch angle, in degrees, to clamp the pitch to, or a function that returns it (default: -15). */
+
+  /**
+   * The minimum pitch angle, in degrees, to clamp the pitch to, or a function that returns it. Positive angles
+   * indicate nose up pitch. Defaults to `-15`.
+   */
   minPitch?: number | (() => number);
-  /** The positive maximum pitch angle, in degrees, to clamp the pitch to, or a function that returns it (default: 20). */
+
+  /**
+   * The maximum pitch angle, in degrees, to clamp the pitch to, or a function that returns it. Positive angles
+   * indicate nose down pitch. Defaults to `20`.
+   */
   maxPitch?: number | (() => number);
-  /** Whether to always quantise the pitch in terms of {@link APPitchDirectorOptions.pitchIncrement}. */
+
+  /** Whether to always quantise the pitch in terms of {@link APPitchDirectorOptions.pitchIncrement}. Defaults to `false`. */
   quantisePitch?: boolean;
 };
 

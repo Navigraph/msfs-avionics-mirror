@@ -1,0 +1,29 @@
+.wt-ifd-mach-container {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    padding-left: 14px;
+    align-items: baseline;
+    color: var(--wtdyne-color-white);
+    box-shadow: 1px 0 4px 2px rgba(0, 0, 0, 0.45);
+    background: rgba(0, 0, 0, 0.45);
+    width: 130px;
+    height: 20px;
+    border-radius: 8px 12px 6px 4px;
+    margin-bottom: 8px;
+    line-height: 16px;
+}
+
+.wt-ifd-mach-container .prefix {
+    padding-right: 8px;
+}
+
+.wt-ifd-mach-container .big-text {
+    font-family: "Arial Bold", sans-serif;
+    font-size: 26px;
+}
+
+.wt-ifd-mach-container .small-text {
+    font-family: "Arial Bold", sans-serif;
+    font-size: 20px;
+}

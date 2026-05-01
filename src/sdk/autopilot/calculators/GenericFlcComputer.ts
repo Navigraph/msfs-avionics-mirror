@@ -218,7 +218,7 @@ export class GenericFlcComputer {
       const desiredPitch = this.getDesiredPitch();
       if (isFinite(desiredPitch)) {
         // negate the output value to conform with sim standard.
-        this._pitchTarget.set(-this.getDesiredPitch());
+        this._pitchTarget.set(-desiredPitch);
       } else {
         this._pitchTarget.set(null);
       }

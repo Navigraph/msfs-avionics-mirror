@@ -38,7 +38,7 @@ export class WT21FmcPage<T extends object | null = null> extends AbstractFmcPage
 
     /** @inheritDoc */
     format(value: readonly [number, number]): string {
-      return `${value[0]}/${value[1]}[s-text] `;
+      return `${value[0]}/${value[1]}[blue d-text] `;
     },
   };
 

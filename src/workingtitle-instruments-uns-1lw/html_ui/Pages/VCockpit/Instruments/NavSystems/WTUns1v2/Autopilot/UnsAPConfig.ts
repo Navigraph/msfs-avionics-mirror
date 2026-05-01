@@ -1,8 +1,7 @@
 import {
-  Accessible, APAltCapDirector, APAltDirector, APBackCourseDirector, APConfig, APConfigDirectorEntry, APFLCDirector, APGPDirector,
-  APGSDirector, APHdgDirector, APHdgHoldDirector, APLateralModes, APLvlDirector, APNavDirector, APPitchDirector, APRollDirector,
-  APRollSteerDirector, APRollSteerDirectorSteerCommand, APTrkDirector, APTrkHoldDirector, APValues, APVerticalModes, APVSDirector,
-  EventBus, MathUtils, NavMath, SimVarValueType, UnitType
+  Accessible, APAltCapDirector, APAltDirector, APBackCourseDirector, APConfig, APConfigDirectorEntry, APFLCDirector, APGPDirector, APGSDirector, APHdgDirector,
+  APHdgHoldDirector, APLateralModes, APLvlDirector, APNavDirector, APPitchDirector, APRollDirector, APRollSteerDirector, APRollSteerDirectorSteerCommand,
+  APTrkDirector, APTrkHoldDirector, APValues, APVerticalModes, APVSDirector, EventBus, MathUtils, NavMath, SimVarValueType, UnitType
 } from '@microsoft/msfs-sdk';
 
 import { UnsAutopilotConfig } from '../Config/AutopilotConfigBuilder';
@@ -15,7 +14,7 @@ export class UnsAPConfig implements APConfig {
 
   defaultVerticalMode = APVerticalModes.PITCH;
 
-  publishAutopilotModesAsLvars = this.config.publishModesAsLvar;
+  publishAutopilotModesAsLVars = this.config.publishModesAsLvar;
 
   /**
    * Constructor

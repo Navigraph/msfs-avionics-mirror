@@ -1,11 +1,12 @@
 import { DurationDisplayDelim, DurationDisplayFormat, NumberFormatter, UnitType, UserSettingManager } from '@microsoft/msfs-sdk';
 
 import {
-  DateTimeFormatSettingMode, DateTimeUserSettingTypes, NavDataFieldBearingRenderer, NavDataFieldDurationRenderer, NavDataFieldNumberUnitRenderer,
-  NavDataFieldTextRenderer, NavDataFieldTextRendererOptions, NavDataFieldTimeRenderer, NavDataFieldType, TimeDisplayFormat,
-  UnitsUserSettingManager
+  DateTimeFormatSettingMode, DateTimeUserSettingTypes, NavDataFieldBearingRenderer, NavDataFieldDurationRenderer,
+  NavDataFieldNumberUnitRenderer, NavDataFieldTextRenderer, NavDataFieldTextRendererOptions, NavDataFieldTimeRenderer,
+  NavDataFieldType, TimeDisplayFormat, UnitsUserSettingManager
 } from '@microsoft/msfs-garminsdk';
 
+import { G3XUnitsUserSettingManager } from '../../Settings/G3XUnitsUserSettings';
 import { G3XBearingDisplay } from '../Common/G3XBearingDisplay';
 import { G3XNumberUnitDisplay } from '../Common/G3XNumberUnitDisplay';
 import { G3XTimeDisplay } from '../Common/G3XTimeDisplay';
@@ -27,6 +28,8 @@ export class G3XNavDataFieldFormatting {
   public static readonly TEMPERATURE_FORMATTER = NumberFormatter.create({ precision: 1, nanString: '___' });
   public static readonly MACH_FORMATTER = NumberFormatter.create({ precision: 0.01, forceDecimalZeroes: true, nanString: '_.__' });
   public static readonly G_FORCE_FORMATTER = NumberFormatter.create({ precision: 0.01, forceDecimalZeroes: true, nanString: '_.__' });
+  public static readonly BARO_INHG_FORMATTER = NumberFormatter.create({ precision: 0.01, nanString: '__.__' });
+  public static readonly BARO_HPA_FORMATTER = NumberFormatter.create({ precision: 1, nanString: '____' });
   public static readonly DURATION_OPTIONS = {
     pad: 0,
     format: DurationDisplayFormat.hh_mm_or_mm_ss,
@@ -635,6 +638,31 @@ export class G3XNavDataFieldWptRenderer extends NavDataFieldTextRenderer<NavData
    */
   public constructor() {
     super(G3XNavDataFieldWptRenderer.OPTIONS);
+  }
+}
+
+/**
+ * Renders G3X Touch Weather Altimeter data fields.
+ */
+export class G3XNavDataFieldWxAltimRenderer extends NavDataFieldNumberUnitRenderer<NavDataFieldType.WeatherAltimeter> {
+  /**
+   * Creates a new instance of G3XNavDataFieldWxAltimRenderer.
+   * @param unitSettingManager A manager for display units user settings.
+   */
+  public constructor(unitSettingManager: G3XUnitsUserSettingManager) {
+    super({
+      title: 'WX ALTIM',
+      displayUnit: unitSettingManager.baroPressureUnits,
+      formatter: value => {
+        if (unitSettingManager.baroPressureUnits.get().equals(UnitType.IN_HG)) {
+          return G3XNavDataFieldFormatting.BARO_INHG_FORMATTER(value);
+        } else {
+          return G3XNavDataFieldFormatting.BARO_HPA_FORMATTER(value);
+        }
+      },
+      unitFormatter: G3XNumberUnitDisplay.DEFAULT_G3X_UNIT_FORMATTER,
+      class: 'nav-data-field-magenta'
+    });
   }
 }
 

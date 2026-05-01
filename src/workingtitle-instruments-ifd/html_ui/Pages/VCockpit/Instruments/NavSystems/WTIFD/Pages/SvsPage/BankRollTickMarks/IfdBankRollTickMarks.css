@@ -1,0 +1,44 @@
+.wt-ifd-bank-roll-tick-marks-container {
+  position: absolute;
+}
+
+svg.wt-ifd-bank-roll-tick-marks {
+  stroke: var(--wtdyne-color-light-cyan);
+  fill: var(--wtdyne-color-light-cyan);
+  stroke-width: 2px;
+}
+
+.wt-ifd-bank-roll-tick {
+  stroke: var(--wtdyne-color-light-cyan);
+  stroke-width: 2.3px;
+}
+
+.wt-ifd-bank-roll-tick.shadow {
+  stroke: var(--wtdyne-color-black);
+  stroke-width: 3.3px;
+}
+
+.wt-ifd-bank-roll-small-triangle-mark {
+  stroke: var(--wtdyne-color-light-cyan);
+  fill: none;
+  stroke-width: 1.3px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wt-ifd-bank-roll-small-triangle-mark.shadow {
+  stroke: var(--wtdyne-color-black);
+}
+
+.wt-ifd-bank-roll-zero-mark {
+  fill: var(--wtdyne-color-white);
+  stroke-width: 1.8px;
+  stroke: none;
+}
+
+
+.wt-ifd-bank-roll-zero-mark.shadow {
+  fill: var(--wtdyne-color-black);
+  stroke: var(--wtdyne-color-black);
+  stroke-width: 1.2px;
+}

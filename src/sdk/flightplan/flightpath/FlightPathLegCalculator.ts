@@ -19,6 +19,9 @@ export type FlightPathLegCalculationOptions = {
    * `false`.
    */
   useGreatCirclePathForDiscontinuity?: boolean;
+
+  /** Whether to disable calculations that reference the present position of the airplane. */
+  disableCalculateFromPpos?: boolean;
 };
 
 /**

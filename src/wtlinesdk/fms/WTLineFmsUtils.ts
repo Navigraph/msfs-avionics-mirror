@@ -9,7 +9,7 @@ import {
 } from '@microsoft/msfs-sdk';
 
 import { PerformancePlanData } from '../performance/PerformancePlanData';
-import { WTLineFlightPlanProcedureIdents, WTLineLegacyFlightPlans } from './WTLineFmsTypes';
+import { WTLineFlightPlanArrivalData, WTLineFlightPlanDepartureData, WTLineFlightPlanProcedureIdents, WTLineLegacyFlightPlans } from './WTLineFmsTypes';
 
 /**
  * Utility Methods for the WT21 FMS.
@@ -18,6 +18,24 @@ export class WTLineFmsUtils {
   private static readonly vec3Cache = [new Float64Array(3)];
   private static readonly geoPointCache = [new GeoPoint(0, 0)];
   private static readonly geoCircleCache = [new GeoCircle(new Float64Array(3), 0)];
+
+  private static readonly scratchDepartureData: WTLineFlightPlanDepartureData = {
+    airportIcao: null,
+    runway: null,
+    departureIndex: -1,
+    departureRunwayTransitionIndex: -1,
+    departureEnrouteTransitionIndex: -1,
+  };
+
+  private static readonly scratchArrivalData: WTLineFlightPlanArrivalData = {
+    airportIcao: null,
+    runway: null,
+    arrivalIndex: -1,
+    arrivalRunwayTransitionIndex: -1,
+    arrivalEnrouteTransitionIndex: -1,
+    approachTransitionIndex: -1,
+    approachIndex: -1
+  };
 
   /** @deprecated use {@link WTLineLegacyFlightPlans} instead */
   public static readonly PRIMARY_ACT_PLAN_INDEX = WTLineLegacyFlightPlans.Active;
@@ -36,16 +54,162 @@ export class WTLineFmsUtils {
 
   public static readonly USER_DATA_KEY_PROCEDURE_IDENTS = 'wtline.procedure-idents';
 
+  public static readonly USER_DATA_KEY_DESTINATION_AIRPORT_DEPARTURE = 'wtline.destination-airport-departure';
+
+  /**
+   * Gets the active segment in the Lateral Flight Plan.
+   * @param plan The Lateral Flight Plan.
+   * @returns The Active Flight Plan Segment or undefined.
+   */
+  public static getActiveSegmentIndex(plan: FlightPlan): number | undefined {
+    if (plan.length > 0 && plan.activeLateralLeg >= 0 && plan.activeLateralLeg < plan.length) {
+      return plan.getSegmentIndex(plan.activeLateralLeg);
+    }
+    return undefined;
+  }
+
   /**
    * Gets the active segment in the Lateral Flight Plan.
    * @param plan The Lateral Flight Plan.
    * @returns The Active Flight Plan Segment or undefined.
    */
   public static getActiveSegment(plan: FlightPlan): FlightPlanSegment | undefined {
-    if (plan.length > 0 && plan.activeLateralLeg >= 0 && plan.activeLateralLeg < plan.length) {
-      return plan.getSegment(plan.getSegmentIndex(plan.activeLateralLeg));
+    const index = WTLineFmsUtils.getActiveSegmentIndex(plan);
+
+    return index !== undefined ? plan.getSegment(index) : undefined;
+  }
+
+  /**
+   * Gets the index of the first departure segment in a flight plan.
+   * @param plan the flight plan
+   * @param origin whether to search for origin departure segments (true) or destination departure segments (false)
+   * @returns the index of the first departure segment, or -1 if none is found
+   */
+  public static getFirstDepartureSegmentIndex(plan: FlightPlan, origin: boolean): number {
+    if (origin) {
+      for (let i = 0; i < plan.segmentCount; i++) {
+        const segment = plan.getSegment(i);
+
+        if (segment.segmentType === FlightPlanSegmentType.Destination) {
+          break;
+        }
+
+        if (segment.segmentType === FlightPlanSegmentType.Departure) {
+          return i;
+        }
+      }
+    } else {
+      let foundDestinationSegment = false;
+      for (let i = 0; i < plan.segmentCount; i++) {
+        const segment = plan.getSegment(i);
+
+        if (segment.segmentType === FlightPlanSegmentType.Destination) {
+          foundDestinationSegment = true;
+        }
+
+        if (!foundDestinationSegment) {
+          continue;
+        }
+
+        if (segment.segmentType === FlightPlanSegmentType.Departure) {
+          return i;
+        }
+      }
     }
-    return undefined;
+
+    return -1;
+  }
+  /**
+   * Gets the index of the last departure segment in a flight plan.
+   * @param plan the flight plan
+   * @param origin whether to search for origin departure segments (true) or destination departure segments (false)
+   * @returns the index of the last departure segment, or -1 if none is found
+   */
+  public static getLastDepartureSegmentIndex(plan: FlightPlan, origin: boolean): number {
+    if (origin) {
+      let foundDestinationSegment = false;
+      for (let i = plan.segmentCount - 1; i >= 0; i--) {
+        const segment = plan.getSegment(i);
+
+        if (segment.segmentType === FlightPlanSegmentType.Destination) {
+          foundDestinationSegment = true;
+        }
+
+        if (!foundDestinationSegment) {
+          continue;
+        }
+
+        if (segment.segmentType === FlightPlanSegmentType.Departure) {
+          return i;
+        }
+      }
+    } else {
+      for (let i = plan.segmentCount - 1; i >= 0; i--) {
+        const segment = plan.getSegment(i);
+
+        if (segment.segmentType === FlightPlanSegmentType.Destination) {
+          break;
+        }
+
+        if (segment.segmentType === FlightPlanSegmentType.Departure) {
+          return i;
+        }
+      }
+    }
+
+    return -1;
+  }
+
+  /**
+   * Gets the index of the first segment of a specified type in a flight plan.
+   * @param plan the flight plan
+   * @param type the segment type
+   * @returns the index of the first segment of the specified type, or -1 if none is found
+   */
+  public static getFirstSegmentOfType(plan: FlightPlan, type: FlightPlanSegmentType): number {
+    for (let i = 0; i < plan.segmentCount; i++) {
+      const segment = plan.getSegment(i);
+      if (segment.segmentType === type) {
+        return i;
+      }
+    }
+
+    return -1;
+  }
+
+  /**
+   * Gets the index of the last segment of a specified type in a flight plan.
+   * @param plan the flight plan
+   * @param type the segment type
+   * @returns the index of the last segment of the specified type, or -1 if none is found
+   */
+  public static getLastSegmentOfType(plan: FlightPlan, type: FlightPlanSegmentType): number {
+    for (let i = plan.segmentCount - 1; i >= 0; i--) {
+      const segment = plan.getSegment(i);
+      if (segment.segmentType === type) {
+        return i;
+      }
+    }
+
+    return -1;
+  }
+
+  /**
+   * Gets the index of the next non-empty segment (that is not a Destination segment) in a flight plan after a specified index.
+   * @param plan the flight plan
+   * @param fromIndex the index from which to start searching for the next non-empty segment
+   * @returns the index of the next non-empty segment, or -1 if none is found
+   */
+  public static getNextNonEmptySegmentIndex(plan: FlightPlan, fromIndex: number): number {
+    for (let i = fromIndex + 1; i < plan.segmentCount; i++) {
+      const segment = plan.getSegment(i);
+
+      if (segment.segmentType !== FlightPlanSegmentType.Destination && segment.legs.length > 0) {
+        return i;
+      }
+    }
+
+    return -1;
   }
 
   /**
@@ -60,6 +224,11 @@ export class WTLineFmsUtils {
 
     plan.addSegment(0, FlightPlanSegmentType.Departure, undefined, notify);
     plan.addSegment(1, FlightPlanSegmentType.Enroute, undefined, notify);
+    plan.addSegment(2, FlightPlanSegmentType.Arrival, undefined, notify);
+    plan.addSegment(3, FlightPlanSegmentType.Approach, undefined, notify);
+    plan.addSegment(4, FlightPlanSegmentType.Destination, undefined, notify);
+    plan.addSegment(5, FlightPlanSegmentType.MissedApproach, undefined, notify);
+    plan.addSegment(6, FlightPlanSegmentType.Departure, undefined, notify);
 
     plan.removeOriginAirport(notify);
     plan.removeDestinationAirport(notify);
@@ -70,7 +239,41 @@ export class WTLineFmsUtils {
     plan.setLateralLeg(0, notify);
     plan.setVerticalLeg(0, notify);
 
+    WTLineFmsUtils.initFlightPlanMandatoryUserData(plan);
+
     plan.calculate(0);
+  }
+
+  /**
+   * Initializes mandatory user data for a flight plan.
+   * @param plan The flight plan to initialize.
+   */
+  public static initFlightPlanMandatoryUserData(plan: FlightPlan): void {
+    WTLineFmsUtils.setFlightPlanProcedureIdents(
+      plan,
+      {
+        originDepartureIdent: null,
+        originDepartureEnrouteTransitionIdent: null,
+        arrivalIdent: null,
+        arrivalEnrouteTransitionIdent: null,
+        approachIdent: null,
+        paddedApproachIdent: null,
+        approachTransitionIdent: null,
+        destinationDepartureIdent: null,
+        destinationDepartureEnrouteTransitionIdent: null,
+      },
+    );
+
+    WTLineFmsUtils.setFlightPlanDestinationAirportDepartureProcedure(
+      plan,
+      {
+        airportIcao: null,
+        runway: null,
+        departureIndex: -1,
+        departureRunwayTransitionIndex: -1,
+        departureEnrouteTransitionIndex: -1,
+      },
+    );
   }
 
   /**
@@ -325,6 +528,7 @@ export class WTLineFmsUtils {
    * @param procedureIndex The procedure index.
    * @param transitionIndex The transition index.
    * @returns the name as a string.
+   * @deprecated use {@link getFlightPlanProcedureIdents} instead
    */
   public static getProcedureNameAsString(segmentType: FlightPlanSegmentType,
     facility: AirportFacility | undefined,
@@ -1099,6 +1303,24 @@ export class WTLineFmsUtils {
   }
 
   /**
+   * Compares two airways and determines if they are equal by checking that they share evry waypoint
+   * @param a the first ariway
+   * @param b the second airway
+   * @returns a boolean
+   */
+  public static areAirwaysEqual(a: AirwayData, b: AirwayData): boolean {
+    if (a.name !== b.name) {
+      return false;
+    }
+
+    if (a.waypoints.length !== b.waypoints.length) {
+      return false;
+    }
+
+    return a.waypoints.every((wp, index) => ICAO.valueEquals(wp.icaoStruct, b.waypoints[index].icaoStruct));
+  }
+
+  /**
    * Checks whether a leg should appear on the Direct To Page based on leg type.
    * @param leg The FlightPlanLeg to evaluate.
    * @returns whether or not the leg should appear on the Direct To page.
@@ -1127,11 +1349,12 @@ export class WTLineFmsUtils {
   /**
    * Builds leg names using default nomenclature.
    * @param leg The leg to build a name for.
+   * @param flags The flags that will be assigned to the flight plan leg.
    * @returns The name of the leg.
    */
-  public static buildWT21LegName(leg: FlightPlanLeg): string {
+  public static buildWT21LegName(leg: FlightPlanLeg, flags: number): string {
     // Name for PPOS hold leg
-    if (leg.fixIcao === ICAO.emptyIcao && WTLineFmsUtils.isHoldAtLeg(leg.type)) {
+    if (ICAO.isValueEmpty(leg.fixIcaoStruct) && FlightPlanUtils.isHoldLeg(leg.type)) {
       return 'PPOS';
     }
 
@@ -1151,16 +1374,18 @@ export class WTLineFmsUtils {
       case LegType.FD:
       case LegType.VD:
         legDistanceNM = UnitType.METER.convertTo(leg.distance, UnitType.NMILE);
-        return `${ICAO.getIdent(leg.originIcao)}${legDistanceNM.toFixed(1)}`;
+        return `${leg.originIcaoStruct.ident}${legDistanceNM.toFixed(1)}`;
       case LegType.CR:
       case LegType.VR:
-        return `${ICAO.getIdent(leg.originIcao)}${leg.theta.toFixed(0)}`;
+        return `${leg.originIcaoStruct.ident}${leg.theta.toFixed(0)}`;
       case LegType.CI:
       case LegType.VI:
       case LegType.PI:
         return '(INTC)';
+      case LegType.IF:
+        return BitFlags.isAll(flags, LegDefinitionFlags.DirectTo) ? '(DIR)' : leg.fixIcaoStruct.ident;
       default:
-        return ICAO.getIdent(leg.fixIcao);
+        return leg.fixIcaoStruct.ident;
     }
   }
 
@@ -1445,7 +1670,7 @@ export class WTLineFmsUtils {
         return 'APR';
       case FacilityFrequencyType.CPT:
       case FacilityFrequencyType.Clearance:
-        return 'CLEARANCE';
+        return 'CLNC DEL';
       case FacilityFrequencyType.CTAF:
         return 'CTAF';
       case FacilityFrequencyType.Center:
@@ -1506,26 +1731,28 @@ export class WTLineFmsUtils {
    */
   public static async getDistanceToDestination(plan: FlightPlan, facClient: FacilityClient, legDistanceRemaining: number): Promise<number | null> {
     const destinationIcao = plan.destinationAirportIcao;
+    const arrivalIcao = plan.procedureDetails.arrivalFacilityIcaoStruct;
 
-    if (destinationIcao === undefined || ICAO.isValueEmpty(destinationIcao)) {
+    // We don't compute anything for cases where the arrival airport is not the destination airport
+    if (destinationIcao === undefined || (arrivalIcao !== undefined && !ICAO.valueEquals(destinationIcao, arrivalIcao))) {
       return null;
     }
 
-    const lastNonMissedApproachLeg = WTLineFmsUtils.getLastNonMissedApproachLeg(plan);
+    const missedApproachPointIndex = WTLineFmsUtils.getMissedApproachPointIndex(plan);
 
-    if (lastNonMissedApproachLeg === -1) {
+    if (missedApproachPointIndex === -1) {
       return null;
     }
 
-    const leg = plan.getLeg(lastNonMissedApproachLeg);
+    const leg = plan.tryGetLeg(missedApproachPointIndex - 1);
 
-    if (leg.calculated === undefined || leg.calculated.endLat === undefined || leg.calculated.endLon === undefined) {
+    if (leg === null || leg.calculated === undefined || leg.calculated.endLat === undefined || leg.calculated.endLon === undefined) {
       return null;
     }
 
     const isMissedApproachPoint = BitFlags.isAny(leg.leg.fixTypeFlags, FixTypeFlags.MAP);
 
-    const distanceToLastNonMissedApproachLeg = WTLineFmsUtils.getDistanceFromPposToLegEnd(plan, lastNonMissedApproachLeg, legDistanceRemaining);
+    const distanceToLastNonMissedApproachLeg = WTLineFmsUtils.getDistanceFromPposToLegEnd(plan, missedApproachPointIndex, legDistanceRemaining);
 
     if (distanceToLastNonMissedApproachLeg === undefined) {
       return null;
@@ -1569,11 +1796,8 @@ export class WTLineFmsUtils {
 
   /**
    * Gets the procedure identifiers of a flight plan
-   *
    * @param plan the flight plan
-   *
    * @returns the procedure idents
-   *
    * @throws if an internal error occurs
    */
   public static getFlightPlanProcedureIdents(plan: FlightPlan): WTLineFlightPlanProcedureIdents {
@@ -1591,11 +1815,34 @@ export class WTLineFmsUtils {
    *
    * @param plan the flight plan
    * @param idents the procedure idents
-   *
-   * @throws if an internal error occurs
    */
   public static setFlightPlanProcedureIdents(plan: FlightPlan, idents: WTLineFlightPlanProcedureIdents | undefined): void {
     plan.setUserData(WTLineFmsUtils.USER_DATA_KEY_PROCEDURE_IDENTS, idents);
+  }
+
+  /**
+   * Gets the destination airport departure procedure data of a flight plan
+   * @param plan the flight plan
+   * @returns the departure procedure data, or undefined
+   * @throws if an internal error occurs
+   */
+  public static getFlightPlanDestinationAirportDepartureProcedure(plan: FlightPlan): WTLineFlightPlanDepartureData {
+    const data = plan.getUserData<WTLineFlightPlanDepartureData>(WTLineFmsUtils.USER_DATA_KEY_DESTINATION_AIRPORT_DEPARTURE);
+
+    if (!data) {
+      throw new Error('[WTLineFMS](getFlightPlanDestinationAirportDepartureProcedure) Departure procedure data was undefined');
+    }
+
+    return data;
+  }
+
+  /**
+   * Sets the destination airport departure procedure data of a flight plan
+   * @param plan the flight plan
+   * @param departureProcedure the departure procedure data
+   */
+  public static setFlightPlanDestinationAirportDepartureProcedure(plan: FlightPlan, departureProcedure: WTLineFlightPlanDepartureData | undefined): void {
+    plan.setUserData(WTLineFmsUtils.USER_DATA_KEY_DESTINATION_AIRPORT_DEPARTURE, departureProcedure);
   }
 
   /**
@@ -1685,6 +1932,80 @@ export class WTLineFmsUtils {
     }
 
     return out;
+  }
+
+  /**
+   * Checks whether a leg in the primary flight plan is a valid direct to target.
+   * @param plan the flight plan to use.
+   * @param segmentIndex The index of the segment in which the leg resides.
+   * @param segmentLegIndex The index of the leg in its segment.
+   * @returns Whether the leg is a valid direct to target.
+   * @throws Error if a leg could not be found at the specified location.
+   */
+  public static canDirectTo(plan: FlightPlan, segmentIndex: number, segmentLegIndex: number): boolean {
+    const leg = plan.tryGetLeg(segmentIndex, segmentLegIndex);
+
+    if (!leg || !ICAO.isValueFacility(leg.leg.fixIcaoStruct)) {
+      return false;
+    }
+
+    switch (leg.leg.type) {
+      case LegType.IF:
+      case LegType.TF:
+      case LegType.DF:
+      case LegType.CF:
+      case LegType.AF:
+      case LegType.RF:
+        return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Gets the departure procedure data of a flight plan for either the origin or destination airport
+   * @param plan the flight plan
+   * @param forOrigin whether to get the data for the origin airport (`true`) or destination airport (`false`)
+   * @returns the departure procedure data. The returned data object passed is only
+   * guaranteed to be valid at the moment it is returned. If you need to retain the data past this moment, then it is
+   * recommended that a copy of the data be made.
+   */
+  public static getFlightPlanDepartureData(plan: FlightPlan, forOrigin: boolean): WTLineFlightPlanDepartureData {
+    if (forOrigin) {
+      WTLineFmsUtils.scratchDepartureData.airportIcao = plan.originAirportIcao ?? null;
+      WTLineFmsUtils.scratchDepartureData.runway = plan.procedureDetails.originRunway ?? null;
+      WTLineFmsUtils.scratchDepartureData.departureIndex = plan.procedureDetails.departureIndex;
+      WTLineFmsUtils.scratchDepartureData.departureRunwayTransitionIndex = plan.procedureDetails.departureRunwayIndex;
+      WTLineFmsUtils.scratchDepartureData.departureEnrouteTransitionIndex = plan.procedureDetails.departureTransitionIndex;
+    } else {
+      const departureData = WTLineFmsUtils.getFlightPlanDestinationAirportDepartureProcedure(plan);
+
+      WTLineFmsUtils.scratchDepartureData.airportIcao = departureData.airportIcao;
+      WTLineFmsUtils.scratchDepartureData.runway = departureData.runway;
+      WTLineFmsUtils.scratchDepartureData.departureIndex = departureData.departureIndex;
+      WTLineFmsUtils.scratchDepartureData.departureRunwayTransitionIndex = departureData.departureRunwayTransitionIndex;
+      WTLineFmsUtils.scratchDepartureData.departureEnrouteTransitionIndex = departureData.departureEnrouteTransitionIndex;
+    }
+
+    return WTLineFmsUtils.scratchDepartureData;
+  }
+
+  /**
+   * Gets the arrival procedure data of a flight plan
+   * @param plan the flight plan
+   * @returns the arrival procedure data. The returned data object passed is only
+   * guaranteed to be valid at the moment it is returned. If you need to retain the data past this moment, then it is
+   * recommended that a copy of the data be made.
+   */
+  public static getFlightPlanArrivalData(plan: FlightPlan): WTLineFlightPlanArrivalData {
+    WTLineFmsUtils.scratchArrivalData.airportIcao = plan.destinationAirportIcao ?? null;
+    WTLineFmsUtils.scratchArrivalData.runway = plan.procedureDetails.arrivalRunway ?? null;
+    WTLineFmsUtils.scratchArrivalData.arrivalIndex = plan.procedureDetails.arrivalIndex;
+    WTLineFmsUtils.scratchArrivalData.arrivalRunwayTransitionIndex = plan.procedureDetails.arrivalRunwayTransitionIndex;
+    WTLineFmsUtils.scratchArrivalData.arrivalEnrouteTransitionIndex = plan.procedureDetails.arrivalTransitionIndex;
+    WTLineFmsUtils.scratchArrivalData.approachIndex = plan.procedureDetails.approachIndex;
+    WTLineFmsUtils.scratchArrivalData.approachTransitionIndex = plan.procedureDetails.approachTransitionIndex;
+    return WTLineFmsUtils.scratchArrivalData;
   }
 }
 

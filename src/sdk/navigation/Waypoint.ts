@@ -138,8 +138,6 @@ export class BasicFacilityWaypoint<T extends Facility = Facility> extends Abstra
   private readonly _location: GeoPointSubject;
   private readonly _type: WaypointTypes;
 
-  private facChangeSub?: Subscription;
-
   /**
    * Creates a new instance of BasicFacilityWaypoint.
    * @param facility The facility associated with this waypoint.
@@ -155,16 +153,29 @@ export class BasicFacilityWaypoint<T extends Facility = Facility> extends Abstra
 
     const facType = ICAO.getFacilityTypeFromValue(facility.icaoStruct);
     if (facType === FacilityType.VIS || facType === FacilityType.USR) {
-      // These types of facilities can be mutated. So we need to listen to the event bus for change events and respond
-      // accordingly.
-
-      this.facChangeSub = this.bus.getSubscriber<FacilityRepositoryEvents>()
-        .on(`facility_changed_${ICAO.getUid(facility.icaoStruct)}`)
-        .handle(newFacility => {
-          this._facility.set(newFacility as T);
-          this._location.set(newFacility.lat, newFacility.lon);
-        });
+      this.initFacilitySubscriptions();
     }
+  }
+
+  /**
+   * Initializes subscriptions to respond to changes in this waypoint's facility. This method should only be called
+   * when this waypoint's facility is sourced from a `FacilityRepository`.
+   */
+  private initFacilitySubscriptions(): void {
+    const sub = this.bus.getSubscriber<FacilityRepositoryEvents>();
+    const icaoUid = ICAO.getUid(this._facility.get().icaoStruct);
+
+    const thisRef = new WeakRef<BasicFacilityWaypoint<any>>(this);
+    const subs: Subscription[] = [];
+    const updateFacility = BasicFacilityWaypoint.updateFacility.bind(undefined, thisRef, subs);
+
+    subs.push(
+      sub.on(`facility_changed_${icaoUid}`).handle(updateFacility),
+      sub.on(`facility_added_${icaoUid}`).handle(updateFacility)
+    );
+
+    // NOTE: we don't do anything when the facility for the ICAO is removed, because FacilityWaypoint must always
+    // reference a facility.
   }
 
   /** @inheritdoc */
@@ -213,6 +224,25 @@ export class BasicFacilityWaypoint<T extends Facility = Facility> extends Abstra
         return WaypointTypes.VOR;
       default:
         return WaypointTypes.User;
+    }
+  }
+
+  /**
+   * Updates the facility of a weakly referenced `BasicFacilityWaypoint` if it has not been garbage collected, or
+   * destroys a set of subscriptions otherwise.
+   * @param wptRef A weak reference to the waypoint for which to update the facility.
+   * @param subs The subscriptions to destroy if the waypoint has been garbage collected.
+   * @param facility The new facility.
+   */
+  private static updateFacility(wptRef: WeakRef<BasicFacilityWaypoint>, subs: readonly Subscription[], facility: Facility): void {
+    const waypoint = wptRef.deref();
+    if (waypoint) {
+      waypoint._facility.set(facility);
+      waypoint._location.set(facility.lat, facility.lon);
+    } else {
+      for (const sub of subs) {
+        sub.destroy();
+      }
     }
   }
 }

@@ -9,6 +9,7 @@ import { Vec3Math } from '../../../math/VecMath';
 import { ArrayUtils } from '../../../utils/datastructures/ArrayUtils';
 import { LegDefinition } from '../../FlightPlanning';
 import { FlightPathCalculatorFacilityCache } from '../FlightPathCalculatorFacilityCache';
+import { FlightPathLegCalculationOptions } from '../FlightPathLegCalculator';
 import { FlightPathState } from '../FlightPathState';
 import { FlightPathUtils } from '../FlightPathUtils';
 import { FlightPathVectorFlags } from '../FlightPathVector';
@@ -38,14 +39,15 @@ export class HeadingToManualLegCalculator extends AbstractFlightPathLegCalculato
     legs: LegDefinition[],
     calculateIndex: number,
     activeLegIndex: number,
-    state: FlightPathState
+    state: FlightPathState,
+    options: Readonly<FlightPathLegCalculationOptions>
   ): void {
     const leg = legs[calculateIndex];
 
     let magVar = this.getMagVarFromIcao(leg.leg.originIcaoStruct);
     if (magVar === undefined) {
       let position: LatLonInterface | undefined;
-      if (calculateIndex === activeLegIndex && state.planePosition.isValid()) {
+      if (!options.disableCalculateFromPpos && calculateIndex === activeLegIndex && state.planePosition.isValid()) {
         position = state.planePosition;
       } else if (!state.isDiscontinuity && state.currentPosition.isValid()) {
         position = state.currentPosition;
@@ -64,7 +66,8 @@ export class HeadingToManualLegCalculator extends AbstractFlightPathLegCalculato
     legs: LegDefinition[],
     calculateIndex: number,
     activeLegIndex: number,
-    state: FlightPathState
+    state: FlightPathState,
+    options: Readonly<FlightPathLegCalculationOptions>
   ): void {
     const leg = legs[calculateIndex];
     const vectors = legs[calculateIndex].calculated!.flightPath;
@@ -90,7 +93,7 @@ export class HeadingToManualLegCalculator extends AbstractFlightPathLegCalculato
     let retainOldVectors = false;
 
     const isActiveLeg = calculateIndex === activeLegIndex;
-    if (isActiveLeg && state.planePosition.isValid()) {
+    if (!options.disableCalculateFromPpos && isActiveLeg && state.planePosition.isValid()) {
       // If the leg to calculate is the active leg and we know the airplane's current position, then we should start
       // the leg path at the airplane's current position. The exception to this is if vectors have been previously
       // calculated and include an initial turn and the airplane's current position puts it within a certain

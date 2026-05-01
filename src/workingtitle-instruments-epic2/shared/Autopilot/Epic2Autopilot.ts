@@ -192,14 +192,15 @@ export class Epic2Autopilot extends Autopilot {
   /** @inheritdoc */
   protected setLateralActive(mode: number): void {
     const { lateralActive, lateralArmed } = this.apValues;
-    this.checkRollModeActive();
+
     if (lateralArmed.get() === mode) {
       lateralArmed.set(APLateralModes.NONE);
     }
-    if (mode !== lateralActive.get()) {
-      const currentMode = this.lateralModes.get(lateralActive.get());
+
+    const currentActiveMode = lateralActive.get();
+    if (mode !== currentActiveMode) {
       if (this.apValues.apApproachModeOn.get()) {
-        switch (lateralActive.get()) {
+        switch (currentActiveMode) {
           case APLateralModes.LOC:
           case APLateralModes.GPSS:
           case APLateralModes.VOR:
@@ -209,7 +210,12 @@ export class Epic2Autopilot extends Autopilot {
             }
         }
       }
-      currentMode?.deactivate();
+
+      const currentDirector = this.lateralModes.get(currentActiveMode);
+      if (currentDirector && currentDirector.state !== DirectorState.Inactive) {
+        currentDirector.deactivate();
+      }
+
       lateralActive.set(mode);
     }
   }

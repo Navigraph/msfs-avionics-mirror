@@ -117,7 +117,7 @@ export class GtcKnobStatesManager implements GtcKnobStates {
 
   /** @inheritdoc */
   public readonly dualKnobState: Subscribable<string> = MappedSubject.create(
-    ([controlMode, selectedPaneView, pfdPaneVisible, pfdPaneView, obsSuspMode, cdiSource, isPfdMapPointerActive, radioBeingTuned, override]) => {
+    ([controlMode, selectedPaneView, selectedPaneMapPointerActive, pfdPaneVisible, pfdPaneView, obsSuspMode, cdiSource, isPfdMapPointerActive, radioBeingTuned, override]) => {
       if (override !== null) {
         return override;
       }
@@ -135,11 +135,13 @@ export class GtcKnobStatesManager implements GtcKnobStates {
               }
             }
           case 'MFD':
-            return selectedPaneView === DisplayPaneViewKeys.WeatherRadar ? GtcDualKnobState.DisplayPanesAndRadarControl : GtcDualKnobState.DisplayPanes;
+            if (selectedPaneMapPointerActive && this.gtcService.isHorizontal) {
+              return GtcDualKnobState.MapPointerControl;
+            } else {
+              return selectedPaneView === DisplayPaneViewKeys.WeatherRadar ? GtcDualKnobState.DisplayPanesAndRadarControl : GtcDualKnobState.DisplayPanes;
+            }
           case 'NAV_COM':
-            return radioBeingTuned === 'COM1' ?
-              GtcDualKnobState.NAVCOM1 :
-              GtcDualKnobState.NAVCOM2;
+            return radioBeingTuned === 'COM1' ? GtcDualKnobState.NAVCOM1 : GtcDualKnobState.NAVCOM2;
           default:
             throw new Error(`GtcKnobStatesManager: unrecognized control mode ${controlMode}`);
         }
@@ -158,6 +160,7 @@ export class GtcKnobStatesManager implements GtcKnobStates {
     },
     this.gtcService.activeControlMode,
     this.gtcService.selectedPaneSettings.getSetting('displayPaneView'),
+    this.gtcService.selectedPaneSettings.getSetting('displayPaneMapPointerActive'),
     this.gtcService.pfdPaneSettings.getSetting('displayPaneVisible'),
     this.gtcService.pfdPaneSettings.getSetting('displayPaneView'),
     this.obsSuspDataProvider.mode,
@@ -182,7 +185,7 @@ export class GtcKnobStatesManager implements GtcKnobStates {
 
   /** @inheritdoc */
   public readonly mapKnobState: Subscribable<string> = MappedSubject.create(
-    ([controlMode, selectedPaneView, pfdPaneVisible, pfdPaneView, pfdMapLayout, isPfdMapPointerActive, radioBeingTuned, override]) => {
+    ([controlMode, selectedPaneView, selectedPaneMapPointerActive, pfdPaneVisible, pfdPaneView, pfdMapLayout, isPfdMapPointerActive, radioBeingTuned, override]) => {
       if (override !== null) {
         return override;
       }
@@ -192,7 +195,7 @@ export class GtcKnobStatesManager implements GtcKnobStates {
           return this.getPfdMapKnobState(pfdPaneVisible, pfdPaneView, pfdMapLayout, isPfdMapPointerActive);
         case 'MFD':
           // TODO Handle whether there is a selected pane
-          return this.getMfdMapKnobState(selectedPaneView);
+          return this.getMfdMapKnobState(selectedPaneView, selectedPaneMapPointerActive);
         case 'NAV_COM':
           return radioBeingTuned === 'COM1' ? GtcMapKnobState.NAVCOM1 : GtcMapKnobState.NAVCOM2;
         default:
@@ -201,6 +204,7 @@ export class GtcKnobStatesManager implements GtcKnobStates {
     },
     this.gtcService.activeControlMode,
     this.gtcService.selectedPaneSettings.getSetting('displayPaneView'),
+    this.gtcService.selectedPaneSettings.getSetting('displayPaneMapPointerActive'),
     this.gtcService.pfdPaneSettings.getSetting('displayPaneVisible'),
     this.gtcService.pfdPaneSettings.getSetting('displayPaneView'),
     this.pfdMapLayoutSetting,
@@ -300,10 +304,15 @@ export class GtcKnobStatesManager implements GtcKnobStates {
   /**
    * Gets the desired MFD control mode map knob control state based on a given context.
    * @param selectedPaneViewKey The key of the currently displayed MFD display pane view.
+   * @param isMapPointerActive Whether the map pointer is active for the currently displayed MFD display pane view.
    * @returns The desired MFD control mode map knob control state based on the specified context.
    */
-  private getMfdMapKnobState(selectedPaneViewKey: string): GtcMapKnobState {
-    return this.getMapKnobStateFromDisplayPaneView(selectedPaneViewKey);
+  private getMfdMapKnobState(selectedPaneViewKey: string, isMapPointerActive: boolean): GtcMapKnobState {
+    if (isMapPointerActive) {
+      return GtcMapKnobState.MapPointerControl;
+    } else {
+      return this.getMapKnobStateFromDisplayPaneView(selectedPaneViewKey);
+    }
   }
 
   /**

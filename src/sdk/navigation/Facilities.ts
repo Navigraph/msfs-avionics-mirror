@@ -269,6 +269,16 @@ export interface AirportRunway {
    * This **is** included in the {@link AirportRunway.length}.
    */
   readonly secondaryThresholdLength: number;
+
+  /**
+   * Whether the primary runway is closed.
+   */
+  readonly primaryClosed: boolean;
+
+  /**
+   * Whether the secondary runway is closed.
+   */
+  readonly secondaryClosed: boolean;
 }
 
 /**
@@ -982,7 +992,7 @@ export interface UserFacility extends Facility {
   /** The magnetic variation, in degrees, at the first reference facility. */
   reference1MagVar?: number;
 
-  /** The disance from the first reference facility, in nautical miles. */
+  /** The distance from the first reference facility, in nautical miles. */
   reference1Distance?: number;
 
   /** The ICAO of the second reference facility. */
@@ -1290,6 +1300,12 @@ export interface OneWayRunway {
 
   /** The lighting available for this runway. */
   readonly lighting: RunwayLightingType;
+
+  /**
+   * Whether this runway is closed. This field is optional for backwards compatibility
+   * reasons - its absence should be treated as the closed state being unknown.
+   */
+  readonly closed?: boolean;
 }
 
 export enum AirportPrivateType {

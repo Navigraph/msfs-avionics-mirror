@@ -113,7 +113,7 @@ export class MapLabeledRingLayer<T extends MapLayerProps<any>> extends MapLayer<
     return label;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public onVisibilityChanged(isVisible: boolean): void {
     if (this.isInit) {
@@ -121,7 +121,7 @@ export class MapLabeledRingLayer<T extends MapLayerProps<any>> extends MapLayer<
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     this.canvasLayerRef.instance.onAttached();
     this.isInit = true;
@@ -129,7 +129,21 @@ export class MapLabeledRingLayer<T extends MapLayerProps<any>> extends MapLayer<
     this.needUpdateRingPosition = true;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.canvasLayerRef.instance.onWake();
+
+    // We need to schedule a redraw after waking up because the canvas is cleared when the map goes to sleep (as a
+    // result of being collapsed).
+    this.needUpdateRingPosition = true;
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.canvasLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.canvasLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
 
@@ -139,7 +153,7 @@ export class MapLabeledRingLayer<T extends MapLayerProps<any>> extends MapLayer<
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     if (!this.isVisible()) {
       return;
@@ -251,17 +265,25 @@ export class MapLabeledRingLayer<T extends MapLayerProps<any>> extends MapLayer<
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
       <>
-        <MapSyncedCanvasLayer ref={this.canvasLayerRef} model={this.props.model} mapProjection={this.props.mapProjection} />
-        <div ref={this.labelContainerRef} style='position: absolute; left: 0; top: 0; width: 100%; height: 100%;'></div>
+        <MapSyncedCanvasLayer
+          ref={this.canvasLayerRef}
+          model={this.props.model}
+          mapProjection={this.props.mapProjection}
+          collapseOnSleep
+        />
+        <div
+          ref={this.labelContainerRef}
+          style='position: absolute; left: 0; top: 0; width: 100%; height: 100%;'
+        />
       </>
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     this.canvasLayerRef.getOrDefault()?.destroy();
 

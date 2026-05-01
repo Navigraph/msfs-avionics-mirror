@@ -238,7 +238,7 @@ export class WTLineBearingPointerNavIndicator extends NavIndicator<WTLineNavSour
   public constructor(
     navSources: NavSources<WTLineNavSourceNames>,
     bus: EventBus,
-    index: 1 | 2,
+    public readonly index: 1 | 2,
     sourceName: WTLineNavSourceNames[number] | null = null,
   ) {
     super(navSources, sourceName);

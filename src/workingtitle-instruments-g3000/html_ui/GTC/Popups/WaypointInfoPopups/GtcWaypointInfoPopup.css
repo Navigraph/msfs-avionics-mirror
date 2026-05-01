@@ -1,0 +1,16 @@
+.wpt-info-popup {
+  position: absolute;
+  top: 0px;
+  height: 100%;
+  color: var(--g3000-color-white);
+}
+
+.gtc-horizontal .wpt-info-popup {
+  left: calc(50% - 894px / 2);
+  width: 894px;
+}
+
+.gtc-vertical .wpt-info-popup {
+  left: 0px;
+  width: 100%;
+}

@@ -1,0 +1,67 @@
+.ifd-map-chart-tab {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.chart-view-topbar {
+  background-color: black;
+  display: flex;
+  width: 100%;
+  height: 20px;
+}
+
+.chart-view-topbar p,
+.chart-viewer-bottom-bar p {
+  font-size: 20px;
+  font-family: "Arial Bold";
+  color: var(--wtdyne-color-light-cyan)
+}
+
+.chart-airport {
+  padding-right: 15px;
+}
+
+.chart-viewer {
+  height: 402px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.chart-viewer-bottom-bar {
+  position: absolute;
+  bottom: 30px;
+  z-index: 2;
+  width: 100%;
+
+  display: flex;
+  justify-content: space-between;
+}
+
+.chart-viewer-page,
+.chart-viewer-zoom {
+  background-color: black;
+  border: 1px solid var(--wtdyne-color-light-cyan);
+  border-radius: 6px;
+  padding: 0px 5px 1px 5px;
+
+  text-align: center;
+}
+
+.chart-page-no-chart {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-items: center;
+  align-items: center;
+}
+
+.chart-page-no-chart p {
+  font-size: 22px;
+  font-family: "Arial Bold";
+  color: var(--wtdyne-color-light-cyan);
+  text-align: center;
+  width: 100%;
+}

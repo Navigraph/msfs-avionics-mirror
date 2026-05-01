@@ -31,7 +31,7 @@ enum GtcNearestAirportPagePopupKeys {
  */
 export class GtcNearestAirportPage extends GtcNearestWaypointPage<FacilityType.Airport, NearestWaypointEntry<AirportWaypoint>, GtcNearestAirportPageProps> {
   private static readonly APPROACH_TYPE_TEXT: Record<ExtendedApproachType, string> = {
-    [ApproachType.APPROACH_TYPE_UNKNOWN]: 'UNK',
+    [ApproachType.APPROACH_TYPE_UNKNOWN]: 'VFR',
     [AdditionalApproachType.APPROACH_TYPE_VISUAL]: 'VFR',
     [ApproachType.APPROACH_TYPE_NDB]: 'NDB',
     [ApproachType.APPROACH_TYPE_NDBDME]: 'NDB',
@@ -93,7 +93,7 @@ export class GtcNearestAirportPage extends GtcNearestWaypointPage<FacilityType.A
 
   /** @inheritdoc */
   protected renderListItem(data: NearestWaypointEntry<AirportWaypoint>): VNode {
-    const runwayLength = data.waypoint.longestRunway?.length;
+    const runwayLength = data.waypoint.longestRunway?.length ?? 0;
 
     return (
       <GtcNearestWaypointPageListItem

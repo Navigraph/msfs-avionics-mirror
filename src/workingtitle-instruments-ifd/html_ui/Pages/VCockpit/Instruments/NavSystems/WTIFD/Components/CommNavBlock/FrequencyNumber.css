@@ -1,0 +1,17 @@
+.wt-ifd-frequency-value-integer-part {
+    position: relative;
+    padding-left: 0;
+    padding-top: 2px;
+    font-family: "Arial Bold", sans-serif;
+    font-size: 38px;
+    line-height: 30px;
+    letter-spacing: 0.5px;
+}
+
+.wt-ifd-frequency-value-decimal-part {
+    position: relative;
+    padding-top: 1px;
+    font-family: "Arial Bold", sans-serif;
+    font-size: 31px;
+    letter-spacing: 0.5px;
+}

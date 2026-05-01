@@ -1,6 +1,9 @@
-import { EventBus } from '../../../data';
-import { GeoPoint, GeoPointReadOnly, LatLonInterface } from '../../../geo';
-import { BitFlags, UnitType, Vec2Math } from '../../../math';
+import { EventBus } from '../../../data/EventBus';
+import { LatLonInterface } from '../../../geo/GeoInterfaces';
+import { GeoPoint, GeoPointReadOnly } from '../../../geo/GeoPoint';
+import { BitFlags } from '../../../math/BitFlags';
+import { UnitType } from '../../../math/NumberUnit';
+import { Vec2Math } from '../../../math/VecMath';
 import {
   Facility, FacilityLoader, FacilityRepository, FacilityRepositoryEvents, FacilitySearchType, FacilityType, ICAO,
   IcaoValue, NearestAirportSearchSession, NearestIcaoSearchSession, NearestIcaoSearchSessionDataType,
@@ -230,7 +233,7 @@ export class MapNearestWaypointsLayer
     return facilityLoader.tryGetFacility(ICAO.getFacilityTypeFromValue(icao), icao);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     super.onAttached();
 
@@ -275,7 +278,17 @@ export class MapNearestWaypointsLayer
     });
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.canvasLayerRef.instance.onWake();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.canvasLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.canvasLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
 
@@ -299,7 +312,7 @@ export class MapNearestWaypointsLayer
     this.searchMargin = mapHalfDiagRange * (MapNearestWaypointsLayer.SEARCH_RADIUS_OVERDRAW_FACTOR - 1);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     // If a user facility was added, changed, or removed, schedule a user waypoint search refresh so that we always
     // have the latest user facility data.
@@ -545,20 +558,26 @@ export class MapNearestWaypointsLayer
     this.props.deregisterWaypoint(waypoint, renderer);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public setVisible(val: boolean): void {
     super.setVisible(val);
     this.canvasLayerRef.instance.setVisible(val);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
-      <MapSyncedCanvasLayer ref={this.canvasLayerRef} model={this.props.model} mapProjection={this.props.mapProjection} class={this.props.class ?? ''} />
+      <MapSyncedCanvasLayer
+        ref={this.canvasLayerRef}
+        model={this.props.model}
+        mapProjection={this.props.mapProjection}
+        collapseOnSleep
+        class={this.props.class ?? ''}
+      />
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     this.canvasLayerRef.getOrDefault()?.destroy();
 

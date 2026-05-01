@@ -1,0 +1,47 @@
+@keyframes softkey-cas-flash-yellow {
+
+  5%,
+  45% {
+    color: var(--g3000-color-yellow);
+    background: var(--g3000-color-black);
+  }
+
+  55%,
+  100% {
+    color: var(--g3000-color-black);
+    background: var(--g3000-color-yellow);
+  }
+
+}
+
+@keyframes softkey-cas-flash-red {
+
+  0%,
+  45% {
+    color: var(--g3000-color-red);
+    background: var(--g3000-color-white);
+  }
+
+  55%,
+  100% {
+    color: var(--g3000-color-white);
+    background: var(--g3000-color-red);
+  }
+
+}
+
+.softkey-cas-caution {
+  animation: softkey-cas-flash-yellow 1s infinite;
+}
+
+.softkey-cas-caution .softkey-label {
+  color: unset;
+}
+
+.softkey-cas-warning {
+  animation: softkey-cas-flash-red 1s infinite;
+}
+
+.softkey-cas-warning .softkey-label {
+  color: unset;
+}

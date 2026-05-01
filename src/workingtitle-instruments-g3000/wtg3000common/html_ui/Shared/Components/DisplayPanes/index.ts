@@ -5,6 +5,8 @@ export * from './DisplayPaneEvents';
 export * from './DisplayPaneTypes';
 export * from './DisplayPaneUtils';
 export * from './DisplayPaneView';
+export * from './DisplayPaneViewDataEvents';
 export * from './DisplayPaneViewEvents';
 export * from './DisplayPaneViewFactory';
 export * from './DisplayPaneViewKeys';
+export * from './DisplayPaneViewMapDataPublisher';

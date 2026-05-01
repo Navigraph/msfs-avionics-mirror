@@ -1,0 +1,18 @@
+.gtc-horizontal .int-info-popup {
+  --int-info-popup-info-left: calc(50% - 685px / 2);
+  --int-info-popup-info-top: 53px;
+}
+
+.gtc-vertical .int-info-popup {
+  --int-info-popup-info-left: calc(50% - 365px / 2);
+  --int-info-popup-info-top: 25px;
+}
+
+.int-info-popup .int-info {
+  position: absolute;
+}
+
+.int-info-popup .int-info {
+  left: var(--int-info-popup-info-left);
+  top: var(--int-info-popup-info-top);
+}

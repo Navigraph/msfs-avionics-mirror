@@ -1,0 +1,29 @@
+.wt-ifd-5xx-container {
+  width: 100%;
+  height: 100%;
+  font-family: "Arial", sans-serif;
+  position: relative;
+}
+
+.wt-ifd-left-sidebar {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+}
+
+.ifd-dialog-container {
+  position: absolute;
+
+  width: 100%;
+  height: 100%;
+
+  pointer-events: none;
+
+  z-index: 999;
+}
+
+.ifd-dialog-root {
+  position: absolute;
+
+  pointer-events: auto;
+}

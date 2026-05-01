@@ -1,0 +1,55 @@
+.fpl-segment-labels-container {
+  position: absolute;
+  top: 0;
+  left: 24px;
+  z-index: -1;
+}
+
+.fpl-segment-label {
+  position: absolute;
+  width: 30px;
+  overflow: hidden;
+}
+
+.fpl-segment-label .brackets {
+  position: absolute;
+  top: 0;
+  left: 6px;
+  width: 44px;
+  height: 100%;
+  border: 2px solid var(--wtdyne-color-white);
+  border-radius: 8px;
+}
+
+.fpl-segment-label .label-text {
+  padding: 4px;
+  background: var(--wtdyne-color-black);
+  position: absolute;
+
+  top: 50%;
+  left: 7px;
+  transform: translateX(-50%) rotateZ(-90deg);
+  transform-origin: center;
+  white-space: pre;
+  font-size: 14px;
+}
+
+.fpl-segment-label.active {
+  color: var(--wtdyne-color-magenta);
+}
+
+.fpl-segment-label.active .brackets {
+  border-color: var(--wtdyne-color-magenta);
+}
+
+.fpl-segment-label.history {
+  color: var(--wtdyne-color-gray-2);
+}
+
+.fpl-segment-label.history .brackets {
+  border-color: var(--wtdyne-color-gray-2);
+}
+
+.ifd-sidebar-sidebar .fpl-segment-labels-container {
+  left: 1px;
+}

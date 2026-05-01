@@ -68,21 +68,23 @@ export interface APConfig {
   defaultVerticalMode: number | (() => number);
 
   /**
-   * The default maximum bank angle the autopilot may command in degrees.
-   * If not defined, then the maximum bank angle will be sourced from the AUTOPILOT MAX BANK SimVar
-   **/
+   * The default maximum bank angle the autopilot may command, in degrees. If not defined, then the maximum bank angle
+   * will be sourced from the `AUTOPILOT MAX BANK` SimVar.
+   */
   defaultMaxBankAngle?: number;
 
   /**
-   * The default maximum nose up pitch angle the autopilot may command in degrees.
-   * If not defined, then the maximum angle will be 15 degrees.
-   **/
+   * The default maximum nose up pitch angle the autopilot may command, in degrees. If not defined, then the angle can
+   * be controlled using the `ap_set_max_nose_up_pitch` event bus topic (defined in `APControlEvents`). If not defined
+   * and the `ap_set_max_nose_up_pitch` event bus topic is not used, then the angle defaults to `Infinity`.
+   */
   defaultMaxNoseUpPitchAngle?: number;
 
   /**
-   * The default maximum nose down pitch angle the autopilot may command in degrees.
-   * If not defined, then the maximum angle will be 15 degrees.
-   **/
+   * The default maximum nose down pitch angle the autopilot may command, in degrees. If not defined, then the angle
+   * can be controlled using the `ap_set_max_nose_down_pitch` event bus topic (defined in `APControlEvents`). If not
+   * defined and the `ap_set_max_nose_down_pitch` event bus topic is not used, then the angle defaults to `Infinity`.
+   */
   defaultMaxNoseDownPitchAngle?: number;
 
   /** The altitude hold slot index to use. Defaults to 1 */
@@ -101,6 +103,9 @@ export interface APConfig {
 
   /** Whether to deactivate the autopilot when GA mode is armed in response to a TO/GA mode button press. Defaults to `true`. */
   readonly deactivateAutopilotOnGa?: boolean;
+
+  /** The number of flight directors supported by the autopilot. Defaults to 2. */
+  readonly flightDirectorCount?: 1 | 2;
 
   /**
    * Whether to automatically engage the FD(s) with AP or mode button presses, defaults to true.

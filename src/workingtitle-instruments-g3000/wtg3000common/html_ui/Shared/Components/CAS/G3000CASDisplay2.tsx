@@ -132,7 +132,7 @@ export class G3000CASDisplay2 extends DisplayComponent<G3000CASDisplay2Props> {
         ref={this.displayRef}
         messages={this.props.messages}
         maxMessageCount={this.props.maxMessageCount}
-        maxUnscrollableWarningCount={this.props.maxMessageCount}
+        maxUnscrollableWarningCount={this.props.maxUnscrollableWarningCount}
         scrollState={this.scrollState}
         class={{
           'cas-display-2-scroll-enabled': this.scrollState.map(state => {

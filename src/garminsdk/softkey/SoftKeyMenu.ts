@@ -1,4 +1,4 @@
-import { SubEvent, Subject } from '@microsoft/msfs-sdk';
+import { SetSubject, SubEvent, Subject } from '@microsoft/msfs-sdk';
 
 import { SoftKeyMenuSystem } from './SoftKeyMenuSystem';
 
@@ -6,7 +6,6 @@ import { SoftKeyMenuSystem } from './SoftKeyMenuSystem';
  * A Garmin softkey menu item. Defines the display and behavior of a softkey.
  */
 export interface SoftKeyMenuItem {
-
   /** The label for this menu item. */
   readonly label: Subject<string>;
 
@@ -24,6 +23,9 @@ export interface SoftKeyMenuItem {
 
   /** Whether this menu item is highlighted. */
   readonly highlighted: Subject<boolean>;
+
+  /** CSS classes to apply to the root element of this menu item. */
+  readonly cssClass: SetSubject<string>;
 }
 
 /**
@@ -71,7 +73,8 @@ export class SoftKeyMenu {
       value: Subject.create(value),
       pressed: new SubEvent(),
       disabled: Subject.create(handler === undefined || disabled),
-      highlighted: Subject.create<boolean>(false)
+      highlighted: Subject.create<boolean>(false),
+      cssClass: SetSubject.create(),
     };
   }
 

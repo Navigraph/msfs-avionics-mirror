@@ -1,0 +1,109 @@
+.info-header-block {
+  --leg-block-blue-2: #006298;
+  --leg-block-blue-3: #003466;
+  --border-blue-light: #7B9EB2;
+  --border-blue-dark: #565F69;
+  --active-input: #00C2DBFF;
+
+  width: 100%;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--leg-block-blue-3);
+  box-shadow: inset 0.15em 0.15em 0.1em 0 rgba(255, 255, 255, 0.5), inset -0.15em -0.15em 0.1em 0 rgba(0, 0, 0, 0.6);
+  border-radius: 5px;
+  font-size: 16px;
+  font-family: "Arial Bold";
+  color: white;
+  margin-bottom: 8px;
+}
+
+.info-header-block * {
+  box-sizing: border-box;
+}
+
+.info-header-block .info-header-top {
+  display: flex;
+  margin-top: 6px;
+  margin-right: 10px;
+  height: 45%;
+  padding: 4px;
+  border-top-right-radius: 5px;
+  background-color: var(--leg-block-blue-2);
+  border-top: solid var(--border-blue-light) 2px;
+  border-left: solid var(--border-blue-light) 2px;
+  border-right: solid var(--border-blue-dark) 2px;
+  border-bottom: solid var(--border-blue-dark) 2px;
+  z-index: 1;
+  position: relative;
+}
+
+.info-header-block .info-header-terminus {
+  width: 200px;
+  margin-right: 35px;
+  font-size: 26px;
+  line-height: 1;
+  padding-left: 4px;
+  margin-left: 4px;
+  height: 26px;
+  border-radius: 5px;
+
+}
+
+.info-header-block .parent-selected.selected {
+  background-color: var(--active-input);
+  color: black;
+}
+
+.info-header-block .parent-selected {
+  background-color: black;
+  color: white;
+}
+
+.info-header-block .parent-selected.editing {
+  background-color: black;
+  color: var(--active-input);
+}
+
+.info-header-block .info-header-terminus-info {
+  width: 100%;
+  font-size: 22px;
+}
+
+.info-header-block .info-header-bottom {
+  display: flex;
+  height: 45%;
+  margin-left: 2px;
+  margin-right: 10px;
+  padding-top: 0;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.info-header-block .info-header-city {
+  width: 66%;
+  background-color: var(--leg-block-blue-2);
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+  padding-left: 8px;
+  display: flex;
+  font-size: 22px;
+  position: relative;
+  z-index: 1;
+  top: -2px;
+  border-left: solid var(--border-blue-light) 2px;
+  border-right: solid var(--border-blue-dark) 2px;
+  border-bottom: solid var(--border-blue-dark) 2px;
+}
+
+.info-header-block .procedure-icon {
+  height: 26px;
+  border-radius: 2px;
+}
+
+.info-header-block .info-header-city-text {
+  flex-grow: 1;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}

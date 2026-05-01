@@ -1,0 +1,104 @@
+.wt-ifd-transponder-display {
+  position: relative;
+}
+
+.wt-ifd-transponder-display .top-container {
+  display: flex;
+  flex-direction: row;
+  height: 40px;
+}
+
+.wt-ifd-transponder-display .top-left-container {
+  width: 102px;
+  padding-left: 8px;
+}
+
+.wt-ifd-transponder-display .top-right-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 3px;
+  height: 100%;
+}
+
+.wt-ifd-transponder-display .bottom-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.wt-ifd-transponder-display .wt-ifd-transponder-block-container {
+  position: relative;
+  width: 133px;
+  height: 97px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 3px var(--wtdyne-color-blue);
+}
+
+.wt-ifd-transponder-display .wt-ifd-xpdr-active-reply-flag-container {
+  height: 17px;
+  width: auto;
+}
+
+.wt-ifd-transponder-display .wt-ifd-xpdr-active-reply-flag-container .wt-ifd-xpdr-active-reply-flag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  font-family: "Arial", sans-serif;
+  font-size: 15px;
+  border-radius: 5px / 8px;
+  color: var(--wtdyne-color-white);
+  background: var(--wtdyne-color-dark-blue);
+}
+
+.wt-ifd-transponder-display .wt-ifd-xpdr-mode-value {
+  font-family: "Arial", sans-serif;
+  font-size: 15px;
+  color: var(--wtdyne-color-mint);
+}
+
+.wt-ifd-transponder-display .wt-ifd-xpdr-code-title-container {
+  width: 100%;
+  margin-top: -8px;
+  padding-left: 2px;
+}
+
+.wt-ifd-transponder-display .wt-ifd-xpdr-code-title-container .wt-ifd-xpdr-code-title {
+  font-family: "Arial", sans-serif;
+  font-size: 15px;
+  color: var(--wtdyne-color-light-cyan);
+  letter-spacing: 0.6px;
+}
+
+
+.wt-ifd-transponder-display .wt-ifd-xpdr-code-value {
+  font-family: "Arial Bold", sans-serif;
+  font-size: 38px;
+  color: var(--wtdyne-color-light-cyan);
+}
+
+.wt-ifd-transponder-display .wt-ifd-xpdr-code-value.wt-ifd-freq-is-being-edited {
+  display: flex;
+  border-radius: 6px;
+  height: 35px;
+  background: var(--wtdyne-color-light-cyan) !important;
+  color: var(--wtdyne-color-black) !important;
+}
+
+.wt-ifd-transponder-display .wt-ifd-xpdr-ident-button-container {
+  width: 86%;
+  margin-top: 4px;
+}
+
+.wt-ifd-transponder-display .wt-ifd-xpdr-ident-button-container .lsk-button {
+  border: 4px solid var(--wtdyne-color-blue);
+  border-radius: 25px / 13px;
+  height: 38px;
+  font-size: 22px;
+}
+
+.wt-ifd-transponder-display .wt-ifd-xpdr-ident-button-container .lsk-button.lsk-button-action .lsk-button-label {
+  color: var(--wtdyne-color-green);
+}

@@ -1,0 +1,30 @@
+.north-up-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.north-up-overlay .north-up-symbol {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  height: 82px;
+  width: 35px;
+}
+
+.north-up-overlay .range-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.north-up-overlay .map-range-numbers {
+  position: absolute;
+}

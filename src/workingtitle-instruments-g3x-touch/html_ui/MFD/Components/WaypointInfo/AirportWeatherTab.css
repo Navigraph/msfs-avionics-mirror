@@ -16,28 +16,21 @@
 
   --airport-weather-tab-list-margin: 7px 5px;
 
-  --airport-weather-no-data-font-size: 18px;
-
   --airport-weather-tab-airport-name-font-size: 18px;
 
   --airport-weather-tab-airport-city-margin-right: 10px;
 
-  --airport-weather-tab-section-margin: 18px 0px;
+  --airport-weather-tab-separator-height: 2px;
+
+  --airport-weather-tab-section-margin: 0px 0px 18px;
   --airport-weather-tab-section-title-margin-bottom: 18px;
+
+  --airport-weather-tab-taf-change-group-gap: 18px;
 }
 
 .airport-weather-tab-list {
   flex-grow: 1;
   margin: var(--airport-weather-tab-list-margin);
-}
-
-.airport-weather-tab-no-data {
-  flex-grow: 1;
-  font-size: var(--airport-weather-no-data-font-size);
-  display: flex;
-  flex-flow: row nowrap;
-  justify-content: center;
-  align-items: center;
 }
 
 .airport-weather-tab-list-content {
@@ -46,6 +39,20 @@
   flex-flow: column nowrap;
   align-items: stretch;
   overflow: hidden;
+}
+
+.airport-weather-tab-separator {
+  height: var(--airport-weather-tab-separator-height);
+  margin: var(--airport-weather-tab-section-margin);
+  background-color: var(--g3x-color-white);
+}
+
+.airport-weather-tab-section {
+  position: relative;
+  margin: var(--airport-weather-tab-section-margin);
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: stretch;
 }
 
 .airport-weather-tab-airport-name {
@@ -61,34 +68,44 @@
   white-space: pre;
 }
 
-.airport-weather-tab-section {
-  position: relative;
-  margin: var(--airport-weather-tab-section-margin);
+.airport-weather-tab-section-title {
+  margin-bottom: var(--airport-weather-tab-section-title-margin-bottom);
+}
+
+.airport-weather-tab-time {
+  display: inline-block;
+}
+
+.airport-weather-tab-time .time-sec {
+  display: none;
+}
+
+.airport-weather-tab-clouds-line {
+  white-space: nowrap;
+}
+
+.airport-weather-tab-cloud-layer-sep {
+  white-space: normal;
+}
+
+.airport-weather-tab-metar-line .airport-weather-tab-line-title {
+  color: var(--g3x-color-cyan);
+}
+
+.airport-weather-tab-taf .airport-weather-tab-section-title {
+  margin-bottom: var(--airport-weather-tab-taf-change-group-gap);
+}
+
+.airport-weather-tab-taf-change-group-container {
   display: flex;
   flex-flow: column nowrap;
   align-items: stretch;
 }
 
-.airport-weather-tab-section-title {
-  margin-bottom: var(--airport-weather-tab-section-title-margin-bottom);
+.airport-weather-tab-taf-change-group {
+  margin-bottom: var(--airport-weather-tab-taf-change-group-gap);
 }
 
-.airport-weather-tab-metar-time {
-  display: inline-block;
-}
-
-.airport-weather-tab-metar-time .time-sec {
-  display: none;
-}
-
-.airport-weather-tab-metar-line-title {
+.airport-weather-tab-taf-change-group-header {
   color: var(--g3x-color-cyan);
-}
-
-.airport-weather-tab-metar-clouds {
-  white-space: nowrap;
-}
-
-.airport-weather-tab-metar-cloud-layer-sep {
-  white-space: normal;
 }

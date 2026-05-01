@@ -6,6 +6,7 @@ import { AoaIndicatorConfig } from '../Components/Aoa/AoaIndicatorConfig';
 import { CASConfig } from '../Components/CAS/CASConfig';
 import { NavStatusBoxConfig } from '../Components/NavStatusBox/NavStatusBoxConfig';
 import { VsiConfig } from '../Components/VSI/VsiConfig';
+import { PfdSoftKeyConfig } from '../SoftKey/PfdSoftKeyConfig';
 import { PfdLayoutConfig } from './PfdLayoutConfig';
 
 /**
@@ -35,6 +36,9 @@ export class PfdConfig {
   /** A config which defines options for the CAS display. */
   public readonly cas: CASConfig;
 
+  /** A config which defines options for the PFD softkeys. */
+  public readonly softkey: PfdSoftKeyConfig;
+
   /**
    * Creates a PfdConfig from an XML configuration document.
    * @param xmlConfig An XML configuration document.
@@ -51,6 +55,7 @@ export class PfdConfig {
     this.aoaIndicator = this.parseAoaIndicatorConfig(root, instrumentConfig);
     this.navStatusBox = this.parseNavStatusBoxConfig(root, instrumentConfig);
     this.cas = this.parseCasConfig(root, instrumentConfig);
+    this.softkey = this.parseSoftkeyConfig(root, instrumentConfig);
   }
 
   /**
@@ -271,7 +276,7 @@ export class PfdConfig {
    * @param config The root of the configuration document.
    * @param instrumentConfig The root element of the configuration document's section pertaining to this config's
    * instrument.
-   * @returns The CAR display configuration defined by the configuration document, or a default version if the
+   * @returns The CAS display configuration defined by the configuration document, or a default version if the
    * document does not define a valid configuration.
    */
   private parseCasConfig(config: Element, instrumentConfig: Element | undefined): CASConfig {
@@ -296,5 +301,40 @@ export class PfdConfig {
     }
 
     return new CASConfig(undefined, this.layout);
+  }
+
+  /**
+   * Parses a PFD softkey configuration object from a configuration document. This method looks in the
+   * instrument-specific section first for a config definition. If none can be found or parsed without error, this
+   * method will next look in the general section. If none can be found or parsed without error there either, this
+   * method will return a default configuration object.
+   * @param config The root of the configuration document.
+   * @param instrumentConfig The root element of the configuration document's section pertaining to this config's
+   * instrument.
+   * @returns The PFD softkey configuration defined by the configuration document, or a default version if the
+   * document does not define a valid configuration.
+   */
+  private parseSoftkeyConfig(config: Element, instrumentConfig: Element | undefined): PfdSoftKeyConfig {
+    if (instrumentConfig !== undefined) {
+      try {
+        const cas = instrumentConfig.querySelector(':scope>PfdSoftKey');
+        if (cas !== null) {
+          return new PfdSoftKeyConfig(cas, this.layout);
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    try {
+      const cas = config.querySelector(':scope>PfdSoftKey');
+      if (cas !== null) {
+        return new PfdSoftKeyConfig(cas, this.layout);
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+
+    return new PfdSoftKeyConfig(undefined, this.layout);
   }
 }

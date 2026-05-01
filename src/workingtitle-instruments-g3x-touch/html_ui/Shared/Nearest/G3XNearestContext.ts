@@ -1,5 +1,5 @@
 import {
-  AdaptiveNearestContext, AirportFacility, AirportFacilityDataFlags, BitFlags, ConsumerSubject, EventBus,
+  AdaptiveNearestContext, AirportClass, AirportFacility, AirportFacilityDataFlags, BitFlags, ConsumerSubject, EventBus,
   FacilityLoader, FacilityType, FacilityTypeMap, IntersectionFacility, IntersectionType, MappedSubject, NdbFacility,
   NearestSubscription, ReadonlySubEvent, RunwayUtils, SubEvent, Subscribable, SubscribableUtils, UnitType,
   UserFacility, VorClass, VorFacility, VorType
@@ -47,7 +47,8 @@ export class G3XNearestContext {
 
   private readonly nearestAirportFilterState = MappedSubject.create(
     this.nearestAirportSettingManager.getSetting('nearestAptRunwayLength'),
-    this.nearestAirportSettingManager.getSetting('nearestAptRunwaySurfaceTypes')
+    this.nearestAirportSettingManager.getSetting('nearestAptRunwaySurfaceTypes'),
+    this.nearestAirportSettingManager.getSetting('nearestAptIncludeHeliports')
   );
 
   private readonly fmsPosMode = ConsumerSubject.create(null, FmsPositionMode.None);
@@ -125,20 +126,44 @@ export class G3XNearestContext {
       )
     );
 
-    this.nearestAirportFilterState.sub(([runwayLength, runwaySurfaceCategories]) => {
+    this.nearestAirportFilterState.sub(([runwayLength, runwaySurfaceCategories, includeHeliports]) => {
+      // Add a bit of buffer to the minimum runway length when converting to meters. Otherwise, floating point error
+      // might cause the nearest search to exclude runways that shouldn't be excluded.
       const minLengthMeters = UnitType.FOOT.convertTo(runwayLength - 0.1, UnitType.METER);
 
+      // Allow no runways if the minimum runway length is not more than zero and "all" runway surface categories are
+      // allowed.
+      const allowNoRunways = runwayLength <= 0 && runwaySurfaceCategories === ~0;
+
+      // If we allow no runways *and* are including heliports, then allow heliports. Otherwise, do not allow heliports.
+      if (allowNoRunways && includeHeliports) {
+        this.context.airports.innerSubscription.setFilter(false, ~0);
+      } else {
+        this.context.airports.innerSubscription.setFilter(false, ~0 ^ BitFlags.createFlag(AirportClass.HeliportOnly));
+      }
+
       this.context.airports.innerSubscription.setExtendedFilters(~0, ~0, ~0, minLengthMeters);
-      this.context.airports.innerSubscription.setFilterCb(facility => {
-        for (let i = 0; i < facility.runways.length; i++) {
-          const runway = facility.runways[i];
-          if (BitFlags.isAny(RunwayUtils.getSurfaceCategory(runway), runwaySurfaceCategories) && runway.length >= minLengthMeters) {
+
+      if (allowNoRunways && includeHeliports) {
+        this.context.airports.innerSubscription.setFilterCb(undefined);
+      } else {
+        this.context.airports.innerSubscription.setFilterCb(facility => {
+          if (!includeHeliports && facility.airportClass === AirportClass.HeliportOnly) {
+            return false;
+          } else if (allowNoRunways) {
             return true;
           }
-        }
 
-        return false;
-      });
+          for (let i = 0; i < facility.runways.length; i++) {
+            const runway = facility.runways[i];
+            if (BitFlags.isAny(RunwayUtils.getSurfaceCategory(runway), runwaySurfaceCategories) && runway.length >= minLengthMeters) {
+              return true;
+            }
+          }
+
+          return false;
+        });
+      }
     }, true);
 
     this.context.intersections.innerSubscription.setFilter(BitFlags.union(

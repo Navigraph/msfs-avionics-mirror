@@ -9,6 +9,9 @@ export interface UnsLNavConfig {
 
   /** The lerp lookup table configured for the bank angle limits, if applicable */
   bankAngleLimits?: LerpLookupTable,
+
+  /** Whether to publish the lnav data to simvars for external guidance */
+  publishLnavGuidance: boolean,
 }
 
 /**
@@ -17,6 +20,7 @@ export interface UnsLNavConfig {
 export class LNAvConfigBuilder extends ConfigBuilder<UnsLNavConfig> {
   private static readonly LNAV_INDEX_ATTR_NAME = 'index';
   private static readonly BANK_ANGLE_LIMITS_TAG_NAME = 'BankAngleLimits';
+  private static readonly PUBLISH_GUIDANCE_TAG_NAME = 'PublishGuidance';
 
   protected readonly CONFIG_TAG_NAME = 'LNav';
 
@@ -35,6 +39,12 @@ export class LNAvConfigBuilder extends ConfigBuilder<UnsLNavConfig> {
         ),
         undefined,
       ),
+      publishLnavGuidance: ConfigParser.optional(() => ConfigParser.getTextContent(
+        ConfigParser.getChildElement(
+          this.configElement,
+          LNAvConfigBuilder.PUBLISH_GUIDANCE_TAG_NAME,
+        ),
+      ).toLowerCase() === 'true', false)
     };
   }
 
@@ -43,6 +53,7 @@ export class LNAvConfigBuilder extends ConfigBuilder<UnsLNavConfig> {
     return {
       index: 0,
       bankAngleLimits: undefined,
+      publishLnavGuidance: false
     };
   }
 }

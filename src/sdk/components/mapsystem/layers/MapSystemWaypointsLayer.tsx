@@ -94,7 +94,7 @@ export class MapSystemWaypointsLayer extends MapLayer<MapSystemWaypointsLayerPro
     [FacilitySearchType.User]: Number.POSITIVE_INFINITY
   };
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     super.onAttached();
 
@@ -102,21 +102,31 @@ export class MapSystemWaypointsLayer extends MapLayer<MapSystemWaypointsLayerPro
     this.initEventHandlers();
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.waypointsLayer.instance.onWake();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.waypointsLayer.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     super.onMapProjectionChanged(mapProjection, changeFlags);
 
     this.waypointsLayer.instance.onMapProjectionChanged(mapProjection, changeFlags);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     if (this.isVisible()) {
       this.waypointsLayer.instance.onUpdated(time, elapsed);
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   private initEventHandlers(): void {
     this.displayModule.numAirports.sub(num => this.searchItemLimits[FacilitySearchType.Airport] = num, true);
     this.displayModule.numIntersections.sub(num => this.searchItemLimits[FacilitySearchType.Intersection] = num, true);
@@ -199,7 +209,7 @@ export class MapSystemWaypointsLayer extends MapLayer<MapSystemWaypointsLayerPro
     });
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public setVisible(val: boolean): void {
     super.setVisible(val);
     this.waypointsLayer.instance.setVisible(val);
@@ -227,7 +237,7 @@ export class MapSystemWaypointsLayer extends MapLayer<MapSystemWaypointsLayerPro
     return false;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
       <MapNearestWaypointsLayer<MapSystemWaypointsRenderer>

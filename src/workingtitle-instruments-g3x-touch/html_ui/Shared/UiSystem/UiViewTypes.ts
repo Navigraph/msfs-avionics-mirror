@@ -30,7 +30,7 @@ export type UiPopupType = 'normal' | 'fade' | 'positioned' | 'slideout-top-full'
 /**
  * Types of occlusion applied to UI views.
  */
-export type UiViewOcclusionType = 'darken' | 'hide' | 'none';
+export type UiViewOcclusionType = 'darken' | 'hide' | 'transparent' | 'none';
 
 /**
  * UI view stack layers.

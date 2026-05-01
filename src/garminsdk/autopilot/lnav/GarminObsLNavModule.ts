@@ -184,6 +184,8 @@ export class GarminObsLNavModule implements LNavOverrideModule {
       return;
     }
 
+    eventBusTopicRecord!['lnav_is_vector_sequencing_locked'].publish(lnavState.isVectorSequencingLocked);
+
     eventBusTopicRecord!['lnav_tracked_leg_index'].publish(this.legIndex);
 
     this.calculateTracking(aircraftState);
@@ -196,13 +198,18 @@ export class GarminObsLNavModule implements LNavOverrideModule {
 
     const trackingStatePublisher = eventBusTopicRecord!['lnav_tracking_state'];
     const trackingState = trackingStatePublisher.value;
-    if (trackingState.isTracking !== isTracking || trackingState.globalLegIndex !== this.legIndex) {
+    if (
+      trackingState.isTracking !== isTracking
+      || trackingState.globalLegIndex !== this.legIndex
+      || trackingState.isVectorSequencingLocked !== lnavState.isVectorSequencingLocked
+    ) {
       trackingStatePublisher.publish({
         isTracking: isTracking,
         globalLegIndex: this.legIndex,
         transitionMode: LNavTransitionMode.None,
         vectorIndex: 0,
-        isSuspended: true
+        isSuspended: true,
+        isVectorSequencingLocked: lnavState.isVectorSequencingLocked
       });
     }
 

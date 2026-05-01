@@ -114,6 +114,9 @@ export interface FlightPathCalculatorOptions {
 
   /** The mode to use to obtain airplane wind data. */
   airplaneWindMode: FlightPathAirplaneWindMode;
+
+  /** Whether to disable calculations that reference the present position of the airplane. */
+  disableCalcFromPpos: boolean;
 }
 
 /**
@@ -139,7 +142,7 @@ export interface FlightPathCalculatorStaticOptions {
 /**
  * Options with which to initialize a {@link FlightPathCalculator}.
  */
-export type FlightPathCalculatorInitOptions = FlightPathCalculatorOptions & {
+export type FlightPathCalculatorInitOptions = {
   /** The ID of the flight path calculator. Defaults to the empty string (`''`). */
   id?: string;
 
@@ -151,6 +154,52 @@ export type FlightPathCalculatorInitOptions = FlightPathCalculatorOptions & {
    * broadcast its state to replica calculators nor try to sync its state with primary calculators. Defaults to `none`.
    */
   initSyncRole?: 'none' | 'primary' | 'replica';
+
+  /** The default climb rate, in feet per minute, if the plane is not yet at flying speed. */
+  defaultClimbRate: number;
+
+  /**
+   * The default airplane speed, in knots. This speed is used if the airplane speed mode is `Default` or if the
+   * airplane speed calculated through other means is slower than this speed. It is also used as the airplane's true
+   * airspeed if the true airspeed obtained through other means is slower than this speed.
+   */
+  defaultSpeed: number;
+
+  /**
+   * The bank angle, in degrees, with which to calculate general turns, or breakpoints defining a linearly-interpolated
+   * lookup table for bank angle versus airplane speed, in knots.
+   */
+  bankAngle: number | FlightPathBankAngleBreakpoints;
+
+  /**
+   * The bank angle, in degrees, with which to calculate turns in holds, or breakpoints defining a
+   * linearly-interpolated lookup table for bank angle versus airplane speed, in knots. If `null`, the general turn
+   * bank angle will be used for holds. Defaults to `null`.
+   */
+  holdBankAngle?: number | FlightPathBankAngleBreakpoints | null;
+
+  /**
+   * The bank angle, in degrees, with which to calculate turns in course reversals (incl. procedure turns), or
+   * breakpoints defining a linearly-interpolated lookup table for bank angle versus airplane speed, in knots. If
+   * `null`, the general turn bank angle will be used for course reversals. Defaults to `null`.
+   */
+  courseReversalBankAngle?: number | FlightPathBankAngleBreakpoints | null;
+
+  /**
+   * The bank angle, in degrees, with which to calculate turn anticipation, or breakpoints defining a
+   * linearly-interpolated lookup table for bank angle versus airplane speed, in knots. If `null`, the general turn
+   * bank angle will be used for turn anticipation. Defaults to `null`.
+   */
+  turnAnticipationBankAngle?: number | FlightPathBankAngleBreakpoints | null;
+
+  /** The maximum bank angle, in degrees, to use to calculate all turns. */
+  maxBankAngle: number;
+
+  /** The mode to use to calculate airplane speed. */
+  airplaneSpeedMode: FlightPathAirplaneSpeedMode;
+
+  /** The mode to use to obtain airplane wind data. */
+  airplaneWindMode: FlightPathAirplaneWindMode;
 
   /**
    * Whether to calculate flight path vectors to span discontinuities in the flight path. If `true`, then the
@@ -266,6 +315,7 @@ export class FlightPathCalculator {
   private readonly legCalcOptions: FlightPathLegCalculationOptions = {
     calculateDiscontinuityVectors: false,
     useGreatCirclePathForDiscontinuity: false,
+    disableCalculateFromPpos: false,
   };
 
   private readonly calculateQueue: (() => void)[] = [];
@@ -286,6 +336,11 @@ export class FlightPathCalculator {
 
     this.dataProvider = options.dataProvider ?? new DefaultFlightPathCalculatorDataProvider();
 
+    this.staticOptions = {
+      calculateDiscontinuityVectors: options.calculateDiscontinuityVectors ?? false,
+      useGreatCirclePathForDiscontinuity: options.useGreatCirclePathForDiscontinuity ?? false,
+    };
+
     this.options = {
       defaultClimbRate: 0,
       defaultSpeed: 0,
@@ -295,9 +350,9 @@ export class FlightPathCalculator {
       turnAnticipationBankAngle: null,
       maxBankAngle: 0,
       airplaneSpeedMode: FlightPathAirplaneSpeedMode.Default,
-      airplaneWindMode: FlightPathAirplaneWindMode.None
+      airplaneWindMode: FlightPathAirplaneWindMode.None,
+      disableCalcFromPpos: false,
     };
-    this.setOptions(options);
 
     this.state = new FlightPathStateClass(
       this.dataProvider,
@@ -307,12 +362,10 @@ export class FlightPathCalculator {
       this.holdBankAngleTable,
       this.courseReversalBankAngleTable,
       this.turnAnticipationBankAngleTable,
-      options.anticipatedDataCalculator);
+      options.anticipatedDataCalculator
+    );
 
-    this.staticOptions = {
-      calculateDiscontinuityVectors: options.calculateDiscontinuityVectors ?? false,
-      useGreatCirclePathForDiscontinuity: options.useGreatCirclePathForDiscontinuity ?? false,
-    };
+    this.setOptions(options);
 
     this.updateLegCalculatorOptions();
 
@@ -341,6 +394,7 @@ export class FlightPathCalculator {
         if (data.uid === requestUid) {
           this.setStaticOptions(data.staticOptions);
           this.setOptions(data.options);
+          this.updateLegCalculatorOptions();
         }
       });
       publisher.pub(`flightpath_sync_options_request${eventBusTopicSuffix}`, requestUid, true, false);
@@ -348,10 +402,14 @@ export class FlightPathCalculator {
       sub.on(`flightpath_sync_init${eventBusTopicSuffix}`).handle(data => {
         this.setStaticOptions(data.staticOptions);
         this.setOptions(data.options);
+        this.updateLegCalculatorOptions();
       });
     }
 
-    sub.on(`flightpath_set_options${eventBusTopicSuffix}`).handle(this.setOptions.bind(this));
+    sub.on(`flightpath_set_options${eventBusTopicSuffix}`).handle(options => {
+      this.setOptions(options);
+      this.updateLegCalculatorOptions();
+    });
   }
 
   /**
@@ -361,8 +419,6 @@ export class FlightPathCalculator {
   private setStaticOptions(options: Readonly<FlightPathCalculatorStaticOptions>): void {
     this.staticOptions.calculateDiscontinuityVectors = options.calculateDiscontinuityVectors;
     this.staticOptions.useGreatCirclePathForDiscontinuity = options.useGreatCirclePathForDiscontinuity;
-
-    this.updateLegCalculatorOptions();
   }
 
   /**
@@ -393,11 +449,13 @@ export class FlightPathCalculator {
           default:
             (this.options as any)[key] = option;
         }
-        this.state?.setPlaneStateOptions(
+
+        this.state.setPlaneStateOptions(
           this.bankAngleTable,
           this.holdBankAngleTable,
           this.courseReversalBankAngleTable,
-          this.turnAnticipationBankAngleTable);
+          this.turnAnticipationBankAngleTable
+        );
       }
     }
   }
@@ -490,6 +548,8 @@ export class FlightPathCalculator {
   private updateLegCalculatorOptions(): void {
     this.legCalcOptions.calculateDiscontinuityVectors = this.staticOptions.calculateDiscontinuityVectors;
     this.legCalcOptions.useGreatCirclePathForDiscontinuity = this.staticOptions.useGreatCirclePathForDiscontinuity;
+
+    this.legCalcOptions.disableCalculateFromPpos = this.options.disableCalcFromPpos;
   }
 
   /**

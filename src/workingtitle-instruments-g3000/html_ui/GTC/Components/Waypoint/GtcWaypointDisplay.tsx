@@ -1,14 +1,15 @@
 import {
-  DisplayComponent, Facility, FacilityType, FacilityWaypoint, FSComponent,
-  ICAO, MappedSubject, SetSubject, StringUtils, Subject, Subscribable,
-  SubscribableSet, SubscribableUtils, Subscription, VNode, ComponentProps,
+  DisplayComponent, Facility, FacilityType, FacilityWaypoint, FSComponent, ICAO, MappedSubject, SetSubject,
+  StringUtils, Subject, Subscribable, SubscribableUtils, Subscription, VNode, ComponentProps, ClassProp
 } from '@microsoft/msfs-sdk';
 
 import { GtcWaypointIcon } from '../GtcWaypointIcon/GtcWaypointIcon';
 
 import './GtcWaypointDisplay.css';
 
-/** Component props for {@link GtcWaypointDisplay}. */
+/**
+ * Component props for {@link GtcWaypointDisplay}.
+ */
 export interface GtcWaypointDisplayProps extends ComponentProps {
   /** The waypoint to display. */
   waypoint: FacilityWaypoint | null | Subscribable<FacilityWaypoint | null>;
@@ -20,7 +21,7 @@ export interface GtcWaypointDisplayProps extends ComponentProps {
   nullName?: string | Subscribable<string>;
 
   /** The CSS class(es) to apply to the component's root element. */
-  class?: string | SubscribableSet<string>;
+  class?: ClassProp;
 }
 
 /** Displays the ident, name, and icon for a waypoint. */
@@ -93,23 +94,12 @@ export class GtcWaypointDisplay extends DisplayComponent<GtcWaypointDisplayProps
 
   /** @inheritdoc */
   public render(): VNode {
-    let cssClass: string | SetSubject<string>;
+    const cssClass = SetSubject.create<string>();
+    cssClass.add('gtc-wpt-display');
 
-    if (typeof this.props.class === 'object') {
-      cssClass = SetSubject.create();
-      cssClass.add('gtc-wpt-display');
-
-      const sub = FSComponent.bindCssClassSet(cssClass, this.props.class, GtcWaypointDisplay.RESERVED_CSS_CLASSES);
-      if (Array.isArray(sub)) {
-        this.subscriptions.push(...sub);
-      } else {
-        this.subscriptions.push(sub);
-      }
-    } else {
-      cssClass = 'gtc-wpt-display';
-      if (this.props.class !== undefined && this.props.class.length > 0) {
-        cssClass += ' ' + FSComponent.parseCssClassesFromString(this.props.class, classToAdd => !GtcWaypointDisplay.RESERVED_CSS_CLASSES.includes(classToAdd)).join(' ');
-      }
+    const classSub = FSComponent.bindSetToCssClasses(cssClass, GtcWaypointDisplay.RESERVED_CSS_CLASSES, this.props.class);
+    if (classSub) {
+      this.subscriptions.push(classSub);
     }
 
     return (

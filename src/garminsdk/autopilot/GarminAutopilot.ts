@@ -647,11 +647,7 @@ export class GarminAutopilot extends Autopilot<GarminAPConfigInterface> {
 
     // Immediately deactivate the armed lateral mode, if there is one. We do this to guarantee that during a
     // reversion, the armed mode ends up as either the default lateral mode (see below) or NONE.
-    const lateralArmedMode = this.apValues.lateralArmed.get();
-    if (lateralArmedMode !== APLateralModes.NONE) {
-      this.lateralModes.get(lateralArmedMode)?.deactivate();
-      this.apValues.lateralArmed.set(APLateralModes.NONE);
-    }
+    this.deactivateLateralArmed();
 
     // Attempt to arm the default lateral mode. If the default lateral mode is NONE, then we can skip arming because
     // we've already activated the NONE director above.
@@ -675,11 +671,7 @@ export class GarminAutopilot extends Autopilot<GarminAPConfigInterface> {
 
     // Immediately deactivate the armed vertical mode, if there is one. We do this to guarantee that during a
     // reversion, the armed mode ends up as either the default vertical mode (see below) or NONE.
-    const verticalArmedMode = this.apValues.verticalArmed.get();
-    if (verticalArmedMode !== APLateralModes.NONE) {
-      this.verticalModes.get(verticalArmedMode)?.deactivate();
-      this.apValues.verticalArmed.set(APLateralModes.NONE);
-    }
+    this.deactivateVerticalArmed();
 
     // Attempt to arm the default vertical mode. If the default vertical mode is NONE, then we can skip arming
     // because we've already activated the NONE director above.

@@ -107,6 +107,20 @@ export type APGSDirectorVsTargetFunc = (
  */
 export type APGSDirectorOptions = {
   /**
+   * The maximum absolute pitch up angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `3`.
+   */
+  maxPitchUpAngle?: number | null | (() => number | null);
+
+  /**
+   * The maximum absolute pitch down angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `8`.
+   */
+  maxPitchDownAngle?: number | null | (() => number | null);
+
+  /**
    * The index of the nav radio to force the director to use. If not defined, the director will use the nav radio
    * specified by the active autopilot navigation source.
    */
@@ -162,9 +176,9 @@ export type APGSDirectorOptions = {
 /**
  * An autopilot director that generates flight director pitch commands to track a glideslope signal from a radio
  * navigation aid.
- * 
+ *
  * The director requires valid pitch data to arm or activate.
- * 
+ *
  * Requires that the navigation radio topics defined in {@link NavComEvents} be published to the event bus in order to
  * function properly.
  */
@@ -182,7 +196,10 @@ export class APGSDirector implements PlaneDirector {
   public onDeactivate?: () => void;
 
   /** @inheritDoc */
-  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean) => void;
+  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number, maxNoseDownPitch?: number, maxNoseUpPitch?: number) => void;
+
+  private readonly maxPitchUpAngleFunc: () => number | undefined;
+  private readonly maxPitchDownAngleFunc: () => number | undefined;
 
   private navSource: Readonly<NavSourceId> = {
     index: 0,
@@ -236,7 +253,17 @@ export class APGSDirector implements PlaneDirector {
    * @param options Options with which to configure the director.
    */
   public constructor(private readonly bus: EventBus, private readonly apValues: APValues, options?: Readonly<APGSDirectorOptions>) {
-    this.state = DirectorState.Inactive;
+    let maxPitchUpOpt = options?.maxPitchUpAngle;
+    if (maxPitchUpOpt === undefined) {
+      maxPitchUpOpt = 3;
+    }
+    this.maxPitchUpAngleFunc = this.createMaxPitchAngleFunc(maxPitchUpOpt);
+
+    let maxPitchDownOpt = options?.maxPitchDownAngle;
+    if (maxPitchDownOpt === undefined) {
+      maxPitchDownOpt = 8;
+    }
+    this.maxPitchDownAngleFunc = this.createMaxPitchAngleFunc(maxPitchDownOpt);
 
     this.forceNavSource = options?.forceNavSource;
 
@@ -251,7 +278,25 @@ export class APGSDirector implements PlaneDirector {
     this.minVs = UnitType.FPM.convertTo(options?.minVs ?? -3000, vsUnit);
     this.maxVs = UnitType.FPM.convertTo(options?.maxVs ?? 0, vsUnit);
 
+    this.state = DirectorState.Inactive;
+
     this.initCdiSourceSubs();
+  }
+
+  /**
+   * Creates a function that returns the maximum pitch angle limit defined by an option.
+   * @param option The option that defines the maximum pitch angle limit.
+   * @returns A function that returns the maximum pitch angle limit defined by the specified option.
+   */
+  private createMaxPitchAngleFunc(option: number | null | (() => number | null) | undefined): () => number | undefined {
+    switch (typeof option) {
+      case 'number':
+        return () => option;
+      case 'function':
+        return () => option() ?? undefined;
+      default:
+        return () => undefined;
+    }
   }
 
   /**
@@ -453,9 +498,8 @@ export class APGSDirector implements PlaneDirector {
 
       const tas = UnitType.KNOT.convertTo(this.tas.getActualValue(), unit);
       const pitchForVerticalSpeed = Math.asin(MathUtils.clamp(targetVs / tas, -1, 1)) * Avionics.Utils.RAD2DEG;
-      const targetPitch = MathUtils.clamp(pitchForVerticalSpeed, -8, 3);
 
-      this.drivePitch && this.drivePitch(-targetPitch, true, true);
+      this.drivePitch && this.drivePitch(-pitchForVerticalSpeed, true, true, undefined, this.maxPitchDownAngleFunc(), this.maxPitchUpAngleFunc());
     }
   }
 

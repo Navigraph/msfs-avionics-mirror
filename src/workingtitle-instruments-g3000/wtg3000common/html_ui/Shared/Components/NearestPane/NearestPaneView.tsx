@@ -1,12 +1,12 @@
 import {
   CompiledMapSystem, EventBus, FacilityLoader, FlightPlanner, ICAO, MapIndexedRangeModule, MapSystemBuilder,
-  Subscription, Vec2Math, Vec2Subject, VecNMath, VNode
+  Vec2Math, Vec2Subject, VecNMath, VNode
 } from '@microsoft/msfs-sdk';
 
 import {
   GarminFacilityWaypointCache, GarminMapKeys, MapPointerController, MapPointerInfoLayerSize, MapPointerModule,
-  MapRangeController, MapWaypointHighlightModule, NearestMapRTRController, NextGenGarminMapUtils, TrafficSystem,
-  TrafficUserSettings, UnitsUserSettings, WindDataProvider
+  MapRangeController, MapWaypointHighlightModule, MapWaypointHoverModule, NearestMapRTRController,
+  NextGenGarminMapUtils, TrafficSystem, TrafficUserSettings, UnitsUserSettings, WindDataProvider
 } from '@microsoft/msfs-garminsdk';
 
 import { G3000FlightPlannerId } from '../../CommonTypes';
@@ -18,6 +18,7 @@ import { BingUtils } from '../Bing/BingUtils';
 import { ControllableDisplayPaneIndex, DisplayPaneIndex, DisplayPaneSizeMode } from '../DisplayPanes/DisplayPaneTypes';
 import { DisplayPaneView, DisplayPaneViewProps } from '../DisplayPanes/DisplayPaneView';
 import { DisplayPaneViewEvent } from '../DisplayPanes/DisplayPaneViewEvents';
+import { DisplayPaneViewMapDataPublisher } from '../DisplayPanes/DisplayPaneViewMapDataPublisher';
 import { G3000MapBuilder } from '../Map/G3000MapBuilder';
 import { MapConfig } from '../Map/MapConfig';
 import { NearestPaneSelectionData, NearestPaneSelectionType, NearestPaneViewEventTypes } from './NearestPaneViewEvents';
@@ -133,6 +134,8 @@ export class NearestPaneView extends DisplayPaneView<NearestPaneViewProps, Displ
         [GarminMapKeys.Pointer]: MapPointerModule;
         /** The waypoint highlight module. */
         [GarminMapKeys.WaypointHighlight]: MapWaypointHighlightModule;
+        /** The waypoint hover module. */
+        [GarminMapKeys.WaypointHover]: MapWaypointHoverModule;
       },
       any,
       {
@@ -154,8 +157,6 @@ export class NearestPaneView extends DisplayPaneView<NearestPaneViewProps, Displ
   private readonly mapRangeController = this.compiledMap.context.getController(GarminMapKeys.Range);
   private readonly mapNrstRTRController = this.compiledMap.context.getController(GarminMapKeys.Nearest);
 
-  private readonly mapPointerActiveSetting = DisplayPanesUserSettings.getDisplayPaneManager(this.props.bus, this.props.index).getSetting('displayPaneMapPointerActive');
-
   private readonly pfdControllerJoystickEventHandler = this.props.index === DisplayPaneIndex.LeftPfd || this.props.index === DisplayPaneIndex.RightPfd
     ? new PfdControllerJoystickEventMapHandler({
       onPointerToggle: this.onJoystickPointerToggle.bind(this),
@@ -163,6 +164,13 @@ export class NearestPaneView extends DisplayPaneView<NearestPaneViewProps, Displ
       onRangeChange: this.onJoystickRangeChange.bind(this)
     })
     : undefined;
+
+  private readonly mapDataPublisher = new DisplayPaneViewMapDataPublisher(
+    this.props.index,
+    this.props.bus,
+    DisplayPanesUserSettings.getDisplayPaneManager(this.props.bus, this.props.index),
+    this.compiledMap
+  );
 
   // Map projection parameters are not fully initialized until after the first time the map is updated, so we flag the
   // map as not ready until the first update is finished.
@@ -176,20 +184,17 @@ export class NearestPaneView extends DisplayPaneView<NearestPaneViewProps, Displ
 
   private setWaypointOpId = 0;
 
-  private pointerActivePipe?: Subscription;
-
   /** @inheritdoc */
   public override onAfterRender(): void {
     this.compiledMap.ref.instance.sleep();
-
-    this.pointerActivePipe = this.mapPointerModule.isActive.pipe(this.mapPointerActiveSetting, true);
   }
 
   /** @inheritdoc */
   public override onResume(size: DisplayPaneSizeMode, width: number, height: number): void {
     this.size.set(width, height);
     this.compiledMap.ref.instance.wake();
-    this.pointerActivePipe?.resume(true);
+
+    this.mapDataPublisher.onResume();
   }
 
   /** @inheritdoc */
@@ -197,8 +202,8 @@ export class NearestPaneView extends DisplayPaneView<NearestPaneViewProps, Displ
     this.mapPointerController.setPointerActive(false);
 
     this.compiledMap.ref.instance.sleep();
-    this.pointerActivePipe?.pause();
-    this.mapPointerActiveSetting.value = false;
+
+    this.mapDataPublisher.onPause();
   }
 
   /** @inheritdoc */
@@ -354,7 +359,7 @@ export class NearestPaneView extends DisplayPaneView<NearestPaneViewProps, Displ
 
     this.compiledMap.ref.instance.destroy();
 
-    this.pointerActivePipe?.destroy();
+    this.mapDataPublisher.destroy();
 
     super.destroy();
   }

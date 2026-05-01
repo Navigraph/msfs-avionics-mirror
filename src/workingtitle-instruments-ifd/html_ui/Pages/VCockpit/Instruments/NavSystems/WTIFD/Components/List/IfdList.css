@@ -1,0 +1,60 @@
+.ifd-list {
+  position: relative;
+  overflow: hidden;
+
+  --ifd-list-scroll-bar-width: 7px;
+  --ifd-list-scroll-bar-margin: 6px;
+}
+
+.ifd-list .touch-list {
+  position: relative;
+  width: calc(100% - var(--ifd-list-scroll-bar-width) - var(--ifd-list-scroll-bar-margin));
+}
+
+/* Scroll Bar */
+.ifd-list .ifd-list-scroll-bar-container {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--ifd-list-scroll-bar-width);
+  height: calc(100% - 2px);
+  overflow: hidden;
+  background-color: var(--wtdyne-color-gray-4);
+  border-color: var(--wtdyne-color-gray-3);
+  border-width: 1px;
+  border-style: solid;
+}
+
+.ifd-list .ifd-list-scroll-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 20%;
+  background-color: var(--wtdyne-color-cyan);
+  opacity: 0;
+  transition: opacity 1s;
+}
+
+.ifd-list-item-wrapper {
+  position: relative;
+}
+
+.ifd-list.ifd-list-keep-space-before-first-item .touch-list-y .items-container {
+  padding-top: var(--touch-list-item-margin);
+}
+
+.ifd-list.ifd-list-keep-space-after-last-item .touch-list-y .items-container {
+  padding-bottom: var(--touch-list-item-margin);
+}
+
+.ifd-list .items-container {
+  position: absolute;
+  top: 0;
+}
+
+.ifd-list .space-before-list-wrapper {
+  position: relative;
+  top: 0;
+  height: var(--touch-list-item-margin);
+}

@@ -1,6 +1,6 @@
 import { LatLonInterface } from '../../geo';
 import { BitFlags } from '../../math';
-import { SubEvent } from '../../sub';
+import { ReadonlySubEvent, SubEvent } from '../../sub/SubEvent';
 import { MapCullableTextLabel, MapCullableTextLabelManager } from './MapCullableTextLabel';
 import { MapProjection } from './MapProjection';
 import { MapWaypoint } from './MapWaypoint';
@@ -13,10 +13,22 @@ export interface MapWaypointRendererIconFactory<W extends MapWaypoint> {
   /**
    * Gets an icon for a waypoint.
    * @param role The role that was selected for the waypoint for rendering.
-   * @param waypoint A waypoint.
-   * @returns a waypoint icon.
+   * @param waypoint The waypoint for which to get an icon.
+   * @returns A waypoint icon.
    */
   getIcon<T extends W>(role: number, waypoint: T): MapWaypointIcon<T> | null;
+
+  /**
+   * Cleans up an icon for a waypoint. This method is called when an icon that was previously selected to be rendered
+   * is no longer needed for rendering.
+   * 
+   * Note that even though the icon to clean up is no longer being rendered, external references to the icon may still
+   * exist.
+   * @param role The role under which the icon to clean up was rendered.
+   * @param waypoint The waypoint for the icon to clean up.
+   * @param icon The icon to clean up.
+   */
+  cleanupIcon?<T extends W>(role: number, waypoint: T, icon: MapWaypointIcon<T>): void;
 }
 
 /**
@@ -26,10 +38,22 @@ export interface MapWaypointRendererLabelFactory<W extends MapWaypoint> {
   /**
    * Gets a label for a waypoint.
    * @param role The role that was selected for the waypoint for rendering.
-   * @param waypoint A waypoint.
-   * @returns a waypoint label.
+   * @param waypoint The waypoint for which to get a label.
+   * @returns A waypoint label.
    */
   getLabel<T extends W>(role: number, waypoint: T): MapCullableTextLabel | null;
+
+  /**
+   * Cleans up a label for a waypoint. This method is called when a label that was previously selected to be rendered
+   * is no longer needed for rendering.
+   * 
+   * Note that even though the label to clean up is no longer being rendered, external references to the label may
+   * still exist.
+   * @param role The role under which the label to clean up was rendered.
+   * @param waypoint The waypoint for the label to clean up.
+   * @param icon The label to clean up.
+   */
+  cleanupLabel?<T extends W>(role: number, waypoint: T, label: MapCullableTextLabel): void;
 }
 
 /**
@@ -61,6 +85,94 @@ export type MapWaypointRenderRoleSelector<W extends MapWaypoint> = (
  * Gets the waypoint type supported by a waypoint renderer.
  */
 export type MapWaypointRendererType<Renderer> = Renderer extends MapWaypointRenderer<infer W> ? W : never;
+
+/**
+ * A description of a rendered waypoint icon.
+ */
+export type MapWaypointRenderedIcon<W extends MapWaypoint> = {
+  /** The waypoint for the icon. */
+  waypoint: W;
+
+  /** The render role under which the icon was rendered. */
+  renderedRole: number;
+
+  /** The icon. */
+  icon: MapWaypointIcon<W>;
+};
+
+/**
+ * A description of a rendered waypoint label.
+ */
+export type MapWaypointRenderedLabel<W extends MapWaypoint> = {
+  /** The waypoint for the label. */
+  waypoint: W;
+
+  /** The render role under which the label was rendered. */
+  renderedRole: number;
+
+  /** The label. */
+  label: MapCullableTextLabel;
+};
+
+/**
+ * Types of waypoint render events used by {@link MapWaypointRenderer}.
+ */
+export enum MapWaypointRenderEventType {
+  /** A waypoint icon or label was rendered after it had not been rendered in the preceding render cycle. */
+  Added,
+
+  /**
+   * An waypoint icon or label was rendered under a different role or with a different icon/label compared to the
+   * role or icon/label used to render the waypoint in the preceding render cycle.
+   */
+  Modified,
+
+  /** An waypoint icon or label was not rendered after it had been rendered in the preceding render cycle. */
+  Removed,
+}
+
+/**
+ * An event describing a change in the rendering of a map waypoint icon.
+ */
+export type MapWaypointIconRenderEvent<W extends MapWaypoint> = {
+  /** The type of this event. */
+  readonly type: MapWaypointRenderEventType;
+
+  /** The waypoint associated with the rendered icon. */
+  readonly waypoint: W;
+
+  /**
+   * The role under which the icon was rendered. If the icon was removed from rendering, then this is the role under
+   * which the icon was last rendered.
+   */
+  readonly renderedRole: number;
+
+  /** The icon that was rendered. If the icon was removed from rendering, then this is the last icon that was rendered. */
+  readonly icon: MapWaypointIcon<W>;
+}
+
+/**
+ * An event describing a change in the rendering of a map waypoint label.
+ */
+export type MapWaypointLabelRenderEvent<W extends MapWaypoint> = {
+  /** The type of this event. */
+  readonly type: MapWaypointRenderEventType;
+
+  /** The waypoint associated with the rendered icon. */
+  readonly waypoint: W;
+
+  /**
+   * The role under which the label was rendered. If the label was removed from rendering, then this is the role under
+   * which the label was last rendered.
+   */
+  readonly renderedRole: number;
+
+  /**
+   * The label that was rendered. If the label was removed from rendering, then this is the last label that was
+   * rendered.
+   */
+  readonly label: MapCullableTextLabel;
+};
 
 /**
  * A renderer that draws waypoints to a map. For the renderer to draw a waypoint, the waypoint must first be registered
@@ -116,6 +228,24 @@ export class MapWaypointRenderer<W extends MapWaypoint = MapWaypoint> {
   protected readonly registered = new Map<string, MapWaypointRendererEntry<W>>();
   protected readonly toCleanUp = new Set<MapWaypointRendererEntry<W>>();
 
+  protected readonly _renderedIcons = new Map<string, MapWaypointRenderedIcon<W>>();
+
+  protected readonly scratchIconRenderEvent = {
+    type: undefined as MapWaypointRenderEventType | undefined,
+    waypoint: undefined as W | undefined,
+    renderedRole: 0,
+    icon: undefined as MapWaypointIcon<W> | undefined,
+  } satisfies Partial<MapWaypointIconRenderEvent<W>>;
+
+  protected readonly _renderedLabels = new Map<string, MapWaypointRenderedLabel<W>>();
+
+  protected readonly scratchLabelRenderEvent = {
+    type: undefined as MapWaypointRenderEventType | undefined,
+    waypoint: undefined as W | undefined,
+    renderedRole: 0,
+    label: undefined as MapCullableTextLabel | undefined,
+  } satisfies Partial<MapWaypointLabelRenderEvent<W>>;
+
   /**
    * This renderer's render role definitions. Waypoints assigned to be rendered under a role or combination of roles
    * with no definition will not be rendered.
@@ -127,23 +257,50 @@ export class MapWaypointRenderer<W extends MapWaypoint = MapWaypoint> {
    */
   protected readonly roleDefinitionsArray: MapWaypointRenderRoleDef<W>[] = [];
 
+  /** An event that notifies when a waypoint has been registered with this renderer under at least one render role. */
+  public readonly onWaypointAdded = new SubEvent<MapWaypointRenderer<W>, W>();
+
+  /** An event that notifies when a waypoint has been deregistered with this renderer under all render roles. */
+  public readonly onWaypointRemoved = new SubEvent<MapWaypointRenderer<W>, W>();
+
+  protected readonly _onIconRenderEvent = new SubEvent<MapWaypointRenderer<W>, MapWaypointIconRenderEvent<W>>();
   /**
-   * An event to subscribe to, fired when waypoints are added to the renderer.
+   * An event that notifies when the rendering of an icon for a waypoint changes. Changes include when an icon is newly
+   * rendered for a waypoint, when the rendered icon changes for a waypoint, and when the icon for a waypoint is no
+   * longer rendered.
+   * 
+   * The definition of _rendered_ used by this event is when an icon is drawn to its target canvas context. An icon
+   * that has been drawn but is not visible to the user due to downstream effects (for example, if the canvas is
+   * hidden or the drawn label is occluded by a clip path) is still considered to be rendered.
+   * 
+   * The data object passed to event handlers is only guaranteed to be valid at the moment the handler is called. If a
+   * handler needs to retain the data past this moment, then it is recommended that a copy of the data be made.
    */
-  public readonly onWaypointAdded = new SubEvent<any, W>();
+  public readonly onIconRenderEvent = this._onIconRenderEvent as ReadonlySubEvent<MapWaypointRenderer<W>, MapWaypointIconRenderEvent<W>>;
+
+  protected readonly _onLabelRenderEvent = new SubEvent<MapWaypointRenderer<W>, MapWaypointLabelRenderEvent<W>>();
+  /**
+   * An event that notifies when the rendering of a label for a waypoint changes. Changes include when a label is newly
+   * rendered for a waypoint, when the rendered label changes for a waypoint, and when the label for a waypoint is no
+   * longer rendered.
+   * 
+   * The definition of _rendered_ used by this event is when a label is registered with the text label manager. A label
+   * that is registered with the text label manager but is not visible to the user due to downstream effects (for
+   * example, if the manager has culled the label or has not been updated to draw the label) is still considered to be
+   * rendered.
+   * 
+   * The data object passed to event handlers is only guaranteed to be valid at the moment the handler is called. If a
+   * handler needs to retain the data past this moment, then it is recommended that a copy of the data be made.
+   */
+  public readonly onLabelRenderEvent = this._onLabelRenderEvent as ReadonlySubEvent<MapWaypointRenderer<W>, MapWaypointLabelRenderEvent<W>>;
 
   /**
-   * An event to subscribe to, fired when waypoints are removed from the render.
-   */
-  public readonly onWaypointRemoved = new SubEvent<any, W>();
-
-  /**
-   * Constructor.
-   * @param textManager The text manager to use for waypoint labels.
+   * Creates a new instance of MapWaypointRenderer.
+   * @param textManager The text label manager to use for waypoint labels.
    * @param selectRoleToRender A function which selects roles under which to render waypoints. Defaults to
    * {@link MapWaypointRenderer.DEFAULT_RENDER_ROLE_SELECTOR}.
    */
-  constructor(
+  public constructor(
     protected readonly textManager: MapCullableTextLabelManager,
     protected readonly selectRoleToRender: MapWaypointRenderRoleSelector<W> = MapWaypointRenderer.DEFAULT_RENDER_ROLE_SELECTOR
   ) {
@@ -372,6 +529,31 @@ export class MapWaypointRenderer<W extends MapWaypoint = MapWaypoint> {
     this.toCleanUp.add(entry);
   }
 
+  /**
+   * Gets an iterable of all currently rendered waypoint icons, in no particular order.
+   * 
+   * The definition of _rendered_ used by this method is when an icon is drawn to its target canvas context. An icon
+   * that has been drawn but is not visible to the user due to downstream effects (for example, if the canvas is
+   * hidden or the drawn label is occluded by a clip path) is still considered to be rendered.
+   * @returns An iterable of all currently rendered waypoint icons, in no particular order.
+   */
+  public renderedIcons(): IterableIterator<Readonly<MapWaypointRenderedIcon<W>>> {
+    return this._renderedIcons.values();
+  }
+
+  /**
+   * Gets an iterable of all currently rendered waypoint labels, in no particular order.
+   * 
+   * The definition of _rendered_ used by this method is when a label is registered with the text label manager. A
+   * label that is registered with the text label manager but is not visible to the user due to downstream effects (for
+   * example, if the manager has culled the label or has not been updated to draw the label) is still considered to be
+   * rendered.
+   * @returns An iterable of all currently rendered waypoint labels, in no particular order.
+   */
+  public renderedLabels(): IterableIterator<Readonly<MapWaypointRenderedLabel<W>>> {
+    return this._renderedLabels.values();
+  }
+
   private readonly entriesToDrawIcon: MapWaypointRendererEntry<W>[] = [];
 
   /**
@@ -379,11 +561,6 @@ export class MapWaypointRenderer<W extends MapWaypoint = MapWaypoint> {
    * @param mapProjection The map projection to use.
    */
   public update(mapProjection: MapProjection): void {
-    this.toCleanUp.forEach(this.cleanUpEntryFunc);
-    this.toCleanUp.clear();
-
-    this.registered.forEach(this.prepareEntryToDrawFunc);
-
     const projectedSize = mapProjection.getProjectedSize();
     const roleDefCount = this.roleDefinitionsArray.length;
     for (let i = 0; i < roleDefCount; i++) {
@@ -392,6 +569,11 @@ export class MapWaypointRenderer<W extends MapWaypoint = MapWaypoint> {
         context.clearRect(0, 0, projectedSize[0], projectedSize[1]);
       }
     }
+
+    this.toCleanUp.forEach(this.cleanUpEntryFunc);
+    this.toCleanUp.clear();
+
+    this.registered.forEach(this.prepareEntryToDrawFunc);
 
     this.entriesToDrawIcon.sort(MapWaypointRenderer.ENTRY_SORT_FUNC);
     const entriesToDrawCount = this.entriesToDrawIcon.length;
@@ -405,12 +587,35 @@ export class MapWaypointRenderer<W extends MapWaypoint = MapWaypoint> {
       if (context) {
         icon.draw(context, mapProjection);
       }
+
+      const prevRenderedIcon = this._renderedIcons.get(entry.waypoint.uid);
+      if (prevRenderedIcon) {
+        if (
+          prevRenderedIcon.renderedRole !== entry.lastRenderedRole
+          || prevRenderedIcon.icon !== icon
+        ) {
+          prevRenderedIcon.renderedRole = entry.lastRenderedRole;
+          prevRenderedIcon.icon = icon;
+
+          this.sendIconRenderEvent(MapWaypointRenderEventType.Modified, entry.waypoint, entry.lastRenderedRole, icon);
+        }
+      } else {
+        this._renderedIcons.set(entry.waypoint.uid, { waypoint: entry.waypoint, renderedRole: entry.lastRenderedRole, icon });
+
+        this.sendIconRenderEvent(MapWaypointRenderEventType.Added, entry.waypoint, entry.lastRenderedRole, icon);
+      }
     }
 
     this.entriesToDrawIcon.length = 0;
+
+    // Clean up the scratch events so that we don't leak references.
+    this.scratchIconRenderEvent.waypoint = undefined;
+    this.scratchIconRenderEvent.icon = undefined;
+    this.scratchLabelRenderEvent.waypoint = undefined;
+    this.scratchLabelRenderEvent.label = undefined;
   }
 
-  private prepareEntryToDrawFunc = this.prepareEntryToDraw.bind(this);
+  private readonly prepareEntryToDrawFunc = this.prepareEntryToDraw.bind(this);
 
   /**
    * Prepares a waypoint entry to be drawn. The entry is updated and if its icon is to be drawn, then the entry is
@@ -419,12 +624,36 @@ export class MapWaypointRenderer<W extends MapWaypoint = MapWaypoint> {
    */
   private prepareEntryToDraw(entry: MapWaypointRendererEntry<W>): void {
     entry.update();
+
     if (entry.icon) {
       this.entriesToDrawIcon.push(entry);
+    } else {
+      this.removeRenderedIcon(entry.waypoint.uid);
+    }
+
+    if (entry.label) {
+      const prevRenderedLabel = this._renderedLabels.get(entry.waypoint.uid);
+      if (prevRenderedLabel) {
+        if (
+          prevRenderedLabel.renderedRole !== entry.lastRenderedRole
+          || prevRenderedLabel.label !== entry.label
+        ) {
+          prevRenderedLabel.renderedRole = entry.lastRenderedRole;
+          prevRenderedLabel.label = entry.label;
+
+          this.sendLabelRenderEvent(MapWaypointRenderEventType.Modified, entry.waypoint, entry.lastRenderedRole, entry.label);
+        }
+      } else {
+        this._renderedLabels.set(entry.waypoint.uid, { waypoint: entry.waypoint, renderedRole: entry.lastRenderedRole, label: entry.label });
+
+        this.sendLabelRenderEvent(MapWaypointRenderEventType.Added, entry.waypoint, entry.lastRenderedRole, entry.label);
+      }
+    } else {
+      this.removeRenderedLabel(entry.waypoint.uid);
     }
   }
 
-  private cleanUpEntryFunc = this.cleanUpEntry.bind(this);
+  private readonly cleanUpEntryFunc = this.cleanUpEntry.bind(this);
 
   /**
    * Cleans up a waypoint entry. This will destroy the entry and render it unusable.
@@ -432,6 +661,69 @@ export class MapWaypointRenderer<W extends MapWaypoint = MapWaypoint> {
    */
   private cleanUpEntry(entry: MapWaypointRendererEntry<W>): void {
     entry.destroy();
+
+    this.removeRenderedIcon(entry.waypoint.uid);
+    this.removeRenderedLabel(entry.waypoint.uid);
+  }
+
+  /**
+   * Removes a rendered icon from this renderer's tracked list of rendered icons and notifies subscribers of the
+   * removal.
+   * @param uid The UID of the waypoint for the icon to remove.
+   */
+  protected removeRenderedIcon(uid: string): void {
+    const renderedIcon = this._renderedIcons.get(uid);
+    if (renderedIcon) {
+      this._renderedIcons.delete(uid);
+      this.sendIconRenderEvent(MapWaypointRenderEventType.Removed, renderedIcon.waypoint, renderedIcon.renderedRole, renderedIcon.icon);
+    }
+  }
+
+  /**
+   * Removes a rendered label from this renderer's tracked list of rendered labels and notifies subscribers of the
+   * removal.
+   * @param uid The UID of the waypoint for the label to remove.
+   */
+  protected removeRenderedLabel(uid: string): void {
+    const renderedLabel = this._renderedLabels.get(uid);
+    if (renderedLabel) {
+      this._renderedLabels.delete(uid);
+      this.sendLabelRenderEvent(MapWaypointRenderEventType.Removed, renderedLabel.waypoint, renderedLabel.renderedRole, renderedLabel.label);
+    }
+  }
+
+  /**
+   * Sends an icon render event.
+   * @param type The type of the event.
+   * @param waypoint The event's waypoint.
+   * @param renderedRole The event's render role.
+   * @param icon The event's icon.
+   */
+  protected sendIconRenderEvent(type: MapWaypointRenderEventType, waypoint: W, renderedRole: number, icon: MapWaypointIcon<W>): void {
+    const event = this.scratchIconRenderEvent;
+    event.type = type;
+    event.waypoint = waypoint;
+    event.renderedRole = renderedRole;
+    event.icon = icon;
+
+    this._onIconRenderEvent.notify(this, event as MapWaypointIconRenderEvent<W>);
+  }
+
+  /**
+   * Sends a label render event.
+   * @param type The type of the event.
+   * @param waypoint The event's waypoint.
+   * @param renderedRole The event's render role.
+   * @param label The event's label.
+   */
+  protected sendLabelRenderEvent(type: MapWaypointRenderEventType, waypoint: W, renderedRole: number, label: MapCullableTextLabel): void {
+    const event = this.scratchLabelRenderEvent;
+    event.type = type;
+    event.waypoint = waypoint;
+    event.renderedRole = renderedRole;
+    event.label = label;
+
+    this._onLabelRenderEvent.notify(this, event as MapWaypointLabelRenderEvent<W>);
   }
 
   /**
@@ -482,10 +774,16 @@ export class MapWaypointRendererEntry<W extends MapWaypoint> {
   /** The render role(s) assigned to this entry. */
   public readonly roles = 0;
 
-  /** The role under which this entry was last rendered, or 0 if this entry has not yet been rendered. */
+  /**
+   * The role under which this entry was last rendered, or `0` if this entry was not rendered in the last render
+   * update.
+   */
   public readonly lastRenderedRole = 0;
 
-  /** The definition for the role under which this entry was last rendered, or `null` if */
+  /**
+   * The definition for the role under which this entry was last rendered, or `null` if this entry was not rendered
+   * in the last render update.
+   */
   public readonly lastRenderedRoleDefinition: Readonly<MapWaypointRenderRoleDef<W>> | null = null;
 
   /** This entry's waypoint icon. */
@@ -493,7 +791,6 @@ export class MapWaypointRendererEntry<W extends MapWaypoint> {
 
   /** This entry's waypoint label. */
   public readonly label: MapCullableTextLabel | null = null;
-
 
   /**
    * Constructor.
@@ -614,16 +911,24 @@ export class MapWaypointRendererEntry<W extends MapWaypoint> {
       labelFactory = roleDef.labelFactory ?? null;
     }
 
-    (this.icon as MapWaypointIcon<W> | null) = iconFactory?.getIcon(showRole, this.waypoint) ?? null;
+    const newIcon = iconFactory?.getIcon(showRole, this.waypoint) ?? null;
+    if (this.icon && this.icon !== newIcon) {
+      const oldIconFactory = this.lastRenderedRoleDefinition?.iconFactory;
+      oldIconFactory?.cleanupIcon?.(this.lastRenderedRole, this.waypoint, this.icon);
+    }
+    (this.icon as MapWaypointIcon<W> | null) = newIcon;
 
-    const label = labelFactory?.getLabel(showRole, this.waypoint) ?? null;
-    if (this.label && this.label !== label) {
+    const newLabel = labelFactory?.getLabel(showRole, this.waypoint) ?? null;
+    if (this.label && this.label !== newLabel) {
       this.textManager.deregister(this.label);
+
+      const oldLabelFactory = this.lastRenderedRoleDefinition?.labelFactory;
+      oldLabelFactory?.cleanupLabel?.(this.lastRenderedRole, this.waypoint, this.label);
     }
-    if (label && label !== this.label) {
-      this.textManager.register(label);
+    if (newLabel && newLabel !== this.label) {
+      this.textManager.register(newLabel);
     }
-    (this.label as MapCullableTextLabel | null) = label;
+    (this.label as MapCullableTextLabel | null) = newLabel;
 
     (this.lastRenderedRole as number) = showRole;
     (this.lastRenderedRoleDefinition as Readonly<MapWaypointRenderRoleDef<W>> | null) = roleDef;
@@ -644,8 +949,16 @@ export class MapWaypointRendererEntry<W extends MapWaypoint> {
    * Destroys this entry. Any label from this entry currently registered with the text manager will be deregistered.
    */
   public destroy(): void {
+    if (this.icon) {
+      const oldIconFactory = this.lastRenderedRoleDefinition?.iconFactory;
+      oldIconFactory?.cleanupIcon?.(this.lastRenderedRole, this.waypoint, this.icon);
+    }
+
     if (this.label) {
       this.textManager.deregister(this.label);
+
+      const oldLabelFactory = this.lastRenderedRoleDefinition?.labelFactory;
+      oldLabelFactory?.cleanupLabel?.(this.lastRenderedRole, this.waypoint, this.label);
     }
   }
 }

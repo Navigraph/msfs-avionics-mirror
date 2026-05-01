@@ -18,6 +18,17 @@ export type LNavTrackingState = {
 
   /** Whether LNAV sequencing is suspended. */
   isSuspended: boolean;
+
+  /**
+   * Whether flight path vector sequencing is locked, or `undefined` if the locked state is unspecified.
+   * 
+   * While vector sequencing is locked, LNAV will not sequence from the currently tracked vector to the next one. The
+   * tracked vector may still change for reasons other than automatic sequencing. While vector sequencing is locked,
+   * LNAV will also not sequence from the active flight plan leg to the next leg. If the active flight plan leg changes
+   * for reasons other than automatic sequencing, then the tracked vector will be set to the first trackable vector in
+   * the new active leg.
+   */
+  isVectorSequencingLocked?: boolean;
 };
 
 /**
@@ -51,8 +62,19 @@ export interface BaseLNavEvents {
   /** Whether LNAV is attempting to steer to follow a constant heading instead of a track. */
   lnav_is_steer_heading: boolean;
 
-  /** Whether LNAV sequencing is suspended. */
+  /** Whether automatic sequencing of flight plan legs by LNAV is suspended. */
   lnav_is_suspended: boolean;
+
+  /**
+   * Whether automatic sequencing of flight path vectors by LNAV is locked.
+   * 
+   * While vector sequencing is locked, LNAV will not sequence from the currently tracked vector to the next one. The
+   * tracked vector may still change for reasons other than automatic sequencing. While vector sequencing is locked,
+   * LNAV will also not sequence from the active flight plan leg to the next leg. If the active flight plan leg changes
+   * for reasons other than automatic sequencing, then the tracked vector will be set to the first trackable vector in
+   * the new active leg.
+   */
+  lnav_is_vector_sequencing_locked: boolean;
 
   /**
    * The along-track distance from the start of the currently tracked leg to the plane's present position, in nautical

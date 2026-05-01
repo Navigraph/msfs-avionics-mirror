@@ -9,6 +9,19 @@ import { DirectorState, PlaneDirector } from './PlaneDirector';
  * Options for {@link APAltCapDirector}.
  */
 export type APAltCapDirectorOptions = {
+  /**
+   * The maximum absolute pitch up angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `15`.
+   */
+  maxPitchUpAngle?: number | null | (() => number | null);
+
+  /**
+   * The maximum absolute pitch down angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `15`.
+   */
+  maxPitchDownAngle?: number | null | (() => number | null);
 
   /**
    * An optional function that contains the logic for the capturing. Has to return the desired pitch as input for the pitch controller.
@@ -61,7 +74,7 @@ export type APAltCapDirectorActivationFunc = (
 
 /**
  * An autopilot director that generates flight director pitch commands to capture a target indicated altitude.
- * 
+ *
  * The director requires valid pitch, indicated altitude and indicated vertical speed data to arm or activate.
  */
 export class APAltCapDirector implements PlaneDirector {
@@ -84,7 +97,10 @@ export class APAltCapDirector implements PlaneDirector {
   public onDeactivate?: () => void;
 
   /** @inheritDoc */
-  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean) => void;
+  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number, maxNoseDownPitch?: number, maxNoseUpPitch?: number) => void;
+
+  private readonly maxPitchUpAngleFunc: () => number | undefined;
+  private readonly maxPitchDownAngleFunc: () => number | undefined;
 
   private initialFpa = 0;
   private readonly captureAltitude: APAltCapDirectorCaptureFunc = APAltCapDirector.captureAltitude;
@@ -117,7 +133,9 @@ export class APAltCapDirector implements PlaneDirector {
     private readonly apValues: APValues,
     options?: Partial<Readonly<APAltCapDirectorOptions>>
   ) {
-    this.state = DirectorState.Inactive;
+    this.maxPitchUpAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchUpAngle);
+    this.maxPitchDownAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchDownAngle);
+
     if (options?.captureAltitude !== undefined) {
       this.captureAltitude = options.captureAltitude;
     }
@@ -134,6 +152,24 @@ export class APAltCapDirector implements PlaneDirector {
         this.targetChangeInhibitTimer?.schedule(APAltCapDirector.EMPTY_FUNCTION, this.targetChangeInhibitTime!);
       };
       this.apValues.selectedAltitude.sub(this.inhibitAltCapture, false);
+    }
+
+    this.state = DirectorState.Inactive;
+  }
+
+  /**
+   * Creates a function that returns the maximum pitch angle limit defined by an option.
+   * @param option The option that defines the maximum pitch angle limit.
+   * @returns A function that returns the maximum pitch angle limit defined by the specified option.
+   */
+  private createMaxPitchAngleFunc(option: number | null | (() => number | null) = 15): () => number | undefined {
+    switch (typeof option) {
+      case 'number':
+        return () => option;
+      case 'function':
+        return () => option() ?? undefined;
+      default:
+        return () => undefined;
     }
   }
 
@@ -210,7 +246,10 @@ export class APAltCapDirector implements PlaneDirector {
           this.tas.getActualValue()
         ),
         true,
-        true
+        true,
+        undefined,
+        this.maxPitchDownAngleFunc(),
+        this.maxPitchUpAngleFunc()
       );
     } else {
       this.tryActivate();
@@ -292,6 +331,6 @@ export class APAltCapDirector implements PlaneDirector {
     const desiredVs = deltaAltitude / (desiredClosureTime / 60);
 
     const desiredFpa = MathUtils.clamp(Math.asin(desiredVs / UnitType.KNOT.convertTo(tas, UnitType.FPM)) * Avionics.Utils.RAD2DEG, -initialFpaAbs, initialFpaAbs);
-    return MathUtils.clamp(desiredFpa, -15, 15);
+    return desiredFpa;
   }
 }

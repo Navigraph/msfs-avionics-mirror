@@ -1,0 +1,76 @@
+.density-alt-calc-overlay {
+  --pale-green: #329a67;
+  --light-green: #61af87;
+  --dark-green: #002a1c;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.density-alt-calc {
+  position: absolute;
+  right: 5px;
+  bottom: 50px;
+  width: 275px;
+  background-color: var(--pale-green);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-style: solid;
+  border-width: 2px;
+  border-top-color: var(--wtdyne-color-white);
+  border-bottom-color: var(--dark-green);
+  border-left-color: var(--light-green);
+  border-right-color: var(--wtdyne-color-black);
+  padding: 10px;
+  font-size: 20px;
+}
+
+.density-alt-wrapper {
+  background-color: var(--dark-green);
+  border-radius: 5px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.density-alt-title {
+  text-decoration: underline;
+}
+
+.density-alt-row {
+  display: flex;
+}
+
+.density-alt-property {
+  width: 120px;
+}
+
+.density-alt-value {
+  width: 70px;
+  border-radius: 3px;
+  text-align: right;
+}
+
+.density-alt-value.selected {
+  background-color: var(--wtdyne-color-cyan);
+  color: var(--dark-green);
+}
+
+.density-alt-unit {
+  width: 50px;
+  padding-left: 6px;
+}
+
+.density-alt-result .density-alt-property {
+  width: 150px;
+}
+
+.density-alt-result .density-alt-value {
+  width: 90px;
+  padding-right: 30px;
+}

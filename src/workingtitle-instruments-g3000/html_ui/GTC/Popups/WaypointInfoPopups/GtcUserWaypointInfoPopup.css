@@ -1,0 +1,17 @@
+.gtc-horizontal .user-info-popup {
+  --user-info-popup-info-top: 48px;
+}
+
+.gtc-vertical .user-info-popup {
+  --user-info-popup-info-top: 25px;
+}
+
+.user-info-popup .user-info {
+  position: absolute;
+  left: 0px;
+  width: 100%;
+}
+
+.user-info-popup .user-info {
+  top: var(--user-info-popup-info-top);
+}

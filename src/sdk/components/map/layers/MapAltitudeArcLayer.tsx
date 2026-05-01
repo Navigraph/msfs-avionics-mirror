@@ -166,7 +166,7 @@ export class MapAltitudeArcLayer extends MapLayer<MapAltitudeArcLayerProps> {
 
   private readonly subscriptions: Subscription[] = [];
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onVisibilityChanged(isVisible: boolean): void {
     this.layerRef.getOrDefault()?.setVisible(isVisible);
 
@@ -175,7 +175,7 @@ export class MapAltitudeArcLayer extends MapLayer<MapAltitudeArcLayerProps> {
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     this.layerRef.instance.onAttached();
 
@@ -221,14 +221,24 @@ export class MapAltitudeArcLayer extends MapLayer<MapAltitudeArcLayerProps> {
     this.layerRef.instance.setVisible(this.isVisible());
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.layerRef.instance.onWake();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.layerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.layerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
     this.projectPlanePositionHandler();
     this.needUpdate = true;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(): void {
     if (!this.needUpdate || !this.isVisible()) {
       return;
@@ -260,7 +270,7 @@ export class MapAltitudeArcLayer extends MapLayer<MapAltitudeArcLayerProps> {
     this.needUpdate = false;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     const props: MapAltitudeArcSubLayerProps = {
       ref: this.layerRef,
@@ -287,7 +297,7 @@ export class MapAltitudeArcLayer extends MapLayer<MapAltitudeArcLayerProps> {
       );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     this.layerRef.getOrDefault()?.destroy();
 
@@ -356,7 +366,7 @@ class MapAltitudeArcCanvasLayer extends MapLayer<MapAltitudeArcSubLayerProps> {
 
   private needUpdate = false;
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onVisibilityChanged(isVisible: boolean): void {
     if (isVisible) {
       this.needUpdate = true;
@@ -365,7 +375,7 @@ class MapAltitudeArcCanvasLayer extends MapLayer<MapAltitudeArcSubLayerProps> {
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     this.canvasLayerRef.instance.onAttached();
 
@@ -379,12 +389,26 @@ class MapAltitudeArcCanvasLayer extends MapLayer<MapAltitudeArcSubLayerProps> {
     this.needUpdate = true;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.canvasLayerRef.instance.onWake();
+
+    // We need to schedule an update after waking up because the canvas is cleared when the map goes to sleep (as a
+    // result of being collapsed).
+    this.needUpdate = true;
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.canvasLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.canvasLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(): void {
     if (!this.needUpdate || !this.isVisible()) {
       return;
@@ -449,14 +473,20 @@ class MapAltitudeArcCanvasLayer extends MapLayer<MapAltitudeArcSubLayerProps> {
     this.needUpdate = false;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
-      <MapSyncedCanvasLayer ref={this.canvasLayerRef} model={this.props.model} mapProjection={this.props.mapProjection} class={this.props.class} />
+      <MapSyncedCanvasLayer
+        ref={this.canvasLayerRef}
+        model={this.props.model}
+        mapProjection={this.props.mapProjection}
+        collapseOnSleep
+        class={this.props.class}
+      />
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     this.canvasLayerRef.getOrDefault()?.destroy();
 
@@ -496,7 +526,7 @@ class MapAltitudeArcSvgLayer extends MapLayer<MapAltitudeArcSubLayerProps> {
 
   private readonly subscriptions: Subscription[] = [];
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onVisibilityChanged(isVisible: boolean): void {
     if (isVisible) {
       this.needUpdate = true;
@@ -505,7 +535,7 @@ class MapAltitudeArcSvgLayer extends MapLayer<MapAltitudeArcSubLayerProps> {
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     const scheduleUpdate = (): void => { this.needUpdate = true; };
 
@@ -515,7 +545,7 @@ class MapAltitudeArcSvgLayer extends MapLayer<MapAltitudeArcSubLayerProps> {
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(): void {
     if (!this.needUpdate || !this.isVisible()) {
       return;
@@ -549,7 +579,7 @@ class MapAltitudeArcSvgLayer extends MapLayer<MapAltitudeArcSubLayerProps> {
     this.needUpdate = false;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     const svgPathStream = new SvgPathStream(0.01);
     const transformPathStream = new AffineTransformPathStream(svgPathStream);
@@ -573,7 +603,7 @@ class MapAltitudeArcSvgLayer extends MapLayer<MapAltitudeArcSubLayerProps> {
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     this.subscriptions.forEach(sub => sub.destroy());
 

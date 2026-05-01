@@ -1,0 +1,22 @@
+.selection-menu-controller {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.selection-menu-background {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background-color: transparent;
+}
+
+.selection-menu-container {
+  position: absolute;
+  overflow: hidden;
+  z-index: 9;
+}

@@ -32,9 +32,9 @@ export interface WTLineFlightPlanRepository<F extends number, M extends F> {
   copyModPlanIntoActivePlan(): void;
 
   /**
-   * Empties all MOD flight plans
+   * Empties or deletes all MOD flight plans
    */
-  emptyModFlightPlans(): void;
+  emptyOrDeleteModFlightPlans(): void;
 
   /**
    * Copies the active flight plan into the secondary flight plan

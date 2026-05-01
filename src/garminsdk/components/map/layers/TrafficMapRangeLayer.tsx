@@ -171,7 +171,7 @@ export class TrafficMapRangeLayer extends MapLayer<TrafficMapRangeLayerProps> {
   private needUpdateRings = false;
   private needUpdateTicks = false;
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     this.canvasLayerRef.instance.onAttached();
 
@@ -239,14 +239,24 @@ export class TrafficMapRangeLayer extends MapLayer<TrafficMapRangeLayerProps> {
     this.trafficModule.outerRangeIndex.sub(outerRangeCallback, true);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.canvasLayerRef.instance.onWake();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.canvasLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.canvasLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
 
     this.needUpdateRings ||= BitFlags.isAny(changeFlags, MapProjectionChangeType.TargetProjected | MapProjectionChangeType.ProjectedResolution);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     if (this.needUpdateRings) {
       this.updateRings();
@@ -370,13 +380,14 @@ export class TrafficMapRangeLayer extends MapLayer<TrafficMapRangeLayerProps> {
     this.outerRange.set(range ?? 0);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
       <MapSharedCanvasLayer
         ref={this.canvasLayerRef}
         model={this.props.model}
         mapProjection={this.props.mapProjection}
+        collapseOnSleep
       >
         <MapLabeledRingCanvasSubLayer
           ref={this.innerRingLayerRef}
@@ -401,7 +412,7 @@ export class TrafficMapRangeLayer extends MapLayer<TrafficMapRangeLayerProps> {
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     this.canvasLayerRef.getOrDefault()?.destroy();
 

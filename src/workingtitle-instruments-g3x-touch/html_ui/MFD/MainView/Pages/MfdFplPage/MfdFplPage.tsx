@@ -25,6 +25,7 @@ import { G3XMapCompassArcModule } from '../../../../Shared/Components/Map/Module
 import { MapDragPanModule } from '../../../../Shared/Components/Map/Modules/MapDragPanModule';
 import { UiTouchButton } from '../../../../Shared/Components/TouchButton/UiTouchButton';
 import { UiValueTouchButton } from '../../../../Shared/Components/TouchButton/UiValueTouchButton';
+import { UiMessageDialog } from '../../../../Shared/Dialogs/UiMessageDialog';
 import { ActiveFlightPlanDataArray } from '../../../../Shared/FlightPlan/ActiveFlightPlanDataArray';
 import { DefaultFlightPlanDataFieldCalculatorRepo } from '../../../../Shared/FlightPlan/DefaultFlightPlanDataFieldCalculatorRepo';
 import { DefaultFlightPlanDataFieldFactory } from '../../../../Shared/FlightPlan/DefaultFlightPlanDataFieldFactory';
@@ -39,6 +40,7 @@ import { G3XFplSourceDataProvider } from '../../../../Shared/FlightPlan/G3XFplSo
 import { G3XExternalFplSourceIndex, G3XFplSource } from '../../../../Shared/FlightPlan/G3XFplSourceTypes';
 import { G3XTouchFilePaths } from '../../../../Shared/G3XTouchFilePaths';
 import { G3XUnitType } from '../../../../Shared/Math/G3XUnitType';
+import { G3XTouchNavSources } from '../../../../Shared/NavReference/G3XTouchNavReference';
 import { FplCalculationUserSettings } from '../../../../Shared/Settings/FplCalculationUserSettings';
 import { FplDisplayUserSettings } from '../../../../Shared/Settings/FplDisplayUserSettings';
 import { FplSourceUserSettings, G3XFplSourceSettingMode } from '../../../../Shared/Settings/FplSourceUserSettings';
@@ -55,7 +57,6 @@ import { UiViewUtils } from '../../../../Shared/UiSystem/UiViewUtils';
 import { UiListSelectTouchButton } from '../../../Components/TouchButton/UiListSelectTouchButton';
 import { UiGenericNumberUnitDialog } from '../../../Dialogs/UiGenericNumberUnitDialog';
 import { UiListDialog } from '../../../Dialogs/UiListDialog';
-import { UiMessageDialog } from '../../../Dialogs/UiMessageDialog';
 import { AbstractMfdPage } from '../../../PageNavigation/AbstractMfdPage';
 import { MfdPageProps } from '../../../PageNavigation/MfdPage';
 import { MfdPageSizeMode } from '../../../PageNavigation/MfdPageTypes';
@@ -81,6 +82,9 @@ export interface MfdFplPageProps extends MfdPageProps {
 
   /** The traffic system used by the page's map to display traffic, or `null` if there is no traffic system. */
   trafficSystem: TrafficSystem | null;
+
+  /** A collection of all navigation sources. */
+  navSources: G3XTouchNavSources;
 
   /** A provider of flight plan source data. */
   fplSourceDataProvider: G3XFplSourceDataProvider;
@@ -169,6 +173,7 @@ export class MfdFplPage extends AbstractMfdPage<MfdFplPageProps> {
     this.fplCalculationSettingManager.getSetting('fplSpeed'),
     this.fplCalculationSettingManager.getSetting('fplFuelFlow'),
     {
+      fuelType: this.props.unitsConfig.fuelType,
       supportSensedFuelFlow: this.props.flightPlanningConfig.supportSensedFuelFlow,
       fuelOnBoardType: this.props.flightPlanningConfig.fuelOnBoardType
     }
@@ -216,7 +221,9 @@ export class MfdFplPage extends AbstractMfdPage<MfdFplPageProps> {
   );
 
   private readonly planSpeedValue = NumberUnitSubject.create(UnitType.KNOT.createNumber(0));
-  private readonly planFuelFlowValue = NumberUnitSubject.create(UnitType.GPH_FUEL.createNumber(0));
+
+  private readonly planFuelFlowSettingUnit: Unit<UnitFamily.WeightFlux>;
+  private readonly planFuelFlowValue: NumberUnitSubject<UnitFamily.WeightFlux>;
 
   private readonly touchPadRef = FSComponent.createRef<TouchPad>();
 
@@ -388,6 +395,31 @@ export class MfdFplPage extends AbstractMfdPage<MfdFplPageProps> {
   private eisLayoutSub?: Subscription;
   private fplDataArraySub?: Subscription;
 
+  /**
+   * Creates a new instance of MfdFplPage.
+   * @param props The properties of the component.
+   */
+  public constructor(props: MfdFplPageProps) {
+    super(props);
+
+    switch (this.props.unitsConfig.fuelType) {
+      case G3XUnitsFuelType.JetA:
+        this.planFuelFlowSettingUnit = UnitType.GPH_JET_A_FUEL;
+        break;
+      case G3XUnitsFuelType.OneHundredLL:
+        this.planFuelFlowSettingUnit = UnitType.GPH_100LL_FUEL;
+        break;
+      case G3XUnitsFuelType.Autogas:
+        this.planFuelFlowSettingUnit = UnitType.GPH_AUTOGAS_FUEL;
+        break;
+      case G3XUnitsFuelType.Sim:
+      default:
+        this.planFuelFlowSettingUnit = G3XUnitType.GPH_SIM_FUEL;
+    }
+
+    this.planFuelFlowValue = NumberUnitSubject.create(this.planFuelFlowSettingUnit.createNumber(0));
+  }
+
   /** @inheritDoc */
   public onAfterRender(thisNode: VNode): void {
     this.thisNode = thisNode;
@@ -403,6 +435,7 @@ export class MfdFplPage extends AbstractMfdPage<MfdFplPageProps> {
             uiService={uiService}
             containerRef={containerRef}
             fms={this.props.fms}
+            navSources={this.props.navSources}
             fplSourceDataProvider={this.props.fplSourceDataProvider}
             flightPlanStore={this.props.flightPlanStore}
             fplDisplaySettingManager={this.fplDisplaySettingManager}
@@ -421,6 +454,7 @@ export class MfdFplPage extends AbstractMfdPage<MfdFplPageProps> {
             fms={this.props.fms}
             fplSourceDataProvider={this.props.fplSourceDataProvider}
             flightPlanningConfig={this.props.flightPlanningConfig}
+            unitsConfig={this.props.unitsConfig}
           />
         );
       }
@@ -1409,28 +1443,11 @@ export class MfdFplPage extends AbstractMfdPage<MfdFplPageProps> {
    * @param setting The user setting that controls the flight plan fuel flow.
    */
   private async onPlanFuelButtonPressed(button: UiValueTouchButton<UserSetting<number>>, setting: UserSetting<number>): Promise<void> {
-    let settingUnit: Unit<UnitFamily.WeightFlux>;
-
-    switch (this.props.unitsConfig.fuelType) {
-      case G3XUnitsFuelType.JetA:
-        settingUnit = UnitType.GPH_JET_A_FUEL;
-        break;
-      case G3XUnitsFuelType.OneHundredLL:
-        settingUnit = UnitType.GPH_100LL_FUEL;
-        break;
-      case G3XUnitsFuelType.Autogas:
-        settingUnit = UnitType.GPH_AUTOGAS_FUEL;
-        break;
-      case G3XUnitsFuelType.Sim:
-      default:
-        settingUnit = G3XUnitType.GPH_SIM_FUEL;
-    }
-
     const result = await this.props.uiService
       .openMfdPopup<UiGenericNumberUnitDialog>(UiViewStackLayer.Overlay, UiViewKeys.GenericNumberUnitDialog1)
       .ref.request({
         initialValue: setting.value,
-        initialUnit: settingUnit,
+        initialUnit: this.planFuelFlowSettingUnit,
         unitType: this.unitsSettingManager.fuelFlowUnits.get(),
         digitCount: 3,
         decimalCount: 1,
@@ -1442,7 +1459,7 @@ export class MfdFplPage extends AbstractMfdPage<MfdFplPageProps> {
       });
 
     if (!result.wasCancelled) {
-      setting.value = settingUnit.convertFrom(result.payload.value, result.payload.unit);
+      setting.value = this.planFuelFlowSettingUnit.convertFrom(result.payload.value, result.payload.unit);
     }
   }
 

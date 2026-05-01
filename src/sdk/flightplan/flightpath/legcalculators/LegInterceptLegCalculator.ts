@@ -8,6 +8,7 @@ import { LegType } from '../../../navigation/Facilities';
 import { ArrayUtils } from '../../../utils/datastructures/ArrayUtils';
 import { LegDefinition } from '../../FlightPlanning';
 import { FlightPathCalculatorFacilityCache } from '../FlightPathCalculatorFacilityCache';
+import { FlightPathLegCalculationOptions } from '../FlightPathLegCalculator';
 import { FlightPathState } from '../FlightPathState';
 import { FlightPathUtils } from '../FlightPathUtils';
 import { CircleInterceptLegCalculator, CircleInterceptLegPathToInterceptInfo } from './CircleInterceptLegCalculator';
@@ -32,7 +33,8 @@ export class LegInterceptLegCalculator extends CircleInterceptLegCalculator {
     legs: LegDefinition[],
     calculateIndex: number,
     activeLegIndex: number,
-    state: FlightPathState
+    state: FlightPathState,
+    options: Readonly<FlightPathLegCalculationOptions>
   ): void {
     const leg = legs[calculateIndex];
 
@@ -64,7 +66,7 @@ export class LegInterceptLegCalculator extends CircleInterceptLegCalculator {
 
     if (magVar === undefined) {
       let position: LatLonInterface | undefined;
-      if (this.isHeadingLeg && calculateIndex === activeLegIndex && state.planePosition.isValid()) {
+      if (this.isHeadingLeg && !options.disableCalculateFromPpos && calculateIndex === activeLegIndex && state.planePosition.isValid()) {
         position = state.planePosition;
       } else if (!state.isDiscontinuity && state.currentPosition.isValid()) {
         position = state.currentPosition;

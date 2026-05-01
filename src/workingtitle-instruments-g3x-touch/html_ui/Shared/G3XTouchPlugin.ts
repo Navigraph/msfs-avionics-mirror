@@ -12,7 +12,7 @@ import { G3XFms } from './FlightPlan/G3XFms';
 import { G3XFplSourceDataProvider } from './FlightPlan/G3XFplSourceDataProvider';
 import { G3XTouchUiComponentContext } from './G3XTouchUiComponentContext';
 import { InstrumentConfig } from './InstrumentConfig/InstrumentConfig';
-import { G3XTouchNavIndicators } from './NavReference/G3XTouchNavReference';
+import { G3XTouchNavIndicators, G3XTouchNavSources } from './NavReference/G3XTouchNavReference';
 import { G3XRadiosDataProvider } from './Radio/G3XRadiosDataProvider';
 import { DisplayUserSettingManager } from './Settings/DisplayUserSettings';
 import { GduUserSettingManager } from './Settings/GduUserSettings';
@@ -46,6 +46,9 @@ export interface G3XTouchPluginBinder {
 
   /** The UI service. */
   uiService: UiService;
+
+  /** A collection of all navigation sources. */
+  navSources: G3XTouchNavSources;
 
   /** A collection of all navigation indicators. */
   navIndicators: G3XTouchNavIndicators;

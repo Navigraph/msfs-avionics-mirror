@@ -229,6 +229,7 @@ export class G3XTouchPrimaryFsInstrument extends G3XTouchFsInstrument {
 
   private readonly apConfig = this.config.autopilot
     ? new GarminAPConfig(this.bus, {
+      flightDirectorCount: 1,
       cdiId: 'g3x',
       useIndicatedMach: true,
       lnavOptions: {
@@ -238,6 +239,8 @@ export class G3XTouchPrimaryFsInstrument extends G3XTouchFsInstrument {
       verticalPathGuidance: this.verticalPathGuidance,
       glidepathGuidance: this.glidepathGuidance,
       navToNavGuidance: this.navToNavGuidanceProvider,
+      defaultMaxNoseUpPitchAngle: this.config.autopilot.globalPitchOptions.maxNoseUpPitchAngle,
+      defaultMaxNoseDownPitchAngle: this.config.autopilot.globalPitchOptions.maxNoseDownPitchAngle,
       rollMinBankAngle: this.config.autopilot.rollOptions.minBankAngle,
       rollMaxBankAngle: this.config.autopilot.rollOptions.maxBankAngle,
       hdgMaxBankAngle: this.config.autopilot.hdgOptions.maxBankAngle,

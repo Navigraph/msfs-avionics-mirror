@@ -53,6 +53,10 @@
   --weight-balance-page-tab-container-width: 470px;
   --weight-balance-page-tab-container-height: 380px;
 
+  --weight-balance-page-display-button-right-margin: 4px;
+  --weight-balance-page-display-button-width: 98px;
+  --weight-balance-page-display-button-height: 68px;
+
   /* ---- Empty Weight tab ---- */
 
   --weight-balance-page-empty-weight-tab-padding: 12px 15px 17px 9px;

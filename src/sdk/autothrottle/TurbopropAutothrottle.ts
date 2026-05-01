@@ -1,5 +1,5 @@
 import { EventBus } from '../data/EventBus';
-import { SimVarValueType } from '../data/SimVars';
+import { RegisteredSimVarUtils, SimVarValueType } from '../data/SimVars';
 import { ThrottleLeverManager } from '../fadec/ThrottleLeverManager';
 import { Accessible } from '../sub/Accessible';
 import { Subscribable } from '../sub/Subscribable';
@@ -37,7 +37,7 @@ export class TurbopropAutothrottle extends AbstractAutothrottle {
  * An autothrottle throttle for turboprop engines.
  */
 class TurbopropAutothrottleThrottle extends AutothrottleThrottle {
-  private readonly torqueSimVar: string;
+  private readonly torqueSimVar = RegisteredSimVarUtils.create(`TURB ENG MAX TORQUE PERCENT:${this.index}`, SimVarValueType.Percent);
 
   /** @inheritdoc */
   public constructor(
@@ -60,12 +60,10 @@ class TurbopropAutothrottleThrottle extends AutothrottleThrottle {
       powerLookaheadSmoothingConstant, powerLookaheadSmoothingVelocityConstant,
       throttleLeverManager
     );
-
-    this.torqueSimVar = `TURB ENG MAX TORQUE PERCENT:${this.index}`;
   }
 
   /** @inheritdoc */
   protected getPower(): number {
-    return SimVar.GetSimVarValue(this.torqueSimVar, SimVarValueType.Percent);
+    return this.torqueSimVar.get();
   }
 }

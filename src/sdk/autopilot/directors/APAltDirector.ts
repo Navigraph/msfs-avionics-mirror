@@ -5,8 +5,27 @@ import { VNavUtils } from '../vnav/VNavUtils';
 import { DirectorState, PlaneDirector } from './PlaneDirector';
 
 /**
+ * Options for {@link APAltDirector}.
+ */
+export type APAltDirectorOptions = {
+  /**
+   * The maximum absolute pitch up angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `10`.
+   */
+  maxPitchUpAngle?: number | null | (() => number | null);
+
+  /**
+   * The maximum absolute pitch down angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `10`.
+   */
+  maxPitchDownAngle?: number | null | (() => number | null);
+};
+
+/**
  * An autopilot director that generates flight director pitch commands to hold an indicated altitude.
- * 
+ *
  * The director requires valid pitch, indicated altitude and indicated vertical speed data to arm or activate.
  */
 export class APAltDirector implements PlaneDirector {
@@ -15,7 +34,7 @@ export class APAltDirector implements PlaneDirector {
   public state: DirectorState;
 
   /** @inheritDoc */
-  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean) => void;
+  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number, maxNoseDownPitch?: number, maxNoseUpPitch?: number) => void;
 
   /** @inheritDoc */
   public onActivate?: () => void;
@@ -26,6 +45,9 @@ export class APAltDirector implements PlaneDirector {
   /** @inheritDoc */
   public onDeactivate?: () => void;
 
+  private readonly maxPitchUpAngleFunc: () => number | undefined;
+  private readonly maxPitchDownAngleFunc: () => number | undefined;
+
   private readonly pitch = this.apValues.dataProvider.getItem('pitch');
   private readonly indicatedAltitude = this.apValues.dataProvider.getItem('indicated_altitude');
   private readonly indicatedVerticalSpeed = this.apValues.dataProvider.getItem('indicated_vertical_speed');
@@ -33,10 +55,30 @@ export class APAltDirector implements PlaneDirector {
 
   /**
    * Creates a new instance of APAltDirector.
-   * @param apValues are the ap selected values for the autopilot.
+   * @param apValues Autopilot values from this director's parent autopilot.
+   * @param options Options with which to configure the director.
    */
-  public constructor(private readonly apValues: APValues) {
+  public constructor(private readonly apValues: APValues, options?: Readonly<APAltDirectorOptions>) {
+    this.maxPitchUpAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchUpAngle);
+    this.maxPitchDownAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchDownAngle);
+
     this.state = DirectorState.Inactive;
+  }
+
+  /**
+   * Creates a function that returns the maximum pitch angle limit defined by an option.
+   * @param option The option that defines the maximum pitch angle limit.
+   * @returns A function that returns the maximum pitch angle limit defined by the specified option.
+   */
+  private createMaxPitchAngleFunc(option: number | null | (() => number | null) = 10): () => number | undefined {
+    switch (typeof option) {
+      case 'number':
+        return () => option;
+      case 'function':
+        return () => option() ?? undefined;
+      default:
+        return () => undefined;
+    }
   }
 
   /**
@@ -133,16 +175,15 @@ export class APAltDirector implements PlaneDirector {
     } else if (deltaAlt < -10) {
       setVerticalSpeed = correction;
     }
-    this.drivePitch && this.drivePitch(this.getDesiredPitch(setVerticalSpeed), true, true);
+    this.drivePitch && this.drivePitch(this.getDesiredPitch(setVerticalSpeed), true, true, undefined, this.maxPitchDownAngleFunc(), this.maxPitchUpAngleFunc());
   }
 
   /**
    * Gets a desired pitch from the selected vs value.
-   * @param vs target vertical speed.
-   * @returns The desired pitch angle.
+   * @param vs target vertical speed, with -ve being descent.
+   * @returns The desired pitch angle, with +ve being descent.
    */
   private getDesiredPitch(vs: number): number {
-    const desiredPitch = VNavUtils.getFpa(UnitType.KNOT.convertTo(this.tas.getActualValue(), UnitType.FPM), vs);
-    return -MathUtils.clamp(desiredPitch, -10, 10);
+    return -VNavUtils.getFpa(UnitType.KNOT.convertTo(this.tas.getActualValue(), UnitType.FPM), vs);
   }
 }

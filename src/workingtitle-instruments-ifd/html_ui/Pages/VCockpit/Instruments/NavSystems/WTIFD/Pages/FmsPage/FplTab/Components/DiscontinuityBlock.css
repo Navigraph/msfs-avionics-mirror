@@ -1,0 +1,60 @@
+.discontinuity-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #ffc107;
+  margin-left: 45px;
+  margin-right: 5px;
+  border-radius: 5px;
+  border: 3px solid transparent;
+}
+
+.discontinuity-block-selected {
+  border-color: var(--wtdyne-color-cyan);
+}
+
+.label {
+  margin: 0 12px;
+  font-size: 16px;
+  white-space: nowrap;
+  color: white;
+}
+
+.line {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  min-width: 16px;
+  background: currentColor;
+}
+
+.left::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 30px;
+  background: currentColor;
+  height: 2px;
+  transform-origin: right center;
+  transform: translate(8px, -10px) rotate(-45deg);
+}
+
+.right::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 30px;
+  background: currentColor;
+  height: 2px;
+  transform-origin: left center;
+  transform: translate(-10px, 10px) rotate(-45deg);
+}
+
+/* Sidebar mode styling */
+.ifd-sidebar-sidebar .discontinuity-block {
+  margin-left: 9px;
+  width: 128px;
+}

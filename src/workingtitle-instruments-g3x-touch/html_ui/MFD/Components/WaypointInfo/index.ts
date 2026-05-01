@@ -4,6 +4,7 @@ export * from './AirportRunwayTab';
 export * from './AirportWeatherTab';
 export * from './DefaultWaypointInfoChartDisplayDataProvider';
 export * from './WaypointInfo';
+export * from './WaypointInfoAirportWeatherProvider';
 export * from './WaypointInfoChartDisplay';
 export * from './WaypointInfoChartDisplayDataProvider';
 export * from './WaypointInfoInfo';

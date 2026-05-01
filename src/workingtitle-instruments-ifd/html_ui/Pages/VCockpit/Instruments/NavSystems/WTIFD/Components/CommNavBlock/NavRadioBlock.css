@@ -1,0 +1,20 @@
+#vloc-radio,
+#com-vloc-standby-2,
+#com-vloc-standby-3,
+#com-vloc-standby-4 {
+  border-bottom: none;
+  border-top: none;
+}
+
+#nav-radio-block {
+  position: relative;
+}
+
+#nav-radio-block .wt-ifd-dual-frequency-container {
+  display: flex;
+  flex-direction: column;
+  border-radius: 2px;
+  height: 92px;
+  width: 131px;
+  box-shadow: 0 0 0 3px var(--wtdyne-color-blue);
+}

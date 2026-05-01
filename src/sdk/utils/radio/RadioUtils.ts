@@ -59,6 +59,21 @@ export class RadioUtils {
   }
 
   /**
+   * Checks whether a frequency is a UHF COM frequency.
+   * @param freq The frequency to check, in megahertz.
+   * @returns Whether the specified frequency is a UHF COM frequency.
+   */
+  public static isComUhfFrequency(freq: number): boolean {
+    const freqKhz = Math.round(freq * 1000);
+
+    if (freqKhz < 225e3 || freqKhz > 399950) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Checks whether a frequency is an ADF frequency.
    * @param freq The frequency to check, in kilohertz.
    * @returns Whether the specified frequency is an ADF frequency.

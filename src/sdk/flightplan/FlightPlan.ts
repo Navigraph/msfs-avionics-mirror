@@ -327,7 +327,7 @@ export class FlightPlan {
   public constructor(
     public planIndex: number,
     public calculator: FlightPathCalculator,
-    private onLegNameRequested: ((leg: FlightPlanLeg) => string | undefined)
+    private onLegNameRequested: ((leg: FlightPlanLeg, flags: number) => string | undefined)
   ) { }
 
   /**
@@ -1108,7 +1108,7 @@ export class FlightPlan {
   public addLeg(segmentIndex: number, leg: FlightPlanLeg, segmentLegIndex?: number, flags = 0, notify = true): LegDefinition {
     const segment = this.getSegment(segmentIndex);
     const legDefinition: LegDefinition = {
-      name: this.onLegNameRequested(leg),
+      name: this.onLegNameRequested(leg, flags),
       leg,
       flags,
       verticalData: {

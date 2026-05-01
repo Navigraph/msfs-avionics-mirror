@@ -1,0 +1,42 @@
+.alert-box {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 140px;
+  height: 50px;
+  overflow: hidden;
+  border-radius: 12px;
+  z-index: 100;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+
+  white-space: pre;
+  font-family: "Arial Bold";
+  font-size: 20px;
+  line-height: 18px;
+  color: var(--wtdyne-color-black);
+}
+
+.alert-box.red-highlight {
+  background: var(--wtdyne-color-red);
+}
+
+.alert-box.yellow-highlight {
+  background: var(--wtdyne-color-yellow);
+}
+
+.alert-box.cyan-highlight {
+  background: var(--wtdyne-color-cyan);
+}
+
+.alert-box.green-highlight {
+  background: var(--wtdyne-color-green);
+}
+
+.alert-box.green-text {
+  color: var(--wtdyne-color-green);
+}

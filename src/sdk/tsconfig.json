@@ -17,6 +17,12 @@
     "jsxFactory": "FSComponent.buildComponent",
     "jsxFragmentFactory": "FSComponent.Fragment",
     "jsx": "react",
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2017",
+      "ES2021.WeakRef",
+    ],
     "paths": {
       "*": [
         "/*"

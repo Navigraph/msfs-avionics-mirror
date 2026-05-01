@@ -1,11 +1,9 @@
 import {
-  ActiveLegType, AdcPublisher, AhrsPublisher, AirportFacility, APRadioNavInstrument, Autopilot, AutopilotInstrument,
-  ClockPublisher, DefaultFlightPathAnticipatedDataCalculator, EISPublisher, EventBus, FacilityLoader,
-  FacilityRepository, FacilityType, FacilityUtils, FlightPathAirplaneSpeedMode, FlightPathAirplaneWindMode,
-  FlightPathCalculator, FlightPlanner, FlightPlannerEvents, FlightPlanRouteManager, FlightPlanRouteUtils,
-  FlightTimerInstrument, FlightTimerPublisher, FSComponent, FsInstrument, GNSSPublisher, GpsSynchronizer,
-  HEventPublisher, ICAO, InstrumentBackplane, NavComSimVarPublisher, NearestContext, SimVarValueType,
-  SmoothingPathCalculator, Subject, UnitType, VNode, Wait,
+  ActiveLegType, AdcPublisher, AhrsPublisher, AirportFacility, APRadioNavInstrument, Autopilot, AutopilotInstrument, ClockPublisher,
+  DefaultFlightPathAnticipatedDataCalculator, EISPublisher, EventBus, FacilityLoader, FacilityRepository, FacilityType, FacilityUtils,
+  FlightPathAirplaneSpeedMode, FlightPathAirplaneWindMode, FlightPathCalculator, FlightPlanner, FlightPlannerEvents, FlightPlanRouteManager,
+  FlightPlanRouteUtils, FlightTimerInstrument, FlightTimerPublisher, FSComponent, FsInstrument, GNSSPublisher, GpsSynchronizer, HEventPublisher, ICAO,
+  InstrumentBackplane, NavComSimVarPublisher, NearestContext, SimVarValueType, SmoothingPathCalculator, Subject, UnitType, VNode, Wait
 } from '@microsoft/msfs-sdk';
 
 import { UnsAPConfig } from './Autopilot/UnsAPConfig';
@@ -18,6 +16,7 @@ import {
 } from './CduDisplay/UnsFmcEvents';
 import { FmsConfigBuilder, UnsFmsConfigInterface } from './Config/FmsConfigBuilder';
 import { UnsApproachStateController } from './Fms/Navigation/UnsApproachStateController';
+import { UnsExternalGuidancePublisher } from './Fms/Navigation/UnsExternalGuidancePublisher';
 import { UnsFlightAreaComputer } from './Fms/Navigation/UnsFlightAreaComputer';
 import { UnsLNavComputer } from './Fms/Navigation/UnsLNavComputer';
 import { UnsLnavSteeringController } from './Fms/Navigation/UnsLnavSteeringController';
@@ -117,6 +116,8 @@ export class WTUns1FsInstrument implements FsInstrument {
 
   private readonly lnavComputer: UnsLNavComputer | undefined;
 
+  private readonly lnavSteeringController: UnsLnavSteeringController | undefined;
+
   private readonly flightPlanPredictor: UnsFlightPlanPredictor;
 
   private readonly flightPlanRouteSyncManager?: UnsFlightPlanRouteSyncManager;
@@ -132,6 +133,8 @@ export class WTUns1FsInstrument implements FsInstrument {
   private readonly approachStateController: UnsApproachStateController;
 
   private readonly flightAreaComputer: UnsFlightAreaComputer;
+
+  private readonly externalGuidancePublisher?: UnsExternalGuidancePublisher;
 
   private lastCalculate = 0;
 
@@ -156,6 +159,10 @@ export class WTUns1FsInstrument implements FsInstrument {
    * @param instrument the base instrument
    */
   constructor(public readonly instrument: WTUns1) {
+    if (instrument.instrumentXmlConfig === undefined) {
+      throw new Error(`[WTUns1] The Instrument configuration cannot be found. Ensure there is an <Instrument> config object with a child "<Name>${instrument.instrumentIdentifier}</Name>" in panel.xml`);
+    }
+
     SimVar.SetSimVarValue('L:XMLVAR_NEXTGEN_FLIGHTPLAN_ENABLED', SimVarValueType.Bool, true);
 
     const fmsConfigBuilder = new FmsConfigBuilder(instrument.instrumentXmlConfig, instrument);
@@ -180,6 +187,16 @@ export class WTUns1FsInstrument implements FsInstrument {
         this.flightPlanner,
         this.maxBankAngleFn
       );
+
+      this.lnavSteeringController = new UnsLnavSteeringController(
+        this.bus,
+        this.lnavComputer.steerCommand,
+        this.fmsConfig.lnav.bankAngleLimits,
+      );
+
+      if (this.fmsConfig.lnav.publishLnavGuidance) {
+        this.externalGuidancePublisher = new UnsExternalGuidancePublisher(this.fmsConfig.lnav.index);
+      }
     }
 
     this.flightPlanPredictor = new UnsFlightPlanPredictor(
@@ -195,16 +212,10 @@ export class WTUns1FsInstrument implements FsInstrument {
       this.destinationFacility,
     );
 
-    if (this.fmsConfig.index === 1 && this.fmsConfig.autopilot && this.lnavComputer) {
-      // TODO UnsLnavSteeringController needs to be created independently of there being an AP or not,
-      // and we need to publish the values to the bus for plane developers and some pages. Perhaps make it an LNAV override module?
+    if (this.fmsConfig.index === 1 && this.fmsConfig.autopilot && this.lnavComputer && this.lnavSteeringController) {
       const unsAPConfig = new UnsAPConfig(
         this.bus,
-        new UnsLnavSteeringController(
-          this.bus,
-          this.lnavComputer.steerCommand,
-          this.fmsConfig.lnav.bankAngleLimits,
-        ).steerCommand,
+        this.lnavSteeringController.steerCommand,
         this.fmsConfig.autopilot
       );
 
@@ -391,6 +402,7 @@ export class WTUns1FsInstrument implements FsInstrument {
     this.lnavComputer?.update();
     this.navdataComputer.update();
     this.autopilot?.update();
+    this.externalGuidancePublisher?.update(this.lnavComputer!.steerCommand);
 
     const now = Date.now();
 

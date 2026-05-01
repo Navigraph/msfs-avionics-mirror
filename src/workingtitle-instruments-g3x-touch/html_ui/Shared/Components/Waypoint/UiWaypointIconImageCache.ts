@@ -23,6 +23,7 @@ export class UiWaypointIconImageCache {
   private static createCache(): DefaultWaypointIconImageCache {
     const cache = new DefaultWaypointIconImageCache();
 
+    cache.register(DefaultWaypointIconImageKey.Heliport, `${G3XTouchFilePaths.ASSETS_PATH}/Images/icon_airport_heliport_small.png`);
     cache.register(DefaultWaypointIconImageKey.AirportPrivate, `${G3XTouchFilePaths.ASSETS_PATH}/Images/icon_airport_private_small.png`);
     cache.register(DefaultWaypointIconImageKey.AirportUnknown, `${G3XTouchFilePaths.ASSETS_PATH}/Images/icon_airport_unknown_small.png`);
     cache.register(DefaultWaypointIconImageKey.AirportToweredUnserviced, `${G3XTouchFilePaths.ASSETS_PATH}/Images/icon_airport_unserviced_blue_small.png`);

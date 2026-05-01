@@ -13,6 +13,9 @@ export interface FacilityRepositoryEvents {
   /** A facility was added. */
   facility_added: Facility;
 
+  /** A facility was added. The suffix of the topic is the UID of the added facility's ICAO. */
+  [facility_added: `facility_added_${string}`]: Facility;
+
   /** A facility was changed. */
   facility_changed: Facility;
 
@@ -319,6 +322,7 @@ export class FacilityRepository {
     }
 
     if (existing === undefined) {
+      this.publisher.pub(`facility_added_${uid}`, fac, false, false);
       this.publisher.pub('facility_added', fac, false, false);
     } else {
       this.publisher.pub(`facility_changed_${uid}`, fac, false, false);
@@ -374,6 +378,7 @@ export class FacilityRepository {
 
     for (let i = 0; i < addedFacilities.length; i++) {
       const fac = addedFacilities[i];
+      this.publisher.pub(`facility_added_${ICAO.getUid(fac.icaoStruct)}`, fac, false, false);
       this.publisher.pub('facility_added', fac, false, false);
     }
     for (let i = 0; i < changedFacilitiesAdded.length; i++) {

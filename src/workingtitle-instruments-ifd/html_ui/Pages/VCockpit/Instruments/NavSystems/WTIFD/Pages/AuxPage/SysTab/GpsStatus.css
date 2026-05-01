@@ -1,0 +1,62 @@
+.sys-tab-gps-left-column-label {
+  width: 50%;
+  min-width: 50%;
+  margin-right: 20px;
+}
+
+.sys-tab-gps-right-column-label {
+  width: 55%;
+  min-width: 55%;
+  margin-right: 20px;
+}
+
+.sys-tab-gps .satellite-graph-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.sys-tab-gps .satellite-graph {
+  display: flex;
+  flex-direction: row;
+  height: 130px;
+  width: 435px;
+}
+
+.sys-tab-gps .satellite-item {
+  height: 100%;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sys-tab-gps .satellite-bar-container {
+  width: 20px;
+  height: 100%;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+}
+
+.sys-tab-gps .satellite-bar {
+  margin-top: auto;
+  width: 100%;
+  background-color: var(--wtdyne-color-pale-green);
+  box-shadow: inset 3px 4px 8px rgba(255, 255, 255, 0.3), inset -3px -4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.sys-tab-gps .satellite-divider {
+  width: 100%;
+  height: 2px;
+  flex-grow: 0;
+  background: var(--wtdyne-color-gray-2);
+}
+
+.sys-tab-gps .satellite-label {
+  flex-grow: 0;
+  color: var(--wtdyne-color-white);
+  font-family: "Arial Narrow";
+  font-size: 14px;
+}

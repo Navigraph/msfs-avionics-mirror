@@ -1,13 +1,13 @@
 import {
-  CompiledMapSystem, EventBus, FacilityLoader, FacilityType, FlightPlan, FlightPlanner, FlightPlanSegmentType,
-  FSComponent, ICAO, LegDefinition, LegType, MapIndexedRangeModule, MapSystemBuilder, NodeReference, SetSubject,
-  Subject, Subscription, UnitType, Vec2Math, Vec2Subject, VecNMath, VNode
+  AirportFacilityDataFlags, CompiledMapSystem, EventBus, FacilityLoader, FacilityType, FlightPlan, FlightPlanner,
+  FlightPlanSegmentType, FSComponent, ICAO, LegDefinition, LegType, MapIndexedRangeModule, MapSystemBuilder,
+  NodeReference, SetSubject, Subject, Subscription, UnitType, Vec2Math, Vec2Subject, VecNMath, VNode
 } from '@microsoft/msfs-sdk';
 
 import {
   FlightPlanFocus, Fms, FmsUtils, GarminAdditionalApproachType, GarminMapKeys, MapFlightPlanFocusModule,
-  MapPointerController, MapPointerInfoLayerSize, MapPointerModule, MapRangeController, TrafficSystem,
-  TrafficUserSettings, UnitsUserSettings, VNavDataProvider, WindDataProvider
+  MapPointerController, MapPointerInfoLayerSize, MapPointerModule, MapRangeController, MapWaypointHoverModule,
+  TrafficSystem, TrafficUserSettings, UnitsUserSettings, VNavDataProvider, WindDataProvider
 } from '@microsoft/msfs-garminsdk';
 
 import { G3000FlightPlannerId } from '../../CommonTypes';
@@ -23,6 +23,7 @@ import { DisplayPaneInsetView } from '../DisplayPanes/DisplayPaneInsetView';
 import { ControllableDisplayPaneIndex, DisplayPaneIndex, DisplayPaneSizeMode } from '../DisplayPanes/DisplayPaneTypes';
 import { DisplayPaneView, DisplayPaneViewProps } from '../DisplayPanes/DisplayPaneView';
 import { DisplayPaneViewEvent } from '../DisplayPanes/DisplayPaneViewEvents';
+import { DisplayPaneViewMapDataPublisher } from '../DisplayPanes/DisplayPaneViewMapDataPublisher';
 import { G3000MapBuilder } from '../Map/G3000MapBuilder';
 import { MapConfig } from '../Map/MapConfig';
 import { FlightPlanTextInset } from './FlightPlanTextInset/FlightPlanTextInset';
@@ -170,6 +171,9 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
 
         /** The flight plan focus module. */
         [GarminMapKeys.FlightPlanFocus]: MapFlightPlanFocusModule;
+
+        /** The waypoint hover module. */
+        [GarminMapKeys.WaypointHover]: MapWaypointHoverModule;
       },
       any,
       {
@@ -187,8 +191,6 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
 
   private readonly mapPointerController = this.compiledMap.context.getController(GarminMapKeys.Pointer);
   private readonly mapRangeController = this.compiledMap.context.getController(GarminMapKeys.Range);
-
-  private readonly mapPointerActiveSetting = DisplayPanesUserSettings.getDisplayPaneManager(this.props.bus, this.props.index).getSetting('displayPaneMapPointerActive');
 
   private focusedPlanIndex = -1;
   private readonly focusedPlanName = Subject.create<string | VNode>('');
@@ -208,7 +210,13 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
     })
     : undefined;
 
-  private pointerActivePipe?: Subscription;
+  private readonly mapDataPublisher = new DisplayPaneViewMapDataPublisher(
+    this.props.index,
+    this.props.bus,
+    DisplayPanesUserSettings.getDisplayPaneManager(this.props.bus, this.props.index),
+    this.compiledMap
+  );
+
   private planNameTitlePipe?: Subscription;
   private planNameSetSub?: Subscription;
   private planNameDeleteSub?: Subscription;
@@ -220,8 +228,6 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
     this._title.set('Navigation Map');
 
     this.compiledMap.ref.instance.sleep();
-
-    this.pointerActivePipe = this.mapPointerModule.isActive.pipe(this.mapPointerActiveSetting, true);
 
     this.planNameTitlePipe = this.focusedPlanName.pipe(this._title, name => `Flight Plan – ${name}`, true);
 
@@ -301,8 +307,9 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
 
     this.mapInsetSettingModeSub?.resume(true);
     this.compiledMap.ref.instance.wake();
-    this.pointerActivePipe?.resume(true);
     this.activeInsetView?.onResume(size, width, height);
+
+    this.mapDataPublisher.onResume();
   }
 
   /** @inheritDoc */
@@ -310,9 +317,9 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
     this.mapInsetSettingModeSub?.pause();
     this.mapPointerController.setPointerActive(false);
     this.compiledMap.ref.instance.sleep();
-    this.pointerActivePipe?.pause();
-    this.mapPointerActiveSetting.value = false;
     this.activeInsetView?.onPause();
+
+    this.mapDataPublisher.onPause();
   }
 
   /** @inheritDoc */
@@ -487,10 +494,14 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
         case FlightPlanSegmentType.Departure:
           if (
             plan.procedureDetails.departureIndex >= 0
-            && plan.procedureDetails.departureFacilityIcao !== undefined
-            && ICAO.isFacility(plan.procedureDetails.departureFacilityIcao, FacilityType.Airport)
+            && plan.procedureDetails.departureFacilityIcaoStruct
+            && ICAO.isValueFacility(plan.procedureDetails.departureFacilityIcaoStruct, FacilityType.Airport)
           ) {
-            const airport = await this.props.facLoader.getFacility(FacilityType.Airport, plan.procedureDetails.departureFacilityIcao);
+            const airport = await this.props.facLoader.getFacility(
+              FacilityType.Airport,
+              plan.procedureDetails.departureFacilityIcaoStruct,
+              AirportFacilityDataFlags.Departures
+            );
             return (
               <div>
                 {FmsUtils.getDepartureNameAsString(
@@ -501,9 +512,9 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
                 )}
               </div>
             );
-          } else if (plan.originAirport !== undefined && ICAO.isFacility(plan.originAirport, FacilityType.Airport)) {
+          } else if (plan.originAirportIcao && ICAO.isValueFacility(plan.originAirportIcao, FacilityType.Airport)) {
             return (
-              <div>{ICAO.getIdent(plan.originAirport)}</div>
+              <div>{plan.originAirportIcao.ident}</div>
             );
           }
           break;
@@ -517,10 +528,14 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
         case FlightPlanSegmentType.Arrival:
           if (
             plan.procedureDetails.arrivalIndex >= 0
-            && plan.procedureDetails.arrivalFacilityIcao !== undefined
-            && ICAO.isFacility(plan.procedureDetails.arrivalFacilityIcao, FacilityType.Airport)
+            && plan.procedureDetails.arrivalFacilityIcaoStruct
+            && ICAO.isValueFacility(plan.procedureDetails.arrivalFacilityIcaoStruct, FacilityType.Airport)
           ) {
-            const airport = await this.props.facLoader.getFacility(FacilityType.Airport, plan.procedureDetails.arrivalFacilityIcao);
+            const airport = await this.props.facLoader.getFacility(
+              FacilityType.Airport,
+              plan.procedureDetails.arrivalFacilityIcaoStruct,
+              AirportFacilityDataFlags.Arrivals
+            );
             return (
               <div>
                 {FmsUtils.getArrivalNameAsString(
@@ -535,10 +550,14 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
           break;
         case FlightPlanSegmentType.Approach:
           if (
-            plan.procedureDetails.approachFacilityIcao !== undefined
-            && ICAO.isFacility(plan.procedureDetails.approachFacilityIcao, FacilityType.Airport)
+            plan.procedureDetails.approachFacilityIcaoStruct
+            && ICAO.isValueFacility(plan.procedureDetails.approachFacilityIcaoStruct, FacilityType.Airport)
           ) {
-            const airport = await this.props.facLoader.getFacility(FacilityType.Airport, plan.procedureDetails.approachFacilityIcao);
+            const airport = await this.props.facLoader.getFacility(
+              FacilityType.Airport,
+              plan.procedureDetails.approachFacilityIcaoStruct,
+              AirportFacilityDataFlags.Approaches | AirportFacilityDataFlags.Runways
+            );
             const approach = FmsUtils.getApproachFromPlan(plan, airport);
 
             if (approach !== undefined && approach.approachType !== GarminAdditionalApproachType.APPROACH_TYPE_VFR) {
@@ -553,9 +572,9 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
           }
           break;
         case FlightPlanSegmentType.Destination:
-          if (plan.destinationAirport !== undefined && ICAO.isFacility(plan.destinationAirport, FacilityType.Airport)) {
+          if (plan.destinationAirportIcao && ICAO.isValueFacility(plan.destinationAirportIcao, FacilityType.Airport)) {
             return (
-              <div>{ICAO.getIdent(plan.destinationAirport)}</div>
+              <div>{plan.destinationAirportIcao.ident}</div>
             );
           }
           break;
@@ -583,12 +602,12 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
       case LegType.HM:
       case LegType.HA:
       case LegType.PI:
-        return <span>{ICAO.getIdent(leg.leg.fixIcao)}</span>;
+        return <span>{leg.leg.fixIcaoStruct.ident}</span>;
       case LegType.CA:
       case LegType.VA:
         return <><span>{UnitType.METER.convertTo(leg.leg.altitude1, UnitType.FOOT).toFixed(0)}</span><span class='numberunit-unit-small'>FT</span></>;
       default:
-        return <span>{leg.name ?? ICAO.getIdent(leg.leg.fixIcao)}</span>;
+        return <span>{leg.name ?? leg.leg.fixIcaoStruct.ident}</span>;
     }
   }
 
@@ -622,7 +641,8 @@ export class NavigationMapPaneView extends DisplayPaneView<NavigationMapPaneView
   public destroy(): void {
     this.compiledMap.ref.instance.destroy();
 
-    this.pointerActivePipe?.destroy();
+    this.mapDataPublisher.destroy();
+
     this.planNameSetSub?.destroy();
     this.planNameDeleteSub?.destroy();
     this.planOriginDestSub?.destroy();

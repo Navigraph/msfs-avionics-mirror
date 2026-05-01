@@ -97,6 +97,7 @@ export class LegsPageController {
 
         if (data.isFromLeg) {
           if (this.isFmcPageInDirectToExistingState()) {
+            // FIXME bdupont - no longer needed
             ident.takeValue('(DIR)[blue]');
           } else if (showAsIntc) {
             ident.takeValue('(INTC)');

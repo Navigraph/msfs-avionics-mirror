@@ -29,7 +29,7 @@ export type APTogaPitchDirectorOptions = {
  * An autopilot director that generates flight director pitch commands to hold a pitch attitude and sets the
  * `L:WT_TOGA_ACTIVE` SimVar state to true (1) when it is armed or activated, and to false (0) when it is
  * deactivated.
- * 
+ *
  * If the director is created with access to an {@link APValues} object, then the director requires valid pitch data to
  * arm or activate.
  */
@@ -47,7 +47,7 @@ export class APTogaPitchDirector implements PlaneDirector {
   public onDeactivate?: () => void;
 
   /** @inheritDoc */
-  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number) => void;
+  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number, maxNoseDownPitch?: number, maxNoseUpPitch?: number) => void;
 
   /** @inheritDoc */
   public setPitch?: (pitch: number) => void;

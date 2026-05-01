@@ -1,8 +1,8 @@
 import {
-  AdcEvents, AirportFacility, AnnunciationType, AvionicsSystemState, AvionicsSystemStateEvent, CasAlertDefinition, CasAlertTransporter, CasRegistrationManager,
-  ClockEvents, ConsumerSubject, ConsumerValue, EventBus, FacilityLoader, GeoPoint, GeoPointInterface, GNSSEvents, MappedSubject, MultiExpSmoother,
-  NearestAirportSubscription, ObjectSubject, OneWayRunway, RunwaySurfaceType, RunwayUtils, SimVarValueType, Subject, Subscribable, SubscribableUtils,
-  Subscription, UnitType
+  AdcEvents, AirportClassMask, AirportFacility, AnnunciationType, AvionicsSystemState, AvionicsSystemStateEvent, CasAlertDefinition, CasAlertTransporter,
+  CasRegistrationManager, ClockEvents, ConsumerSubject, ConsumerValue, EventBus, FacilityLoader, GeoPoint, GeoPointInterface, GNSSEvents, MappedSubject,
+  MultiExpSmoother, NearestAirportSubscription, ObjectSubject, OneWayRunway, RunwaySurfaceType, RunwayUtils, SimVarValueType, Subject, Subscribable,
+  SubscribableUtils, Subscription, UnitType
 } from '@microsoft/msfs-sdk';
 
 import { AutopilotDataProvider, Epic2ApVerticalMode } from '../Instruments';
@@ -137,8 +137,10 @@ export class Gpws {
     });
 
     this.nearestSubscription = new NearestAirportSubscription(facLoader);
-    this.nearestSubscription.setExtendedFilters(Gpws.RUNWAY_NO_WATER_MASK, ~0, ~0, 0);
-    this.nearestSubscription.start();
+    this.nearestSubscription.start().then(() => {
+      this.nearestSubscription.setFilter(false, AirportClassMask.HardSurface | AirportClassMask.SoftSurface);
+      this.nearestSubscription.setExtendedFilters(Gpws.RUNWAY_NO_WATER_MASK, ~0, ~0, 0);
+    });
 
     this.operatingMode.sub(this.publishedData.set.bind(this.publishedData, 'gpws_operating_mode'), true);
 
@@ -341,8 +343,10 @@ export class Gpws {
    */
   private updateNearestAirportSubscription(realTime: number, position: GeoPointInterface): void {
     if (
-      this.lastNearestSubscriptionUpdateTime === undefined
-      || realTime - this.lastNearestSubscriptionUpdateTime >= Gpws.NEAREST_AIRPORT_UPDATE_INTERVAL
+      this.nearestSubscription.started && this.data.isPosValid && this.gpsPos.isValid() && (
+        this.lastNearestSubscriptionUpdateTime === undefined
+        || realTime - this.lastNearestSubscriptionUpdateTime >= Gpws.NEAREST_AIRPORT_UPDATE_INTERVAL
+      )
     ) {
       this.nearestSubscription.update(position.lat, position.lon, Gpws.NEAREST_AIRPORT_RADIUS_METERS, 1);
       this.lastNearestSubscriptionUpdateTime = realTime;

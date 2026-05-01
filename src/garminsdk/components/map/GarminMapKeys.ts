@@ -46,9 +46,15 @@ export class GarminMapKeys {
 
   public static readonly WaypointHighlight = 'waypointHighlight' as const;
 
+  public static readonly WaypointHighlightRender = 'waypointHighlightRender' as const;
+
   public static readonly WaypointHighlightLine = 'waypointHighlightLine' as const;
 
   public static readonly WaypointHighlightRTR = 'waypointHighlightRTR' as const;
+
+  public static readonly WaypointHover = 'waypointHover' as const;
+
+  public static readonly WaypointHoverRender = 'waypointHoverRender' as const;
 
   public static readonly FlightPlan = 'garminFlightPlan' as const;
 
@@ -72,11 +78,17 @@ export class GarminMapKeys {
 
   public static readonly PointerInfo = 'pointerInfo' as const;
 
+  public static readonly PointerHover = 'pointerHover' as const;
+
+  public static readonly PointerColliderActive = 'pointerColliderActive' as const;
+
   public static readonly TrackVector = 'trackVector' as const;
 
   public static readonly WindVector = 'windVector' as const;
 
   public static readonly MiniCompass = 'miniCompass' as const;
+
+  public static readonly WaypointCollider = 'waypointCollider' as const;
 
   public static readonly WaypointSelection = 'waypointSelection' as const;
 

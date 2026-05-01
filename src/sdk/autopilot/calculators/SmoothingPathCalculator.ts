@@ -330,7 +330,17 @@ export class SmoothingPathCalculator implements VNavPathCalculator {
     lateralPlan: FlightPlan
   ) => number;
 
+  /**
+   * A scratch tuple that can hold minimum and maximum constraint altitudes for a flight plan leg, as
+   * `[minimum, maximum]` in meters.
+   */
   protected readonly legAltitudes: [number, number] = [0, 0];
+
+  /**
+   * A scratch tuple that can hold the result of applying descent path values to a sequence of constraints, as
+   * `[index, distance]`, where `index` is the index of the constraint at which the path was terminated early, or
+   * `undefined` if the path was not terminated early, and `distance` is the total distance of the path, in meters.
+   */
   protected readonly applyPathValuesResult: [number | undefined, number] = [undefined, 0];
 
   /**
@@ -1402,6 +1412,8 @@ export class SmoothingPathCalculator implements VNavPathCalculator {
     constraint.distance = distance;
   }
 
+  private readonly _descentPathRequiredFpas: number[] = [];
+
   /**
    * Computes the flight path angles for each constraint segment.
    * @param verticalPlan The Vertical Flight Plan.
@@ -1412,22 +1424,26 @@ export class SmoothingPathCalculator implements VNavPathCalculator {
     // break backward compatibility.
     const lateralPlan = this.flightPlanner.getFlightPlan(verticalPlan.planIndex);
 
-    // Iterate through all descent constraints in reverse flight plan order and attempt to assign one as a "target"
-    // constraint, which is a constraint that anchors a constant FPA path connecting it to one or more prior
-    // constraints.
+    // Iterate through all descent constraints in reverse flight plan order and attempt to assign one as an anchor
+    // constraint. An anchor constraint has a known target altitude and anchors a constant-FPA path connecting it to
+    // one or more prior constraints (in flight plan order). Once an anchor constraint is found, we will attempt to
+    // build a constant-FPA path backwards from the anchor constraint as far as possible until we encounter a
+    // constraint that prevents us from extending the path any farther. At that point, we will designate a new anchor
+    // constraint and repeat the process until we run out of constraints.
 
-    // Once a target constraint is found, the iteration continues as we attempt to build a constant FPA path backwards
-    // from the target constraint that meets all the iterated constraints. Once we reach a constraint that cannot be
-    // met with a constant FPA path from the target constraint that also meets all intermediate constraints, we assign
-    // a new target constraint at the point where the FPA must change. Certain constraints must also be designated as
-    // target constraints regardless of whether a constant FPA path through them is possible. In any case, once we
-    // designate a new target constraint, the process is repeated until we run out of descent constraints.
+    // The overall goal is to produce a descent path with the following properties (roughly in order of decreasing
+    // priority):
+    // - The flight path angle always remains within the limits set by the minimum and maximum FPAs (with an exception
+    //   for flat segments).
+    // - The path does not violate any descent constraints.
+    // - When the flight path angle of the path terminating at a constraint is fixed (i.e. by a manual or direct
+    //   constraint), the fixed FPA is extended forward through the flight path for as long as possible without
+    //   violating any constraints.
+    // - The number of level-offs (where the flight path angle transitions from non-zero to zero) is minimized.
+    // - Where the flight path is descending (i.e. not flat) and the flight path angle is not fixed, the FPA remains as
+    //   close to the default FPA as possible for as long as possible.
 
-    let currentTargetConstraint: VNavConstraint | undefined;
-    let currentPathSegmentDistance = 0;
-    let currentPathSegmentMinFpa = this.minFlightPathAngle;
-    let currentPathSegmentMaxFpa = this.maxFlightPathAngle;
-    let currentTargetConstraintHasFixedFpa = false;
+    let currentAnchorConstraint: VNavConstraint | undefined;
 
     const firstDescentConstraintIndex = verticalPlan.firstDescentConstraintLegIndex === undefined
       ? -1
@@ -1441,350 +1457,406 @@ export class SmoothingPathCalculator implements VNavPathCalculator {
       return false;
     }
 
+    let anchorConstraintIndex = lastDescentConstraintIndex;
     let hasFoundPathEndConstraint = false;
 
-    for (let targetConstraintIndex = lastDescentConstraintIndex; targetConstraintIndex <= firstDescentConstraintIndex; targetConstraintIndex++) {
-      const constraint = verticalPlan.constraints[targetConstraintIndex];
+    while (anchorConstraintIndex <= firstDescentConstraintIndex) {
+      const constraint = verticalPlan.constraints[anchorConstraintIndex];
 
       // If the current constraint is climb or missed, skip it.
       if (constraint.type === 'climb' || constraint.type === 'missed') {
         continue;
       }
 
-      // If we haven't found a target constraint yet, attempt to make the current constraint the target constraint,
-      // if it defines either a minimum or maximum altitude. If the current constraint has neither a minimum nor
-      // maximum altitude (which should technically never happen), skip it.
-      if (!currentTargetConstraint) {
+      // If we haven't found an anchor constraint yet, then attempt to make the current constraint the anchor
+      // constraint if it defines either a minimum or maximum altitude. If the current constraint has neither a minimum
+      // nor maximum altitude (which should technically never happen), skip it.
+      if (!currentAnchorConstraint) {
         if (constraint.minAltitude > Number.NEGATIVE_INFINITY || constraint.maxAltitude < Number.POSITIVE_INFINITY) {
-          currentTargetConstraint = constraint;
-          currentTargetConstraint.targetAltitude = this.getDescentTargetConstraintAltitude(
+          currentAnchorConstraint = constraint;
+          currentAnchorConstraint.targetAltitude = this.getDescentTargetConstraintAltitude(
             constraint,
-            targetConstraintIndex,
+            anchorConstraintIndex,
             constraint.legs[0],
             lateralPlan.getLeg(constraint.legs[0].segmentIndex, constraint.legs[0].legIndex),
             verticalPlan,
             lateralPlan
           );
-          currentTargetConstraint.isTarget = true;
 
           if (!hasFoundPathEndConstraint) {
-            currentTargetConstraint.isPathEnd = true;
+            currentAnchorConstraint.isPathEnd = true;
             hasFoundPathEndConstraint = true;
           }
         } else {
+          ++anchorConstraintIndex;
           continue;
         }
       }
 
-      // Reset the method variables
-      currentPathSegmentMinFpa = this.minFlightPathAngle;
-      currentPathSegmentMaxFpa = this.maxFlightPathAngle;
-      currentPathSegmentDistance = currentTargetConstraint.distance;
+      const currentAnchorConstraintIsFirstDescentConstraint = anchorConstraintIndex === firstDescentConstraintIndex;
 
-      const currentTargetConstraintIsFirstDescentConstraint = targetConstraintIndex === firstDescentConstraintIndex;
+      if (currentAnchorConstraintIsFirstDescentConstraint) {
 
-      if (currentTargetConstraintIsFirstDescentConstraint) {
-
-        if (currentTargetConstraint.type === 'descent') {
+        if (currentAnchorConstraint.type === 'descent') {
           // If this is the first descent constraint and it is not a direct or manual, set the FPA to the default
           // value. We don't set the FPA of direct or manual constraints because FPAs on those constraints will have
           // already been set when the constraints were created.
-          currentTargetConstraint.fpa = this.flightPathAngle;
+          currentAnchorConstraint.fpa = this.flightPathAngle;
         }
 
-        // If currentTargetConstraintIsFirstDescentConstraint is true, then after this logic, we're done with this method.
+        currentAnchorConstraint.isTarget = this.isDescentConstraintTarget(verticalPlan, anchorConstraintIndex, lastDescentConstraintIndex);
+
+        // If the current anchor constraint is the first descent constraint, then we're done with this method since
+        // there are no more constraints to compute.
         return true;
       }
 
-      // If the current target constraint is a manual or direct type, then honor the FPA by not allowing any other FPAs.
-      if (currentTargetConstraint.type === 'manual') {
-        currentPathSegmentMinFpa = currentTargetConstraint.fpa;
-        currentPathSegmentMaxFpa = currentTargetConstraint.fpa;
-        currentTargetConstraintHasFixedFpa = true;
-      } else {
-        currentTargetConstraintHasFixedFpa = false;
+      const currentAnchorConstraintHasFixedFpa = currentAnchorConstraint.type === 'manual' || currentAnchorConstraint.type === 'direct';
+
+      // Find the lookahead constraint for the current anchor constraint. The lookahead constraint is the closest
+      // descent constraint equal to or prior to the anchor constraint (in flight plan order) that meets at least one
+      // of the following criteria:
+      // - The constraint is the first descent constraint in the flight plan.
+      // - The constraint is a direct constraint.
+      // - The constraint has a manual flight path angle.
+      // - The constraint immediately follows (in flight plan order) a non-descent constraint.
+      // - The constraint contains at least one path-ineligible leg.
+      // - The constraint is at the faf (final approach fix).
+      // - The constraint's minimum and maximum altitudes are the same (only if the current anchor constraint does not
+      //   have a fixed FPA).
+
+      // The lookahead constraint is effectively the closest constraint to the current anchor constraint that must be
+      // designated as a target constraint or where the flight path angle of the descent path is either forced to
+      // change or allowed to change in order to optimize the smoothed path.
+
+      let lookaheadConstraintIndex = anchorConstraintIndex;
+      let isLookaheadConstraintPathStart = false;
+      let isLookaheadConstraintFpaFixed = currentAnchorConstraintHasFixedFpa;
+      let distanceFromAnchorConstraintToLookahead = 0;
+
+      let currentDistanceFromAnchorConstraint = currentAnchorConstraint.distance;
+
+      for (let currentConstraintIndex = anchorConstraintIndex + 1; currentConstraintIndex <= firstDescentConstraintIndex; currentConstraintIndex++) {
+        const currentConstraint = verticalPlan.constraints[currentConstraintIndex];
+        const isCurrentContraintFpaFixed = currentConstraint.type === 'direct' || currentConstraint.type === 'manual';
+
+        if (currentConstraintIndex === firstDescentConstraintIndex) {
+          lookaheadConstraintIndex = currentConstraintIndex;
+          isLookaheadConstraintPathStart = true;
+          isLookaheadConstraintFpaFixed = isCurrentContraintFpaFixed;
+          distanceFromAnchorConstraintToLookahead = currentDistanceFromAnchorConstraint;
+          break;
+        }
+
+        if (isCurrentContraintFpaFixed) {
+          lookaheadConstraintIndex = currentConstraintIndex;
+          isLookaheadConstraintFpaFixed = true;
+          distanceFromAnchorConstraintToLookahead = currentDistanceFromAnchorConstraint;
+          break;
+        }
+
+        if (currentConstraint.type === 'climb' || currentConstraint.type === 'missed') {
+          lookaheadConstraintIndex = currentConstraintIndex - 1;
+          isLookaheadConstraintPathStart = true;
+          distanceFromAnchorConstraintToLookahead = currentDistanceFromAnchorConstraint - verticalPlan.constraints[lookaheadConstraintIndex].distance;
+          break;
+        }
+
+        if (
+          currentConstraint.nextVnavEligibleLegIndex !== undefined
+          || currentConstraint.index === verticalPlan.fafLegIndex
+          || (!currentAnchorConstraintHasFixedFpa && currentConstraint.minAltitude === currentConstraint.maxAltitude)
+        ) {
+          lookaheadConstraintIndex = currentConstraintIndex;
+          distanceFromAnchorConstraintToLookahead = currentDistanceFromAnchorConstraint;
+          break;
+        }
+
+        const requiredFpasIndex = (currentConstraintIndex - anchorConstraintIndex - 1) * 2;
+
+        this._descentPathRequiredFpas[requiredFpasIndex]
+          = VNavUtils.getFpa(currentDistanceFromAnchorConstraint, currentConstraint.minAltitude - currentAnchorConstraint.targetAltitude);
+        this._descentPathRequiredFpas[requiredFpasIndex + 1]
+          = VNavUtils.getFpa(currentDistanceFromAnchorConstraint, currentConstraint.maxAltitude - currentAnchorConstraint.targetAltitude);
+
+        currentDistanceFromAnchorConstraint += currentConstraint.distance;
       }
 
-      let pathSegmentIsFlat = false;
-      let ineligibleFollowingConstraint = currentTargetConstraint.nextVnavEligibleLegIndex !== undefined
-        ? currentTargetConstraint
-        : undefined;
+      let lookaheadConstraint = verticalPlan.constraints[lookaheadConstraintIndex];
+      let minFpaToLookaheadConstraint = -Infinity;
+      let maxFpaToLookaheadConstraint = Infinity;
 
-      for (let currentConstraintIndex = targetConstraintIndex + 1; currentConstraintIndex <= firstDescentConstraintIndex; currentConstraintIndex++) {
+      if (lookaheadConstraintIndex !== anchorConstraintIndex) {
+        minFpaToLookaheadConstraint = VNavUtils.getFpa(distanceFromAnchorConstraintToLookahead, lookaheadConstraint.minAltitude - currentAnchorConstraint.targetAltitude);
+        maxFpaToLookaheadConstraint = VNavUtils.getFpa(distanceFromAnchorConstraintToLookahead, lookaheadConstraint.maxAltitude - currentAnchorConstraint.targetAltitude);
+      }
 
-        const currentConstraint = verticalPlan.constraints[currentConstraintIndex];
-        const isCurrentConstraintFirstDescent = currentConstraintIndex === firstDescentConstraintIndex;
-        const isCurrentConstraintFaf = currentConstraint.index === verticalPlan.fafLegIndex;
-        const isCurrentConstraintClimb = currentConstraint.type === 'climb' || currentConstraint.type === 'missed';
-        const isCurrentConstraintManual = currentConstraint.type === 'manual';
-        const isCurrentConstraintDirect = currentConstraint.type === 'direct';
+      let desiredFpaToLookaheadConstraint: number;
+      if (currentAnchorConstraintHasFixedFpa) {
+        // If the current anchor constraint has a fixed FPA, then the desired FPA is just the fixed value.
 
-        if (isCurrentConstraintClimb) {
-          // We have reached a climb constraint.
+        desiredFpaToLookaheadConstraint = currentAnchorConstraint.fpa;
+      } else {
+        // If the current anchor constraint does not have a fixed FPA, then set the desired FPA to the angle closest
+        // to the default FPA that meets the lookahead constraint. If this desired angle violates the minimum or
+        // maximum FPA, then adjust the desired angle appropriately.
 
-          if (currentConstraintIndex - 1 > targetConstraintIndex) {
-            // There is at least one constraint between the existing target constraint and the current climb
-            // constraint. Attempt to extend the constant-FPA path through the constraint immediately following the
-            // current climb constraint (which is guaranteed to be a descent constraint). Note that the target
-            // constraint cannot be a direct constraint (since direct constraints cannot follow another constraint).
+        desiredFpaToLookaheadConstraint = MathUtils.clamp(this.flightPathAngle, minFpaToLookaheadConstraint, maxFpaToLookaheadConstraint);
+        if (desiredFpaToLookaheadConstraint !== this.flightPathAngle) {
+          if (desiredFpaToLookaheadConstraint > this.maxFlightPathAngle) {
+            desiredFpaToLookaheadConstraint = this.maxFlightPathAngle;
+          } else if (desiredFpaToLookaheadConstraint < this.minFlightPathAngle) {
+            // If the FPA required to meet the lookahead constraint is less than the minimum, then set the desired
+            // angle to the default angle. We do this instead of setting the desired angle to the minimum angle because
+            // a level-off is required for any FPA greater than or equal to the minimum angle, so choosing the minimum
+            // angle has no advantages over choosing the default angle.
+            desiredFpaToLookaheadConstraint = this.flightPathAngle;
+          }
+        }
+      }
 
-            currentTargetConstraint.fpa = MathUtils.clamp(this.flightPathAngle, currentPathSegmentMinFpa, currentPathSegmentMaxFpa);
+      // Find the constraint between the current anchor constraint and the lookahead constraint (if any) that requires
+      // the flight path angle that is most different from the desired angle to the lookahead constraint. Ties go to
+      // the constraint closest to the current anchor constraint. If we find such a constraint, then it becomes the new
+      // lookahead constraint and we repeat the process until no constraints are left between the lookahead constraint
+      // and current anchor constraint that require a flight path angle different from the desired angle.
 
-            const maxAltitude = pathSegmentIsFlat ? currentTargetConstraint.targetAltitude : verticalPlan.constraints[currentConstraintIndex - 1].maxAltitude;
-            const terminatedIndex = this.terminateSmoothedPath(
-              verticalPlan,
-              targetConstraintIndex,
-              currentConstraintIndex,
-              maxAltitude,
-              false
-            );
+      while (lookaheadConstraintIndex > anchorConstraintIndex + 1) {
+        let maxFpaDiff = 0;
+        let maxFpaDiffConstraintIndex = -1;
+        let requiredFpaToMaxDiffConstraint = 0;
+        let minFpaToMaxDiffConstraint = 0;
+        let maxFpaToMaxDiffConstraint = 0;
 
-            if (terminatedIndex < currentConstraintIndex) {
-              // The path was terminated early, which means there is a new target constraint.
+        for (let currentConstraintIndex = anchorConstraintIndex + 1; currentConstraintIndex < lookaheadConstraintIndex; currentConstraintIndex++) {
+          const requiredFpasIndex = (currentConstraintIndex - anchorConstraintIndex - 1) * 2;
 
-              targetConstraintIndex = terminatedIndex - 1; // reduce the targetConstraintIndex by 1 because the for loop will +1 it.
-              currentTargetConstraint = verticalPlan.constraints[terminatedIndex];
-              break;
-            }
-          } else {
-            // The existing target constraint immediately follows the current climb constraint. Treat the target
-            // constraint as if it were the first descent constraint and apply the default FPA if it is not a manual
-            // constraint. Note that we are guaranteed the target constraint is not a direct constraint (since direct
-            // constraints cannot follow another constraint).
+          const minFpa = this._descentPathRequiredFpas[requiredFpasIndex];
+          const maxFpa = this._descentPathRequiredFpas[requiredFpasIndex + 1];
 
-            if (currentTargetConstraint.type !== 'manual') {
-              currentTargetConstraint.fpa = this.flightPathAngle;
-            }
+          let fpaDiff = 0;
+          let requiredFpa = 0;
+
+          if (desiredFpaToLookaheadConstraint > maxFpa) {
+            fpaDiff = desiredFpaToLookaheadConstraint - maxFpa;
+            requiredFpa = maxFpa;
+          } else if (desiredFpaToLookaheadConstraint < minFpa) {
+            fpaDiff = minFpa - desiredFpaToLookaheadConstraint;
+            requiredFpa = minFpa;
           }
 
-          // Do not designate a new target constraint in order to allow the outer loop to find the new one.
+          if (fpaDiff > maxFpaDiff) {
+            maxFpaDiff = fpaDiff;
+            maxFpaDiffConstraintIndex = currentConstraintIndex;
+            requiredFpaToMaxDiffConstraint = requiredFpa;
+            minFpaToMaxDiffConstraint = minFpa;
+            maxFpaToMaxDiffConstraint = maxFpa;
+          }
+        }
 
-          targetConstraintIndex = currentConstraintIndex;
-          currentTargetConstraint = undefined;
-
+        if (maxFpaDiffConstraintIndex < 0) {
           break;
         }
 
-        if (ineligibleFollowingConstraint) {
-          // The constraint following the current one (in flight plan order) is path-ineligible. In this case, we will
-          // attempt to make the current constraint the new target constraint since we cannot compute a valid path from
-          // the current constraint to the target constraint.
+        lookaheadConstraintIndex = maxFpaDiffConstraintIndex;
+        lookaheadConstraint = verticalPlan.constraints[lookaheadConstraintIndex];
 
-          // Because the following constraint is path-ineligible, the FPA of the target constraint does not have to be
-          // restricted by the current constraint, since the path between the two is undefined.
-          currentTargetConstraint.fpa = MathUtils.clamp(this.flightPathAngle, currentPathSegmentMinFpa, currentPathSegmentMaxFpa);
+        // NOTE: if we are assigning a new lookahead constraint, then we are guaranteed that the new lookahead
+        // constraint is not the start of a contiguous descent path and it does not have a fixed FPA. This is because
+        // of the way we picked the original lookahead constraint for the current anchor constraint, which guarantees
+        // that there are no constraints meeting either of those criteria between the original lookahead constraint and
+        // the current anchor constraint.
+        isLookaheadConstraintPathStart = false;
+        isLookaheadConstraintFpaFixed = false;
 
-          // Attempt to set the maximum altitude of the path from the current constraint to the target altitude of the
-          // current constraint if it were a target constraint. We will then clamp this from below using the current
-          // target constraint's target altitude. Since we didn't restrict the current target constraint's FPA based on
-          // the current constraint, this ensures we don't have to climb when traveling from the current constraint to
-          // the current target constraint. We will also clamp from above using the prior (in flight plan order)
-          // maximum altitude constraint. This ensures we don't have to descend when traveling to the current
-          // constraint.
-          const currentConstraintTargetAltitude = this.getDescentTargetConstraintAltitude(
-            currentConstraint,
-            currentConstraintIndex,
-            currentConstraint.legs[0],
-            lateralPlan.getLeg(currentConstraint.legs[0].segmentIndex, currentConstraint.legs[0].legIndex),
-            verticalPlan,
-            lateralPlan
-          );
-          const priorMaxAltitude = SmoothingPathCalculator.findPriorMaxAltitude(verticalPlan, currentConstraintIndex, firstDescentConstraintIndex);
-          const maxAltitude = Math.min(Math.max(currentConstraintTargetAltitude, currentTargetConstraint.targetAltitude), priorMaxAltitude);
+        minFpaToLookaheadConstraint = minFpaToMaxDiffConstraint;
+        maxFpaToLookaheadConstraint = maxFpaToMaxDiffConstraint;
 
-          const terminatedIndex = this.terminateSmoothedPath(
-            verticalPlan,
-            targetConstraintIndex,
-            currentConstraintIndex,
-            maxAltitude,
-            true
-          );
-
-          if (terminatedIndex < currentConstraintIndex) {
-            // The path was terminated early, which means there is a new target constraint.
-
-            targetConstraintIndex = terminatedIndex - 1; // reduce the targetConstraintIndex by 1 because the for loop will +1 it.
-            currentTargetConstraint = verticalPlan.constraints[terminatedIndex];
-            break;
-          } else {
-            targetConstraintIndex = currentConstraintIndex - 1; // reduce the targetConstraintIndex by 1 because the for loop will +1 it.
-            currentTargetConstraint = currentConstraint;
+        // If the current anchor constraint does not have a fixed FPA, then we need to recompute the desired FPA using
+        // the new lookahead constraint.
+        if (!currentAnchorConstraintHasFixedFpa) {
+          desiredFpaToLookaheadConstraint = requiredFpaToMaxDiffConstraint;
+          if (desiredFpaToLookaheadConstraint > this.maxFlightPathAngle) {
+            desiredFpaToLookaheadConstraint = this.maxFlightPathAngle;
+          } else if (desiredFpaToLookaheadConstraint < this.minFlightPathAngle) {
+            // If the FPA required to meet the lookahead constraint is less than the minimum, then set the desired
+            // angle to the default angle. We do this instead of setting the desired angle to the minimum angle because
+            // a level-off is required for any FPA greater than or equal to the minimum angle, so choosing the minimum
+            // angle has no advantages over choosing the default angle.
+            desiredFpaToLookaheadConstraint = this.flightPathAngle;
           }
+        }
+      }
 
-          break;
+      if (lookaheadConstraintIndex === anchorConstraintIndex) {
+        // The lookahead constraint is the current anchor constraint. This means that there are no restrictions on the
+        // flight path angle of the current anchor constraint. Therefore, we will set the FPA of the current anchor
+        // constraint to the default angle if the current anchor constraint does not have a fixed FPA.
+
+        if (!currentAnchorConstraintHasFixedFpa) {
+          currentAnchorConstraint.fpa = this.flightPathAngle;
         }
 
-        const minAltitude = currentConstraint.minAltitude;
-        const maxAltitude = currentConstraint.maxAltitude;
+        currentAnchorConstraint.isTarget = this.isDescentConstraintTarget(verticalPlan, anchorConstraintIndex, lastDescentConstraintIndex);
 
-        if (pathSegmentIsFlat && maxAltitude - currentTargetConstraint.targetAltitude > 0) {
-          // We are in a flat segment (all constraints with FPA = 0) and the current constraint would allow a
-          // non-zero FPA to the constraint immediately following it. Therefore, we set the new target constraint
-          // to the constraint immediately following the current one (because it is at the end of that constraint
-          // where the FPA can potentially change from non-zero to zero). Note that we are guaranteed that the
-          // new target constraint lies prior to the existing target constraint.
+        // Continue the outer loop and let it find the next anchor constraint.
+        currentAnchorConstraint = undefined;
+        ++anchorConstraintIndex;
+        continue;
+      }
 
-          const flatSegmentAltitude = currentTargetConstraint.targetAltitude;
-          const newTargetConstraintIndex = currentConstraintIndex - 1;
+      // At this point, we are guaranteed that we can extend a flight path with angle equal to
+      // desiredFpaToLookaheadConstraint from the current anchor constraint to the lookahead constraint without
+      // violating any constraints between the two.
 
+      if (!currentAnchorConstraintHasFixedFpa && lookaheadConstraint.maxAltitude <= currentAnchorConstraint.targetAltitude) {
+        // The current anchor constraint does not have a fixed flight path angle and we cannot extend a non-flat path
+        // from the current anchor constraint that respects the lookahead constraint. In this case, we will extend a
+        // flat path (FPA = 0) from the current anchor constraint to the lookahead constraint and make the lookahead
+        // constraint the next anchor constraint.
+
+        currentAnchorConstraint.fpa = 0;
+        currentAnchorConstraint.isTarget = this.isDescentConstraintTarget(verticalPlan, anchorConstraintIndex, lastDescentConstraintIndex);
+
+        const flatSegmentAltitude = currentAnchorConstraint.targetAltitude;
+
+        SmoothingPathCalculator.applyPathValuesToSmoothedConstraints(
+          verticalPlan,
+          anchorConstraintIndex,
+          lookaheadConstraintIndex,
+          // Maximum altitude is not needed because we are guaranteed that the target altitudes of all smoothed
+          // constraints are equal to the flat segment altitude.
+          Infinity,
+          this.applyPathValuesResult
+        );
+
+        anchorConstraintIndex = lookaheadConstraintIndex;
+        currentAnchorConstraint = verticalPlan.constraints[anchorConstraintIndex];
+        currentAnchorConstraint.targetAltitude = flatSegmentAltitude;
+
+        continue;
+      }
+
+      // If the current anchor constraint does not have a fixed FPA, then we will set the FPA to the desired angle. If
+      // the current anchor constraint has a fixed FPA, then its FPA is already set to the fixed value.
+      if (!currentAnchorConstraintHasFixedFpa) {
+        currentAnchorConstraint.fpa = desiredFpaToLookaheadConstraint;
+      }
+
+      currentAnchorConstraint.isTarget = this.isDescentConstraintTarget(verticalPlan, anchorConstraintIndex, lastDescentConstraintIndex);
+
+      let terminatedIndex: number;
+
+      if (isLookaheadConstraintPathStart) {
+        // The lookahead constraint is the first constraint in a contiguous descent path. In other words, it is either
+        // the first descent constraint in the flight plan, or it immediately follows a non-descent constraint.
+
+        let extendPathPastAnchor = false;
+        if (currentAnchorConstraintHasFixedFpa) {
+          // If the current anchor constraint has a fixed FPA, then we will extend the constant-FPA path past the
+          // lookahead constraint if and only if the lookahead constraint does not itself have a fixed FPA, the
+          // lookahead constraint is not at the faf, and such a path does not violate the lookahead constraint.
+
+          extendPathPastAnchor = !isLookaheadConstraintFpaFixed
+            && lookaheadConstraint.index !== verticalPlan.fafLegIndex
+            && currentAnchorConstraint.fpa >= minFpaToLookaheadConstraint
+            && currentAnchorConstraint.fpa <= maxFpaToLookaheadConstraint;
+        }
+
+        if (extendPathPastAnchor) {
+          const terminatingConstraintIndex = lookaheadConstraintIndex + 1;
           SmoothingPathCalculator.applyPathValuesToSmoothedConstraints(
             verticalPlan,
-            targetConstraintIndex,
-            newTargetConstraintIndex,
-            // Maximum altitude is not needed because we are guaranteed that the target altitudes of all smoothed
-            // constraints are equal to the flat segment altitude.
+            anchorConstraintIndex,
+            terminatingConstraintIndex,
+            // If we are extending the path past the lookahead constraint, then there is no maximum altitude to respect
+            // because there are no more constraints along the contiguous descent path prior to the lookahead
+            // constraint.
             Infinity,
             this.applyPathValuesResult
           );
 
-          // reduce the targetConstraintIndex by 1 because the for loop will +1 it.
-          targetConstraintIndex = newTargetConstraintIndex - 1;
-          currentTargetConstraint = verticalPlan.constraints[newTargetConstraintIndex];
-          currentTargetConstraint.targetAltitude = flatSegmentAltitude;
-          currentTargetConstraint.isTarget = true;
-
-          break;
-        } else if (!currentTargetConstraintHasFixedFpa && maxAltitude - currentTargetConstraint.targetAltitude <= 0) {
-          // The current constraint does not allow a non-zero FPA to the target constraint, and the target constraint
-          // does not have a fixed FPA. We will mark the current segment as flat and set the target constraint FPA to 0.
-
-          pathSegmentIsFlat = true;
-          currentTargetConstraint.fpa = 0;
-
-          if (isCurrentConstraintFirstDescent) {
-            // If the current constraint is the first descent constraint, then we need to make it the new target
-            // constraint because the first descent constraint is never flat.
-
-            const flatSegmentAltitude = currentTargetConstraint.targetAltitude;
-
-            SmoothingPathCalculator.applyPathValuesToSmoothedConstraints(
-              verticalPlan,
-              targetConstraintIndex,
-              currentConstraintIndex,
-              // Maximum altitude is not needed because we are guaranteed that the target altitudes of all smoothed
-              // constraints are equal to the flat segment altitude.
-              Infinity,
-              this.applyPathValuesResult
-            );
-
-            // reduce the targetConstraintIndex by 1 because the for loop will +1 it.
-            targetConstraintIndex = currentConstraintIndex - 1;
-            currentTargetConstraint = verticalPlan.constraints[currentConstraintIndex];
-            currentTargetConstraint.targetAltitude = flatSegmentAltitude;
-            currentTargetConstraint.isTarget = true;
-
-            break;
-          }
-
+          // Continue the outer loop and let it find the next anchor constraint.
+          currentAnchorConstraint = undefined;
+          anchorConstraintIndex = terminatingConstraintIndex;
           continue;
-        }
-
-        // Get the min and max FPA from the current target constraint to the current constraint.
-        const minFpa = VNavUtils.getFpa(currentPathSegmentDistance, minAltitude - currentTargetConstraint.targetAltitude);
-        const maxFpa = VNavUtils.getFpa(currentPathSegmentDistance, maxAltitude - currentTargetConstraint.targetAltitude);
-
-        const isFpaOutOfBounds = minFpa > currentPathSegmentMaxFpa || maxFpa < currentPathSegmentMinFpa;
-
-        // A new target constraint needs to be created under the following conditions:
-        // - The current constraint cannot be met with a constant FPA path from the current target constraint within
-        //   this calculator's FPA limits.
-        // - The current constraint is the final approach fix.
-        // - The current constraint is a vertical direct constraint.
-        // - The current constraint is a manual constraint.
-        if (isFpaOutOfBounds || isCurrentConstraintFaf || isCurrentConstraintManual || isCurrentConstraintDirect) {
-
-          // We need to choose a FPA for the constant-FPA smoothed path.
-
-          if (isFpaOutOfBounds) {
-            // If we are creating a new target constraint because the current constraint can't be met with a
-            // constant-FPA path, then we set the FPA of the smoothed path to the value that brings the new
-            // target constraint's target altitude as close to meeting the current constraint as possible.
-            if (minFpa > currentPathSegmentMaxFpa) {
-              currentTargetConstraint.fpa = currentPathSegmentMaxFpa;
-            } else {
-              currentTargetConstraint.fpa = currentPathSegmentMinFpa;
-            }
-          } else {
-            // If the new target constraint can be met with a constant-FPA path, then we choose a valid FPA that is
-            // as close to the calculator's default FPA as possible.
-
-            currentPathSegmentMinFpa = Math.max(minFpa, currentPathSegmentMinFpa);
-            currentPathSegmentMaxFpa = Math.min(maxFpa, currentPathSegmentMaxFpa);
-
-            currentTargetConstraint.fpa = MathUtils.clamp(this.flightPathAngle, currentPathSegmentMinFpa, currentPathSegmentMaxFpa);
-          }
-
-          // Designate a terminating constraint to which to attempt to extend a constant-FPA path from the current
-          // target constraint. If the minimum FPA required to meet the current constraint is greater than the chosen
-          // FPA (meaning that the constant-FPA path would cross the current constraint *below* its minimum altitude)
-          // and the current target constraint does not immediately follow the current constraint, then designate the
-          // constraint after the current constraint (in flight plan order) as the terminating constraint. This is done
-          // so that we don't find ourselves above the path after sequencing the terminating constraint. Otherwise,
-          // designate the current constraint as the terminating constraint.
-          const terminatingConstraintIndex = minFpa > currentTargetConstraint.fpa && currentConstraintIndex - 1 > targetConstraintIndex
-            ? currentConstraintIndex - 1
-            : currentConstraintIndex;
-
-          // Set the maximum altitude of the path from the terminating constraint to the current target constraint to
-          // the prior (in flight plan order) maximum altitude constraint. This ensures we don't have to descend when
-          // traveling to the terminating constraint.
-          const priorMaxAltitude = SmoothingPathCalculator.findPriorMaxAltitude(verticalPlan, terminatingConstraintIndex, firstDescentConstraintIndex);
-
-          // Attempt to extend a constant-FPA path from the existing target constraint to the terminating constraint
-          // and make the terminating constraint the new target constraint.
-
-          const terminatedIndex = this.terminateSmoothedPath(
+        } else {
+          terminatedIndex = this.terminateSmoothedPath(
             verticalPlan,
-            targetConstraintIndex,
-            terminatingConstraintIndex,
-            priorMaxAltitude,
+            anchorConstraintIndex,
+            lookaheadConstraintIndex,
+            lookaheadConstraint.maxAltitude,
             true
           );
-
-          targetConstraintIndex = terminatedIndex - 1; // reduce the nextTargetConstraintIndex by 1 because the for loop will +1 it.
-          currentTargetConstraint = verticalPlan.constraints[terminatedIndex];
-
-          break;
-        } else if (isCurrentConstraintFirstDescent) {
-          // We have reached the first descent constraint without needing to create a new target constraint, so
-          // attempt to extend the constant-FPA path from the existing target constraint through the first descent
-          // constraint.
-
-          currentPathSegmentMinFpa = Math.max(minFpa, currentPathSegmentMinFpa);
-          currentPathSegmentMaxFpa = Math.min(maxFpa, currentPathSegmentMaxFpa);
-
-          currentTargetConstraint.fpa = MathUtils.clamp(this.flightPathAngle, currentPathSegmentMinFpa, currentPathSegmentMaxFpa);
-
-          const terminatedIndex = this.terminateSmoothedPath(
-            verticalPlan,
-            targetConstraintIndex,
-            currentConstraintIndex + 1,
-            currentConstraint.maxAltitude,
-            false
-          );
-
-          if (terminatedIndex < currentConstraintIndex + 1) {
-            // The path was terminated early, which means there is a new target constraint.
-
-            targetConstraintIndex = terminatedIndex - 1; // reduce the nextTargetConstraintIndex by 1 because the for loop will +1 it.
-            currentTargetConstraint = verticalPlan.constraints[terminatedIndex];
-            break;
-          } else {
-            // The path was not terminated early, so we are done.
-            return true;
-          }
-        } else {
-
-          // Extend the current constant-FPA path and update the FPA limits
-          currentPathSegmentMinFpa = Math.max(minFpa, currentPathSegmentMinFpa);
-          currentPathSegmentMaxFpa = Math.min(maxFpa, currentPathSegmentMaxFpa);
-          currentPathSegmentDistance += currentConstraint.distance;
         }
+      } else if (lookaheadConstraint.nextVnavEligibleLegIndex !== undefined) {
+        // The lookahead constraint contains at least one path-ineligible leg. In this case, we will attempt to extend
+        // a constant-FPA path from the current anchor constraint through the lookahead constraint and ending at the
+        // constraint prior to the lookahead constraint (in flight plan order). We do not need the path to respect the
+        // prior constraint because there is a discontinuity in the vertical path between the prior constraint and the
+        // lookahead constraint thanks to the path-ineligible leg(s).
 
-        ineligibleFollowingConstraint = currentConstraint.nextVnavEligibleLegIndex !== undefined
-          ? currentConstraint
-          : undefined;
+        // NOTE: we are guaranteed that there exists a constraint prior to the lookahead constraint (in flight plan
+        // order) and that this constraint is a descent constraint. This is because if there were not, then we would
+        // have entered the isLookaheadConstraintPathStart case above and continued the outer loop instead of ending up
+        // here.
+        const priorConstraintIndex = lookaheadConstraintIndex + 1;
+        const priorConstraint = verticalPlan.constraints[priorConstraintIndex];
+
+        // Attempt to set the maximum altitude of the path from the prior constraint to the target altitude of the
+        // prior constraint if it were a target constraint. We will then clamp this from below using the current
+        // anchor constraint's target altitude. Since we didn't restrict the current anchor constraint's FPA based on
+        // the prior constraint, this ensures we don't have to climb when traveling from the prior constraint to
+        // the current anchor constraint. We will also clamp from above using the prior (in flight plan order)
+        // maximum altitude constraint. This ensures we don't have to descend when traveling to the prior
+        // constraint.
+        const priorConstraintTargetAltitude = this.getDescentTargetConstraintAltitude(
+          priorConstraint,
+          priorConstraintIndex,
+          priorConstraint.legs[0],
+          lateralPlan.getLeg(priorConstraint.legs[0].segmentIndex, priorConstraint.legs[0].legIndex),
+          verticalPlan,
+          lateralPlan
+        );
+        const priorMaxAltitude = SmoothingPathCalculator.findPriorMaxAltitude(verticalPlan, priorConstraintIndex, firstDescentConstraintIndex);
+        const maxAltitude = Math.min(Math.max(priorConstraintTargetAltitude, currentAnchorConstraint.targetAltitude), priorMaxAltitude);
+
+        terminatedIndex = this.terminateSmoothedPath(
+          verticalPlan,
+          anchorConstraintIndex,
+          priorConstraintIndex,
+          maxAltitude,
+          true
+        );
+      } else {
+        // Designate a terminating constraint to which to attempt to extend a constant-FPA path from the current anchor
+        // constraint. If the minimum FPA required to meet the lookahead constraint is greater than the chosen FPA
+        // (meaning that the constant-FPA path would cross the lookahead constraint *below* its minimum altitude) and the
+        // current anchor constraint does not immediately follow the lookahead constraint, then designate the constraint
+        // after the lookahead constraint (in flight plan order) as the terminating constraint. This is done so that we
+        // don't find ourselves above the path after sequencing the terminating constraint. Otherwise, designate the
+        // lookahead constraint as the terminating constraint.
+        const terminatingConstraintIndex = minFpaToLookaheadConstraint > currentAnchorConstraint.fpa && lookaheadConstraintIndex - 1 > anchorConstraintIndex
+          ? lookaheadConstraintIndex - 1
+          : lookaheadConstraintIndex;
+
+        // Set the maximum altitude of the path from the terminating constraint to the current anchor constraint to
+        // the prior (in flight plan order) maximum altitude constraint. This ensures we don't have to descend when
+        // traveling to the terminating constraint.
+        const priorMaxAltitude = SmoothingPathCalculator.findPriorMaxAltitude(verticalPlan, terminatingConstraintIndex, firstDescentConstraintIndex);
+
+        terminatedIndex = this.terminateSmoothedPath(
+          verticalPlan,
+          anchorConstraintIndex,
+          terminatingConstraintIndex,
+          priorMaxAltitude,
+          true
+        );
       }
+
+      // Make the terminating constraint the new anchor constraint.
+      anchorConstraintIndex = terminatedIndex;
+      currentAnchorConstraint = verticalPlan.constraints[terminatedIndex];
     }
 
     return true;
@@ -1816,62 +1888,110 @@ export class SmoothingPathCalculator implements VNavPathCalculator {
   }
 
   /**
-   * Attempts to extend and terminate a constant-FPA path from an existing target constraint at another constraint,
-   * applying flight path angles and target altitudes to each constraint along the path. The target constraint defines
-   * the FPA of the path.
+   * Attempts to extend a constant-FPA path backwards from an anchor constraint and terminate the path at another
+   * constraint, applying flight path angles and target altitudes to each constraint along the path. The anchor
+   * constraint defines the FPA of the path.
    *
    * If the target altitude of one of the constraints in the sequence, as prescribed by the path, violates a maximum
-   * altitude, the path will be terminated at the constraint immediately following (in flight plan order) the violating
-   * constraint, and FPA and target altitudes will not be written to the terminating constraint or any prior
+   * altitude, then the path will be terminated at the constraint immediately following (in flight plan order) the
+   * violating constraint, and FPA and target altitudes will not be written to the terminating constraint or any prior
    * constraints.
    * @param verticalPlan The vertical flight plan.
-   * @param targetConstraintIndex The index of the target constraint.
+   * @param anchorConstraintIndex The index of the anchor constraint.
    * @param terminatingConstraintIndex The index of the constraint at which to terminate the path.
    * @param maxAltitude The maximum allowable target altitude, in meters.
-   * @param terminatingConstraintIsTarget Whether to designate the terminating constraint as a target constraint if the
-   * path is not terminated early. If the path is terminated early, this argument is ignored and the constraint at
-   * which the path was terminated early is always designated as a target constraint.
+   * @param designateTerminatingConstraintAsAnchor Whether to designate the terminating constraint as an anchor
+   * constraint if the path is not terminated early. If the path is terminated early, then this argument is ignored and
+   * the constraint at which the path was terminated early is always designated as an anchor constraint. If the
+   * terminating constraint is designated as an anchor constraint, then its target altitude value will be set to the
+   * altitude of the constant-FPA path at the constraint.
    * @returns The index of the constraint at which the constant-FPA path was actually terminated.
    */
   protected terminateSmoothedPath(
     verticalPlan: VerticalFlightPlan,
-    targetConstraintIndex: number,
+    anchorConstraintIndex: number,
     terminatingConstraintIndex: number,
     maxAltitude: number,
-    terminatingConstraintIsTarget: boolean
+    designateTerminatingConstraintAsAnchor: boolean
   ): number {
     const [maxAltitudeViolatedIndex, smoothedSegmentDistance] = SmoothingPathCalculator.applyPathValuesToSmoothedConstraints(
       verticalPlan,
-      targetConstraintIndex,
+      anchorConstraintIndex,
       terminatingConstraintIndex,
       maxAltitude,
       this.applyPathValuesResult
     );
 
-    if (terminatingConstraintIsTarget || maxAltitudeViolatedIndex !== undefined) {
-      // A constant-FPA path was not able to be extended from the existing target constraint to the first descent
-      // constraint, so we need to designate a new target constraint where the path terminated.
+    if (designateTerminatingConstraintAsAnchor || maxAltitudeViolatedIndex !== undefined) {
+      // A constant-FPA path was not able to be extended from the anchor constraint to the requested terminating
+      // constraint, so we need to designate a new anchor constraint where the path terminated.
 
-      const currentTargetConstraint = verticalPlan.constraints[targetConstraintIndex];
+      const currentAnchorConstraint = verticalPlan.constraints[anchorConstraintIndex];
 
-      // Establish the proposed next target constraint target altitude
-      const proposedNewTargetConstraintAltitude =
-        currentTargetConstraint.targetAltitude + VNavUtils.altitudeForDistance(currentTargetConstraint.fpa, smoothedSegmentDistance);
+      // Establish the proposed new anchor constraint target altitude
+      const proposedNewAnchorConstraintAltitude =
+        currentAnchorConstraint.targetAltitude + VNavUtils.altitudeForDistance(currentAnchorConstraint.fpa, smoothedSegmentDistance);
 
-      const newTargetConstraintIndex = maxAltitudeViolatedIndex ?? terminatingConstraintIndex;
+      const newAnchorConstraintIndex = maxAltitudeViolatedIndex ?? terminatingConstraintIndex;
 
-      // Set the new target constraint values
-      const newTargetConstraint = verticalPlan.constraints[newTargetConstraintIndex];
-      newTargetConstraint.isTarget = true;
+      // Set the new anchor constraint values
+      const newAnchorConstraint = verticalPlan.constraints[newAnchorConstraintIndex];
 
-      newTargetConstraint.targetAltitude = MathUtils.clamp(
-        proposedNewTargetConstraintAltitude,
-        newTargetConstraint.minAltitude,
-        Math.min(newTargetConstraint.maxAltitude, maxAltitude)
+      newAnchorConstraint.targetAltitude = MathUtils.clamp(
+        proposedNewAnchorConstraintAltitude,
+        newAnchorConstraint.minAltitude,
+        Math.min(newAnchorConstraint.maxAltitude, maxAltitude)
       );
     }
 
     return maxAltitudeViolatedIndex ?? terminatingConstraintIndex;
+  }
+
+  /**
+   * Checks whether a descent constraint can be designated as a target constraint. A target constraint is a constraint
+   * for which at least one of the following is true:
+   * - The vertical flight path ends at the constraint.
+   * - There is a discontinuity in the vertical flight path after the constraint.
+   * - The constraint is located at the final approach fix.
+   * - The angle of the vertical flight path changes at the constraint.
+   * @param verticalPlan The vertical flight plan containing the constraint to check.
+   * @param constraintIndex The index of the constraint to check.
+   * @param lastDescentConstraintIndex The index of the last descent constraint in the flight plan.
+   * @returns Whether the specified descent constraint can be designated as a target constraint.
+   */
+  protected isDescentConstraintTarget(verticalPlan: VerticalFlightPlan, constraintIndex: number, lastDescentConstraintIndex: number): boolean {
+    const constraint = verticalPlan.constraints[constraintIndex];
+
+    if (constraintIndex <= lastDescentConstraintIndex || constraint.isPathEnd) {
+      return true;
+    }
+
+    if (constraint.type === 'direct' || constraint.type === 'manual') {
+      return true;
+    }
+
+    const followingConstraint = verticalPlan.constraints[constraintIndex - 1];
+
+    if (followingConstraint.type === 'climb' || followingConstraint.type === 'missed') {
+      return true;
+    }
+
+    if (
+      followingConstraint.nextVnavEligibleLegIndex !== undefined
+      || constraint.fpa !== followingConstraint.fpa
+      || constraint.index === verticalPlan.fafLegIndex
+    ) {
+      return true;
+    }
+
+    // If the constraint and the following constraint have the same FPA, then we need to check whether there is a
+    // level-off between the two constraints. If there is, then the constraint is a target constraint. Otherwise, it
+    // is not a target constraint.
+
+    const desiredAltitudeFromFollowingConstraint
+      = followingConstraint.targetAltitude + VNavUtils.altitudeForDistance(followingConstraint.fpa, followingConstraint.distance);
+
+    return desiredAltitudeFromFollowingConstraint !== constraint.targetAltitude;
   }
 
   /**
@@ -2287,16 +2407,16 @@ export class SmoothingPathCalculator implements VNavPathCalculator {
   }
 
   /**
-   * Applies flight path angle and target altitude values to a sequence of constraints connected to a target constraint
-   * by a constant-FPA path extending backwards from the target constraint. The target constraint defines the FPA of
-   * the path.
+   * Applies flight path angle and target altitude values to a sequence of constraints connected to an anchor
+   * constraint by a constant-FPA path extending backwards from the anchor constraint. The anchor constraint defines
+   * the FPA of the path.
    *
    * If the target altitude of one of the constraints in the sequence, as prescribed by the path, violates a maximum
-   * altitude, the path will be terminated at the constraint immediately following (in flight plan order) the violating
-   * constraint, and FPA and target altitudes will not be written to the terminating constraint or any prior
+   * altitude, then the path will be terminated at the constraint immediately following (in flight plan order) the
+   * violating constraint, and FPA and target altitudes will not be written to the terminating constraint or any prior
    * constraints.
    * @param verticalPlan The vertical flight plan.
-   * @param targetConstraintIndex The index of the target constraint.
+   * @param anchorConstraintIndex The index of the anchor constraint.
    * @param endConstraintIndex The index of the constraint at which the constant-FPA path ends, exclusive.
    * @param maxAltitude The maximum allowable target altitude, in meters.
    * @param out The tuple to which to write the result of the operation.
@@ -2306,24 +2426,25 @@ export class SmoothingPathCalculator implements VNavPathCalculator {
    */
   protected static applyPathValuesToSmoothedConstraints(
     verticalPlan: VerticalFlightPlan,
-    targetConstraintIndex: number,
+    anchorConstraintIndex: number,
     endConstraintIndex: number,
     maxAltitude: number,
     out: [number | undefined, number]
   ): [number | undefined, number] {
+    const anchorConstraint = verticalPlan.constraints[anchorConstraintIndex];
 
-    const currentTargetConstraint = verticalPlan.constraints[targetConstraintIndex];
+    const gradient = Math.tan(UnitType.DEGREE.convertTo(anchorConstraint.fpa, UnitType.RADIAN));
 
-    let distance = currentTargetConstraint.distance;
+    let distance = anchorConstraint.distance;
 
-    for (let i = targetConstraintIndex + 1; i < endConstraintIndex; i++) {
+    for (let i = anchorConstraintIndex + 1; i < endConstraintIndex; i++) {
       const smoothedConstraint = verticalPlan.constraints[i];
-      const targetAltitude = currentTargetConstraint.targetAltitude + VNavUtils.altitudeForDistance(currentTargetConstraint.fpa, distance);
+      const targetAltitude = anchorConstraint.targetAltitude + distance * gradient;
 
       // The path can continue past the current constraint if the target altitude at the current constraint is less
       // than the maximum altitude.
       if (targetAltitude < maxAltitude) {
-        smoothedConstraint.fpa = currentTargetConstraint.fpa;
+        smoothedConstraint.fpa = anchorConstraint.fpa;
         smoothedConstraint.targetAltitude = targetAltitude;
 
         distance += smoothedConstraint.distance;

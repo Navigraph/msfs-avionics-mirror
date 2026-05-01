@@ -1,13 +1,12 @@
 import {
   AirportFacilityDataFlags, CompiledMapSystem, EventBus, FacilityLoader, FacilityType, FlightPathCalculator,
-  FSComponent, ICAO, MapIndexedRangeModule, MapSystemBuilder, RunwayUtils, Subscription, Vec2Math, Vec2Subject,
-  VecNMath, VNode
+  FSComponent, ICAO, MapIndexedRangeModule, MapSystemBuilder, RunwayUtils, Vec2Math, Vec2Subject, VecNMath, VNode
 } from '@microsoft/msfs-sdk';
 
 import {
   Fms, FmsUtils, GarminMapKeys, MapFlightPlanFocusModule, MapPointerController, MapPointerInfoLayerSize,
-  MapPointerModule, MapProcedurePreviewModule, MapRangeController, NextGenGarminMapUtils, ProcedureType,
-  UnitsUserSettings
+  MapPointerModule, MapProcedurePreviewModule, MapRangeController, MapWaypointHoverModule, NextGenGarminMapUtils,
+  ProcedureType, UnitsUserSettings
 } from '@microsoft/msfs-garminsdk';
 
 import { G3000FlightPlannerId } from '../../CommonTypes';
@@ -20,6 +19,7 @@ import { ApproachNameDisplay } from '../Common/ApproachNameDisplay';
 import { ControllableDisplayPaneIndex, DisplayPaneIndex, DisplayPaneSizeMode } from '../DisplayPanes/DisplayPaneTypes';
 import { DisplayPaneView, DisplayPaneViewProps } from '../DisplayPanes/DisplayPaneView';
 import { DisplayPaneViewEvent } from '../DisplayPanes/DisplayPaneViewEvents';
+import { DisplayPaneViewMapDataPublisher } from '../DisplayPanes/DisplayPaneViewMapDataPublisher';
 import { G3000MapBuilder } from '../Map/G3000MapBuilder';
 import { MapConfig } from '../Map/MapConfig';
 import { ProcedurePreviewPaneProcData, ProcedurePreviewPaneViewEventTypes } from './ProcedurePreviewPaneViewEvents';
@@ -105,6 +105,8 @@ export class ProcedurePreviewPaneView extends DisplayPaneView<ProcedurePreviewPa
         [GarminMapKeys.FlightPlanFocus]: MapFlightPlanFocusModule;
         /** The pointer module. */
         [GarminMapKeys.Pointer]: MapPointerModule;
+        /** The waypoint hover module. */
+        [GarminMapKeys.WaypointHover]: MapWaypointHoverModule;
       },
       any,
       {
@@ -124,8 +126,6 @@ export class ProcedurePreviewPaneView extends DisplayPaneView<ProcedurePreviewPa
   private readonly mapPointerController = this.compiledMap.context.getController(GarminMapKeys.Pointer);
   private readonly mapRangeController = this.compiledMap.context.getController(GarminMapKeys.Range);
 
-  private readonly mapPointerActiveSetting = DisplayPanesUserSettings.getDisplayPaneManager(this.props.bus, this.props.index).getSetting('displayPaneMapPointerActive');
-
   private readonly pfdControllerJoystickEventHandler = this.props.index === DisplayPaneIndex.LeftPfd || this.props.index === DisplayPaneIndex.RightPfd
     ? new PfdControllerJoystickEventMapHandler({
       onPointerToggle: this.onJoystickPointerToggle.bind(this),
@@ -133,6 +133,13 @@ export class ProcedurePreviewPaneView extends DisplayPaneView<ProcedurePreviewPa
       onRangeChange: this.onJoystickRangeChange.bind(this)
     })
     : undefined;
+
+  private readonly mapDataPublisher = new DisplayPaneViewMapDataPublisher(
+    this.props.index,
+    this.props.bus,
+    DisplayPanesUserSettings.getDisplayPaneManager(this.props.bus, this.props.index),
+    this.compiledMap
+  );
 
   // Map projection parameters are not fully initialized until after the first time the map is updated, so we flag the
   // map as not ready until the first update is finished.
@@ -146,28 +153,25 @@ export class ProcedurePreviewPaneView extends DisplayPaneView<ProcedurePreviewPa
 
   private setProcedureOpId = 0;
 
-  private pointerActivePipe?: Subscription;
-
   /** @inheritdoc */
   public override onAfterRender(): void {
     this.compiledMap.ref.instance.sleep();
-
-    this.pointerActivePipe = this.mapPointerModule.isActive.pipe(this.mapPointerActiveSetting, true);
   }
 
   /** @inheritdoc */
   public override onResume(size: DisplayPaneSizeMode, width: number, height: number): void {
     this.size.set(width, height);
     this.compiledMap.ref.instance.wake();
-    this.pointerActivePipe?.resume(true);
+    
+    this.mapDataPublisher.onResume();
   }
 
   /** @inheritdoc */
   public override onPause(): void {
     this.mapPointerController.setPointerActive(false);
     this.compiledMap.ref.instance.sleep();
-    this.pointerActivePipe?.pause();
-    this.mapPointerActiveSetting.value = false;
+    
+    this.mapDataPublisher.onPause();
   }
 
   /** @inheritdoc */
@@ -392,7 +396,7 @@ export class ProcedurePreviewPaneView extends DisplayPaneView<ProcedurePreviewPa
 
     this.compiledMap.ref.instance.destroy();
 
-    this.pointerActivePipe?.destroy();
+    this.mapDataPublisher.destroy();
 
     super.destroy();
   }

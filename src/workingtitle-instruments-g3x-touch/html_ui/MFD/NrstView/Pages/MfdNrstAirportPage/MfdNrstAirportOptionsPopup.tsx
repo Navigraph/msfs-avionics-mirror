@@ -177,9 +177,8 @@ export class MfdNrstAirportOptionsPopup extends AbstractUiView {
               isEnabled={false}
             />
             <UiToggleTouchButton
-              state={Subject.create(false)}
+              state={this.nearestSettingManager.getSetting('nearestAptIncludeHeliports')}
               label={'Heliports'}
-              isEnabled={false}
             />
           </div>
           <CombinedTouchButton

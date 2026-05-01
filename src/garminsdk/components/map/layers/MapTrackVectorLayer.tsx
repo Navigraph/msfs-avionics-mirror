@@ -85,7 +85,7 @@ export class MapTrackVectorLayer extends MapLayer<MapTrackVectorLayerProps> {
 
   private readonly subscriptions: Subscription[] = [];
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onVisibilityChanged(isVisible: boolean): void {
     if (isVisible) {
       this.needUpdate = true;
@@ -94,7 +94,7 @@ export class MapTrackVectorLayer extends MapLayer<MapTrackVectorLayerProps> {
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     this.canvasLayerRef.instance.onAttached();
 
@@ -121,24 +121,39 @@ export class MapTrackVectorLayer extends MapLayer<MapTrackVectorLayerProps> {
     this.subscriptions.push(this.ownAirplanePropsModule.trackTrue.sub(scheduleUpdate));
     this.subscriptions.push(this.ownAirplanePropsModule.groundSpeed.sub(scheduleUpdate));
 
-    this.subscriptions.push(this.trackVectorModule.lookaheadTime.sub(scheduleUpdate, true));
+    this.subscriptions.push(this.trackVectorModule.lookaheadTime.sub(scheduleUpdate));
+
+    this.needUpdate = true;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.canvasLayerRef.instance.onWake();
+
+    // We need to schedule an update after waking up because the canvas is cleared when the map goes to sleep (as a
+    // result of being collapsed).
+    this.needUpdate = true;
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.canvasLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.canvasLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
     this.projectPlanePositionHandler();
     this.needUpdate = true;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     if (!this.needUpdate || !this.isVisible()) {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const display = this.canvasLayerRef.instance.display!;
+    const display = this.canvasLayerRef.instance.display;
     display.clear();
 
     const lookaheadTime = this.trackVectorModule.lookaheadTime.get();
@@ -189,14 +204,19 @@ export class MapTrackVectorLayer extends MapLayer<MapTrackVectorLayerProps> {
     this.needUpdate = false;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
-      <MapSyncedCanvasLayer ref={this.canvasLayerRef} model={this.props.model} mapProjection={this.props.mapProjection} />
+      <MapSyncedCanvasLayer
+        ref={this.canvasLayerRef}
+        model={this.props.model}
+        mapProjection={this.props.mapProjection}
+        collapseOnSleep
+      />
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     super.destroy();
 

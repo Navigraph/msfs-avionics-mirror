@@ -1,6 +1,6 @@
 {
   "name": "@microsoft/msfs-wt21-shared",
-  "version": "3.2.8",
+  "version": "3.2.13",
   "description": "Working Title MSFS WT21 Shared library",
   "main": "index.ts",
   "module": "build/index.js",
@@ -18,10 +18,10 @@
   "author": "Working Title Simulations, LLC",
   "license": "Modified MIT",
   "devDependencies": {
-    "@microsoft/msfs-sdk": "2.3.3",
+    "@microsoft/msfs-sdk": "2.4.3",
     "@microsoft/msfs-ts-transformer": "^1.0.0",
     "@microsoft/msfs-types": "1.14.6",
-    "@microsoft/msfs-wtlinesdk": "0.1.0-dev.5",
+    "@microsoft/msfs-wtlinesdk": "0.1.0-dev.7",
     "@rollup/plugin-image": "^3.0.2",
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@types/node": "^18.11.18",

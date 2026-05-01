@@ -316,7 +316,9 @@ export class Fms<ID extends string = any> {
     this.lnavControlTopicMap = {
       'suspend_sequencing': `suspend_sequencing${lnavTopicSuffix}`,
       'lnav_inhibit_next_sequence': `lnav_inhibit_next_sequence${lnavTopicSuffix}`,
-      'activate_missed_approach': `activate_missed_approach${lnavTopicSuffix}`
+      'activate_missed_approach': `activate_missed_approach${lnavTopicSuffix}`,
+      'lnav_set_vector_sequencing_lock': `lnav_set_vector_sequencing_lock${lnavTopicSuffix}`,
+      'lnav_reset_tracked_vector': `lnav_reset_tracked_vector${lnavTopicSuffix}`,
     };
     this.obsControlTopicMap = {
       'lnav_obs_set_active': `lnav_obs_set_active${lnavTopicSuffix}`,
@@ -6477,7 +6479,7 @@ export class Fms<ID extends string = any> {
       const dtoData = this.getPrimaryFlightPlan().directToData;
       this.createDirectToExisting(dtoData.segmentIndex, dtoData.segmentLegIndex, obsCourse);
       return 0;
-    } else {
+    } else if (this.hasPrimaryFlightPlan()) {
       const plan = this.getPrimaryFlightPlan();
       const segmentIndex = plan.getSegmentIndex(plan.activeLateralLeg);
       const segmentLegIndex = plan.getSegmentLegIndex(plan.activeLateralLeg);
@@ -6488,6 +6490,8 @@ export class Fms<ID extends string = any> {
       } else {
         return 0;
       }
+    } else {
+      return 0;
     }
   }
 

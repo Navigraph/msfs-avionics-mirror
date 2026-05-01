@@ -1,12 +1,12 @@
 import {
   AirportRunway, CompiledMapSystem, EventBus, FacilityLoader, FacilityType, FacilityUtils, ICAO,
-  MapIndexedRangeModule, MapSystemBuilder, Subscription, Vec2Math, Vec2Subject, VecNMath, VNode
+  MapIndexedRangeModule, MapSystemBuilder, Vec2Math, Vec2Subject, VecNMath, VNode
 } from '@microsoft/msfs-sdk';
 
 import {
   AirportWaypoint, GarminFacilityWaypointCache, GarminMapKeys, MapPointerController, MapPointerInfoLayerSize,
-  MapPointerModule, MapRangeController, NextGenGarminMapUtils, UnitsUserSettings, WaypointMapRTRController,
-  WaypointMapSelectionModule
+  MapPointerModule, MapRangeController, MapWaypointHoverModule, NextGenGarminMapUtils, UnitsUserSettings,
+  WaypointMapRTRController, WaypointMapSelectionModule
 } from '@microsoft/msfs-garminsdk';
 
 import { PfdControllerJoystickEventMapHandler } from '../../Input/PfdControllerJoystickEventMapHandler';
@@ -17,6 +17,7 @@ import { BingUtils } from '../Bing/BingUtils';
 import { ControllableDisplayPaneIndex, DisplayPaneIndex, DisplayPaneSizeMode } from '../DisplayPanes/DisplayPaneTypes';
 import { DisplayPaneView, DisplayPaneViewProps } from '../DisplayPanes/DisplayPaneView';
 import { DisplayPaneViewEvent } from '../DisplayPanes/DisplayPaneViewEvents';
+import { DisplayPaneViewMapDataPublisher } from '../DisplayPanes/DisplayPaneViewMapDataPublisher';
 import { G3000MapBuilder } from '../Map/G3000MapBuilder';
 import { MapConfig } from '../Map/MapConfig';
 import { WaypointInfoPaneSelectionData, WaypointInfoPaneViewEventTypes } from './WaypointInfoPaneViewEvents';
@@ -106,6 +107,8 @@ export class WaypointInfoPaneView extends DisplayPaneView<WaypointInfoPaneViewPr
         [GarminMapKeys.Pointer]: MapPointerModule;
         /** The waypoint selection module. */
         [GarminMapKeys.WaypointSelection]: WaypointMapSelectionModule;
+        /** The waypoint hover module. */
+        [GarminMapKeys.WaypointHover]: MapWaypointHoverModule;
       },
       any,
       {
@@ -127,8 +130,6 @@ export class WaypointInfoPaneView extends DisplayPaneView<WaypointInfoPaneViewPr
   private readonly mapRangeController = this.compiledMap.context.getController(GarminMapKeys.Range);
   private readonly mapWptRTRController = this.compiledMap.context.getController(GarminMapKeys.WaypointRTR);
 
-  private readonly mapPointerActiveSetting = DisplayPanesUserSettings.getDisplayPaneManager(this.props.bus, this.props.index).getSetting('displayPaneMapPointerActive');
-
   private readonly pfdControllerJoystickEventHandler = this.props.index === DisplayPaneIndex.LeftPfd || this.props.index === DisplayPaneIndex.RightPfd
     ? new PfdControllerJoystickEventMapHandler({
       onPointerToggle: this.onJoystickPointerToggle.bind(this),
@@ -136,6 +137,13 @@ export class WaypointInfoPaneView extends DisplayPaneView<WaypointInfoPaneViewPr
       onRangeChange: this.onJoystickRangeChange.bind(this)
     })
     : undefined;
+
+  private readonly mapDataPublisher = new DisplayPaneViewMapDataPublisher(
+    this.props.index,
+    this.props.bus,
+    DisplayPanesUserSettings.getDisplayPaneManager(this.props.bus, this.props.index),
+    this.compiledMap
+  );
 
   // Map projection parameters are not fully initialized until after the first time the map is updated, so we flag the
   // map as not ready until the first update is finished.
@@ -149,22 +157,19 @@ export class WaypointInfoPaneView extends DisplayPaneView<WaypointInfoPaneViewPr
 
   private setWaypointOpId = 0;
 
-  private pointerActivePipe?: Subscription;
-
   /** @inheritdoc */
   public override onAfterRender(): void {
     this.compiledMap.ref.instance.sleep();
 
     this.mapRangeController.setRangeIndex(WaypointInfoPaneView.DEFAULT_RANGE_INDEX);
-
-    this.pointerActivePipe = this.mapPointerModule.isActive.pipe(this.mapPointerActiveSetting, true);
   }
 
   /** @inheritdoc */
   public override onResume(size: DisplayPaneSizeMode, width: number, height: number): void {
     this.size.set(width, height);
     this.compiledMap.ref.instance.wake();
-    this.pointerActivePipe?.resume(true);
+    
+    this.mapDataPublisher.onResume();
   }
 
   /** @inheritdoc */
@@ -172,8 +177,8 @@ export class WaypointInfoPaneView extends DisplayPaneView<WaypointInfoPaneViewPr
     this.mapPointerController.setPointerActive(false);
 
     this.compiledMap.ref.instance.sleep();
-    this.pointerActivePipe?.pause();
-    this.mapPointerActiveSetting.value = false;
+    
+    this.mapDataPublisher.onPause();
   }
 
   /** @inheritdoc */
@@ -356,7 +361,7 @@ export class WaypointInfoPaneView extends DisplayPaneView<WaypointInfoPaneViewPr
 
     this.compiledMap.ref.instance.destroy();
 
-    this.pointerActivePipe?.destroy();
+    this.mapDataPublisher.destroy();
 
     super.destroy();
   }

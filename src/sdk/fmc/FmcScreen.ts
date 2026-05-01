@@ -210,9 +210,12 @@ export class FmcScreen<P extends AbstractFmcPage = AbstractFmcPage, E = Record<s
    *
    * @throws if a page class is passed in as the first argument and no associated route is found
    */
-  public navigateTo<U extends PageConstructor<P>>(
+  public navigateTo<
+    U extends PageConstructor<P>,
+    V = Record<string, unknown> | U extends PageConstructor<AbstractFmcPage<infer T>, infer T> ? T : never
+  >(
     arg0: string | U,
-    arg1?: Record<string, unknown> | U extends PageConstructor<AbstractFmcPage<infer V>, infer V> ? V : never,
+    arg1?: V,
   ): void {
     const pageCtor = typeof arg0 === 'string' ? this.router.getPageForRoute(arg0) : arg0;
     const pageRoute = typeof arg0 === 'string' ? arg0 : this.router.getRouteForPage(arg0);
@@ -223,7 +226,7 @@ export class FmcScreen<P extends AbstractFmcPage = AbstractFmcPage, E = Record<s
 
     this.router.currentRoute.set(pageRoute);
 
-    let instance: P & AbstractFmcPage<U>;
+    let instance: P & AbstractFmcPage;
     if (pageCtor.lifecyclePolicy === FmcPageLifecyclePolicy.Singleton) {
       const existingInstance = this.pageInstanceCache.get(pageCtor);
 
@@ -241,7 +244,7 @@ export class FmcScreen<P extends AbstractFmcPage = AbstractFmcPage, E = Record<s
     this.currentlyDisplayedPage = instance;
 
     instance.params.clear();
-    if (arg1 && !PageConstructorUtils.isPageConstructor(arg1)) {
+    if (arg1 && !PageConstructorUtils.isPageConstructor(arg0)) {
       const params = arg1 as Record<string, unknown>;
 
       for (const key of Object.keys(params)) {
@@ -253,10 +256,11 @@ export class FmcScreen<P extends AbstractFmcPage = AbstractFmcPage, E = Record<s
       instance.init();
     }
 
+    instance.resume((arg1 as V));
     this.router.currentSubpageCount.set(instance.render().length);
-    this.router.setSubpage(this.router.getSubpageForRoute(pageRoute));
+    const desiredSubpage = this.router.getSubpageForRoute(pageRoute);
+    this.router.setSubpage(desiredSubpage <= this.router.currentSubpageCount.get() ? desiredSubpage : 1);
     instance.isInitialized = true;
-    instance.resume((arg1 as U | undefined));
   }
 
   /**
@@ -273,7 +277,7 @@ export class FmcScreen<P extends AbstractFmcPage = AbstractFmcPage, E = Record<s
    * @param page the page to associate with it
    * @param routeEvent the event to associate with it
    */
-  public addPageRoute<T extends null>(
+  public addPageRoute<T extends object | null>(
     route: string,
     page: PageConstructor<P & AbstractFmcPage<T>>,
     routeEvent?: (keyof E & string) | undefined,

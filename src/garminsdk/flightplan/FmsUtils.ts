@@ -489,7 +489,7 @@ export class FmsUtils {
     }
 
     const visualApproachData = plan.getUserData<Readonly<FmsFplVisualApproachData>>(FmsFplUserDataKey.VisualApproach);
-    if (visualApproachData && plan.destinationAirport) {
+    if (visualApproachData && plan.destinationAirportIcao && !ICAO.isValueEmpty(plan.destinationAirportIcao)) {
       const runway = RunwayUtils.matchOneWayRunwayFromDesignation(destination, visualApproachData.runwayDesignation);
       if (runway) {
         return FmsUtils.buildEmptyVisualApproach(runway);
@@ -497,7 +497,7 @@ export class FmsUtils {
     }
 
     const vfrApproachData = plan.getUserData<Readonly<FmsFplVfrApproachData>>(FmsFplUserDataKey.VfrApproach);
-    if (vfrApproachData && plan.destinationAirport) {
+    if (vfrApproachData && plan.destinationAirportIcao && !ICAO.isValueEmpty(plan.destinationAirportIcao)) {
       return FmsUtils.buildVfrApproach(destination, vfrApproachData.approachIndex);
     }
 
@@ -592,7 +592,7 @@ export class FmsUtils {
    * @returns The name of the departure procedure.
    */
   public static getDepartureNameAsString(airport: AirportFacility, departure: DepartureProcedure, transitionIndex: number, runway: OneWayRunway | undefined): string {
-    let name = `${ICAO.getIdent(airport.icao)}–`;
+    let name = `${airport.icaoStruct.ident}–`;
 
     if (runway) {
       name += `RW${runway.designation}.`;
@@ -600,9 +600,9 @@ export class FmsUtils {
 
     const transition = departure.enRouteTransitions[transitionIndex];
     if (transition !== undefined && transitionIndex > -1 && transition.legs.length > 0) {
-      name += `${departure.name}.${ICAO.getIdent(transition.legs[transition.legs.length - 1].fixIcao)}`;
+      name += `${departure.name}.${transition.legs[transition.legs.length - 1].fixIcaoStruct.ident}`;
     } else if (departure.commonLegs.length > 0) {
-      name += `${departure.name}.${ICAO.getIdent(departure.commonLegs[departure.commonLegs.length - 1].fixIcao)}`;
+      name += `${departure.name}.${departure.commonLegs[departure.commonLegs.length - 1].fixIcaoStruct.ident}`;
     } else {
       name += `${departure.name}`;
     }
@@ -619,13 +619,13 @@ export class FmsUtils {
    * @returns The name of the arrival procedure.
    */
   public static getArrivalNameAsString(airport: AirportFacility, arrival: ArrivalProcedure, transitionIndex: number, runway: OneWayRunway | undefined): string {
-    let name = `${ICAO.getIdent(airport.icao)}–`;
+    let name = `${airport.icaoStruct.ident}–`;
 
     const transition = arrival.enRouteTransitions[transitionIndex];
     if (transition !== undefined && transitionIndex > -1 && transition.legs.length > 0) {
-      name += `${ICAO.getIdent(transition.legs[0].fixIcao)}.${arrival?.name}`;
+      name += `${transition.legs[0].fixIcaoStruct.ident}.${arrival?.name}`;
     } else if (arrival.commonLegs.length > 0) {
-      name += `${ICAO.getIdent(arrival.commonLegs[0].fixIcao)}.${arrival?.name}`;
+      name += `${arrival.commonLegs[0].fixIcaoStruct.ident}.${arrival?.name}`;
     } else {
       name += `${arrival?.name}`;
     }
@@ -649,12 +649,12 @@ export class FmsUtils {
       if (procedure.commonLegs.length > 0) {
         const legsLen = procedure.commonLegs.length;
         /** For Departures, default transition name should be last leg icao */
-        return ICAO.getIdent(procedure.commonLegs[legsLen - 1].fixIcao);
+        return procedure.commonLegs[legsLen - 1].fixIcaoStruct.ident;
       } else if (rwyTransitionIndex !== -1) {
         const rwyTrans = procedure.runwayTransitions[rwyTransitionIndex];
         const legsLen = rwyTrans.legs.length;
         /** For Departures, default transition name should be last leg icao */
-        return ICAO.getIdent(rwyTrans.legs[legsLen - 1].fixIcao);
+        return rwyTrans.legs[legsLen - 1].fixIcaoStruct.ident;
       } else {
         return '';
       }
@@ -665,7 +665,7 @@ export class FmsUtils {
       } else {
         /** For Departures, default transition name should be last leg icao */
         const legsLen = enrTrans.legs.length;
-        return ICAO.getIdent(enrTrans.legs[legsLen - 1].fixIcao);
+        return enrTrans.legs[legsLen - 1].fixIcaoStruct.ident;
       }
     }
   }
@@ -681,11 +681,11 @@ export class FmsUtils {
     if (transitionIndex == -1) {
       if (procedure.commonLegs.length > 0) {
         /** For Arrivals, default transition name should be first leg icao */
-        return ICAO.getIdent(procedure.commonLegs[0].fixIcao);
+        return procedure.commonLegs[0].fixIcaoStruct.ident;
       } else if (rwyTransitionIndex !== -1) {
         const rwyTrans = procedure.runwayTransitions[rwyTransitionIndex];
         /** For Arrivals, default transition name should be first leg icao */
-        return ICAO.getIdent(rwyTrans.legs[0].fixIcao);
+        return rwyTrans.legs[0].fixIcaoStruct.ident;
       } else {
         return '';
       }
@@ -695,7 +695,7 @@ export class FmsUtils {
         return enrTrans.name;
       } else {
         /** For Arrivals, default transition name should be first leg icao */
-        return ICAO.getIdent(enrTrans.legs[0].fixIcao);
+        return enrTrans.legs[0].fixIcaoStruct.ident;
       }
     }
   }

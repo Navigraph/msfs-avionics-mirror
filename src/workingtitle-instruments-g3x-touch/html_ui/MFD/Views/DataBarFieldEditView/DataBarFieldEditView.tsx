@@ -90,9 +90,14 @@ export class DataBarFieldEditView extends AbstractUiView<DataBarFieldEditViewPro
       .openMfdPopup<DataBarFieldSelectDialog>(UiViewStackLayer.Overlay, UiViewKeys.DataBarFieldSelectDialog)
       .ref.request({ initialValue: setting.value });
 
+    // Don't reset the editing index if we are waiting to reopen the dialog so that we preserve the index for which we
+    // want to reopen the dialog.
+    if (!this.isAwaitingDialogOpen) {
+      this.props.navDataBarEditController.setEditingIndex(-1);
+    }
+
     if (!result.wasCancelled) {
       setting.value = result.payload;
-      this.props.navDataBarEditController.setEditingIndex(-1);
     }
   }
 

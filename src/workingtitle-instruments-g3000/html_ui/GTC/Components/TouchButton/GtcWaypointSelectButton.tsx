@@ -1,6 +1,6 @@
 import {
-  DisplayComponent, Facility, FacilitySearchType, FacilityWaypoint, FSComponent, IntersectionFacility, NdbFacility, SearchTypeMap, Subscribable,
-  SubscribableSet, SubscribableUtils, UserFacility, VNode, VorFacility
+  DisplayComponent, Facility, FacilitySearchType, FacilityWaypoint, FSComponent, IntersectionFacility, NdbFacility,
+  SearchTypeMap, Subscribable, SubscribableUtils, UserFacility, VNode, VorFacility
 } from '@microsoft/msfs-sdk';
 
 import { AirportWaypoint, GarminFacilityWaypointCache } from '@microsoft/msfs-garminsdk';
@@ -46,7 +46,7 @@ export type WaypointSelectTypeMap = {
 };
 
 /**
- * Component props for GtcWaypointSelectButton.
+ * Component props for {@link GtcWaypointSelectButton}.
  */
 export interface GtcWaypointSelectButtonProps<T extends WaypointSelectType, S extends Subscribable<WaypointSelectTypeMap[T] | null>>
   extends Omit<GtcWaypointButtonProps, 'waypoint' | 'onPressed' | 'gtcOrientation'> {
@@ -85,9 +85,6 @@ export interface GtcWaypointSelectButtonProps<T extends WaypointSelectType, S ex
     button: B,
     waypointState: S
   ) => void;
-
-  /** The CSS class(es) to apply to the button's root element. */
-  class?: string | SubscribableSet<string>;
 }
 
 /**

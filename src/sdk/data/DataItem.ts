@@ -1,6 +1,5 @@
 /**
  * The status of a data item.
- * @experimental
  */
 export enum DataItemStatus {
   /** The data item has no value. */
@@ -22,7 +21,6 @@ export enum DataItemStatus {
 /**
  * A data item with a filled value and corresponding status.
  * @template T The type of the data item's value.
- * @experimental
  */
 export interface FilledDataItem<T> {
   /** The data item value. */
@@ -34,7 +32,6 @@ export interface FilledDataItem<T> {
 
 /**
  * A valueless (empty) data item with the `EmptyValue` status.
- * @experimental
  */
 export interface EmptyDataItem {
   /** The empty value, which is always `undefined`. */
@@ -47,15 +44,27 @@ export interface EmptyDataItem {
 /**
  * A data item, consisting of a value and an associated status.
  * @template T The type of the data item's value.
- * @experimental
  */
 export type DataItem<T> = FilledDataItem<T> | EmptyDataItem;
 
 /**
- * A data item with a specific status.
- * @template T The type of the data item's value.
- * @template S The type of the status.
- * @experimental
+ * Gets the value type for a data item type.
+ * @template Item The data item type for which to get a value type.
  */
-// eslint-disable-next-line jsdoc/require-jsdoc
-export type DataItemOfStatus<T, S extends DataItemStatus> = DataItem<T> & { status: S };
+export type DataItemValueType<Item extends Readonly<DataItem<unknown>>> = Item extends Readonly<FilledDataItem<infer T>> ? T : never;
+
+/**
+ * A data item with a status that satisifes a given type.
+ * @template T The type of the data item's value.
+ * @template S The type satisfied by the data item's status.
+ */
+export type DataItemOfStatus<T, S extends DataItemStatus> = DataItem<T> & {
+  // eslint-disable-next-line jsdoc/require-jsdoc
+  status: S
+};
+
+/**
+ * A function that checks whether data items have statuses that satisfy a given type.
+ * @template S The status type that the function checks.
+ */
+export type DataItemStatusGuard<S extends DataItemStatus> = (dataItem: Readonly<DataItem<unknown>>) => dataItem is Readonly<DataItemOfStatus<unknown, S>>;

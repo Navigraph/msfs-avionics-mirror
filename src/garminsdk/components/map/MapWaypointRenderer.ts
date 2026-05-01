@@ -1,11 +1,14 @@
-import { MapCullableTextLabelManager, MapWaypointRenderer as BaseMapWaypointRenderer, Waypoint } from '@microsoft/msfs-sdk';
+import {
+  MapCullableTextLabelManager, MapWaypointRenderer as BaseMapWaypointRenderer, Waypoint, MapWaypointRendererEntry,
+  MapWaypointRenderRoleDef
+} from '@microsoft/msfs-sdk';
 
 /**
  * Render roles for MapWaypointRenderer.
  */
 export enum MapWaypointRenderRole {
   /** A highlighted waypoint. */
-  Highlight = 1,
+  Highlight = 1 << 0,
 
   /** A waypoint which is the active waypoint in a flight plan. */
   FlightPlanActive = 1 << 1,
@@ -26,29 +29,83 @@ export enum MapWaypointRenderRole {
   ProcedurePreview = 1 << 6,
 
   /** A waypoint in a procedure transition preview plan. */
-  ProcedureTransitionPreview = 1 << 7
+  ProcedureTransitionPreview = 1 << 7,
+
+  /** A hovered waypoint. */
+  Hover = 1 << 31,
 }
 
 /**
  * A renderer which draws waypoints to a Garmin-style map.
  */
 export class MapWaypointRenderer extends BaseMapWaypointRenderer<Waypoint> {
+  private static readonly SINGLE_ROLES = [
+    MapWaypointRenderRole.Hover,
+    MapWaypointRenderRole.Highlight,
+    MapWaypointRenderRole.FlightPlanActive,
+    MapWaypointRenderRole.FlightPlanInactive,
+    MapWaypointRenderRole.ProcedurePreview,
+    MapWaypointRenderRole.ProcedureTransitionPreview,
+    MapWaypointRenderRole.Normal,
+    MapWaypointRenderRole.Airway,
+    MapWaypointRenderRole.VNav,
+  ];
+
+  private static readonly HOVER_COMBINED_ROLES = [
+    MapWaypointRenderRole.Highlight,
+    MapWaypointRenderRole.FlightPlanActive,
+    MapWaypointRenderRole.FlightPlanInactive,
+    MapWaypointRenderRole.ProcedurePreview,
+    MapWaypointRenderRole.ProcedureTransitionPreview,
+    MapWaypointRenderRole.Normal,
+    MapWaypointRenderRole.Airway,
+    MapWaypointRenderRole.VNav,
+  ];
+
   /**
-   * Constructor.
-   * @param textManager The text manager to use for waypoint labels.
+   * Creates a new instance of MapWaypointRenderer.
+   * @param textManager The text label manager to use for waypoint labels.
    */
-  constructor(
+  public constructor(
     textManager: MapCullableTextLabelManager,
   ) {
-    super(textManager);
+    super(textManager, MapWaypointRenderer.selectRoleToRender);
 
-    this.addRenderRole(MapWaypointRenderRole.Highlight);
-    this.addRenderRole(MapWaypointRenderRole.FlightPlanActive);
-    this.addRenderRole(MapWaypointRenderRole.FlightPlanInactive);
-    this.addRenderRole(MapWaypointRenderRole.ProcedurePreview);
-    this.addRenderRole(MapWaypointRenderRole.ProcedureTransitionPreview);
-    this.addRenderRole(MapWaypointRenderRole.Normal);
-    this.addRenderRole(MapWaypointRenderRole.Airway);
-    this.addRenderRole(MapWaypointRenderRole.VNav);
+    for (const role of MapWaypointRenderer.SINGLE_ROLES) {
+      this.addRenderRole(role);
+    }
+
+    for (const role of MapWaypointRenderer.HOVER_COMBINED_ROLES) {
+      this.addRenderRole(role | MapWaypointRenderRole.Hover);
+    }
+  }
+
+  /**
+   * Selects a render role to use to render a waypoint.
+   * @param entry An entry describing the waypoint to render.
+   * @param roleDefinitions A map from render roles to their definitions.
+   * @returns The render role to use to render the specified waypoint.
+   */
+  private static selectRoleToRender(
+    entry: MapWaypointRendererEntry<Waypoint>,
+    roleDefinitions: ReadonlyMap<number, Readonly<MapWaypointRenderRoleDef<Waypoint>>>
+  ): number {
+    for (const role of MapWaypointRenderer.HOVER_COMBINED_ROLES) {
+      if (
+        entry.isAllRoles(role | MapWaypointRenderRole.Hover)
+        && roleDefinitions.get(role)!.visibilityHandler(entry.waypoint)
+        && roleDefinitions.get(MapWaypointRenderRole.Hover)!.visibilityHandler(entry.waypoint)
+      ) {
+        return role | MapWaypointRenderRole.Hover;
+      }
+    }
+
+    for (const role of MapWaypointRenderer.SINGLE_ROLES) {
+      if (entry.isAllRoles(role) && roleDefinitions.get(role)!.visibilityHandler(entry.waypoint)) {
+        return role;
+      }
+    }
+
+    return 0;
   }
 }

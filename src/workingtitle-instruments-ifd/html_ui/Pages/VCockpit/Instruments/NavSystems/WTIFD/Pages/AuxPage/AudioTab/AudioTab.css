@@ -1,0 +1,12 @@
+.ifd-aux-audio-tab {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding-top: 27px;
+}
+
+.ifd-aux-audio-tab.no-padding {
+  padding-top: 0;
+}

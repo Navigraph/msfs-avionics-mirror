@@ -7,7 +7,7 @@ import {
 
 import { GtcInteractionEvent } from './GtcInteractionEvent';
 import { GtcCenterKnobState, GtcDualKnobState, GtcMapKnobState } from './GtcKnobStates';
-import { GtcService } from './GtcService';
+import { GtcService, GtcViewStackItem } from './GtcService';
 import { GtcViewKeys } from './GtcViewKeys';
 
 /** Whether the knob rotation in an increasing or decreasing direction. */
@@ -315,7 +315,7 @@ export class GtcKnobHandler {
             break;
           }
           case 'MFD':
-            this.gtcService.openPopup(GtcViewKeys.MapPointerControl, 'slideout-bottom', 'none');
+            this.openMapPointerControlPopup();
             break;
         }
         return;
@@ -335,6 +335,45 @@ export class GtcKnobHandler {
       case GtcMapKnobState.Checklist:
         this.sendChecklistPushEvent();
         return;
+    }
+  }
+
+  /**
+   * Opens the Map Pointer Control popup.
+   */
+  private openMapPointerControlPopup(): void {
+    // Attempt to return to the most recent history state in which the Map Pointer Control popup does not appear in any
+    // older history states and is either not open or is the active view. This ensures that we don't try to open the
+    // popup when it is already open or when it appears in the history stack (we want to maintain the invariant that
+    // the Map Pointer Control popup appears at most once in the history stack).
+
+    let stepsToRewind = 0;
+
+    this.gtcService.visitHistory((steps, stackPeeker) => {
+      let depth = 0;
+      let item: GtcViewStackItem | undefined;
+      while ((item = stackPeeker(depth))) {
+        if (item.viewEntry.key === GtcViewKeys.MapPointerControl) {
+          stepsToRewind = depth === 0 ? steps : steps + 1;
+          break;
+        }
+        ++depth;
+      }
+      return true;
+    });
+
+    while (stepsToRewind-- > 0) {
+      this.gtcService.goBack();
+    }
+
+    // At this point, the Map Pointer Control popup is either the active view or is not open at all. If it is not
+    // the active view, then open it.
+    if (this.gtcService.activeView.get().key !== GtcViewKeys.MapPointerControl) {
+      this.gtcService.openPopup(GtcViewKeys.MapPointerControl, 'slideout-bottom', 'none');
+    } else {
+      // If the popup was already the active view, then send a command to activate the map pointer since we can't rely
+      // on the popup to send the command (it only sends the activation command when it comes into use).
+      this.sendMapPointerActiveSetEvent(true);
     }
   }
 
@@ -440,14 +479,36 @@ export class GtcKnobHandler {
 
     if (displayPaneIndex < 0) {
       return;
-    } else {
-      this.publisher.pub('display_pane_view_event', {
-        displayPaneIndex: displayPaneIndex as DisplayPaneIndex,
-        eventType: 'display_pane_map_pointer_active_set',
-        eventData: activate
-      }, true);
-      return;
     }
+
+    // If we are deactivating the pointer and we are in the MFD control mode, then we need to rewind the history state
+    // until the map pointer control popup is no longer in the history stack.
+    if (!activate && this.gtcService.activeControlMode.get() === 'MFD') {
+      let stepsToRewind = 0;
+
+      this.gtcService.visitHistory((steps, stackPeeker) => {
+        let depth = 0;
+        let item: GtcViewStackItem | undefined;
+        while ((item = stackPeeker(depth))) {
+          if (item.viewEntry.key === GtcViewKeys.MapPointerControl) {
+            stepsToRewind = steps + 1;
+            break;
+          }
+          ++depth;
+        }
+        return true;
+      });
+
+      while (stepsToRewind-- > 0) {
+        this.gtcService.goBack();
+      }
+    }
+
+    this.publisher.pub('display_pane_view_event', {
+      displayPaneIndex: displayPaneIndex as DisplayPaneIndex,
+      eventType: 'display_pane_map_pointer_active_set',
+      eventData: activate
+    }, true);
   }
 
   /**

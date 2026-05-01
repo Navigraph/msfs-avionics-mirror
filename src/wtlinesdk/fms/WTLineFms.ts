@@ -3,7 +3,7 @@ import {
   AltitudeRestrictionType, ApproachProcedure, ApproachUtils, BitFlags, ConsumerSubject, ConsumerValue, ControlEvents,
   DefaultFacilityWaypointCache, EventBus, ExistingUserWaypointsArray, ExtendedApproachType, Facility, FacilityLoader,
   FacilityRepository, FacilityType, FacilityUtils, FacilityWaypoint, FixTypeFlags, FlightPlan,
-  FlightPlanCalculatedEvent, FlightPlanCopiedEvent, FlightPlanLeg, FlightPlanner, FlightPlannerEvents,
+  FlightPlanCalculatedEvent, FlightPlanCopiedEvent, FlightPlanLeg, FlightPlanLegIndexes, FlightPlanner, FlightPlannerEvents,
   FlightPlanOriginDestEvent, FlightPlanSegment, FlightPlanSegmentType, FlightPlanUtils, GeoPoint, GeoPointInterface,
   GNSSEvents, ICAO, IcaoType, IcaoValue, IntersectionFacility, LegDefinition, LegDefinitionFlags, LegTurnDirection,
   LegType, LNavEvents, MagVar, NavEvents, NavMath, NavSourceId, NavSourceType, OneWayRunway, RnavTypeFlags, RunwayUtils,
@@ -14,6 +14,7 @@ import {
 import {
   ApproachDetails, FlightPlanIndexType, FlightPlanIndexTypes, MainFlightPlanIndexType, WTLineLegacyFlightPlans,
 } from './WTLineFmsTypes';
+import { WTLineFlightPlanEditBatch } from './WTLineFlightPlanEditContracts';
 import { CDIScaleLabel, WTLineLNavDataEvents } from '../autopilot/WTLineLNavDataEvents';
 import { FmcSimVarEvents } from '../publishers/FmcSimVars';
 import { WT21LegDefinitionFlags, WTLineFmsUtils } from './WTLineFmsUtils';
@@ -68,13 +69,13 @@ export type FacilityInfo = {
  * A WT 21 FMS
  */
 export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
+  private static readonly legIndicesCache: FlightPlanLegIndexes = { segmentIndex: -1, segmentLegIndex: -1 };
+
   /** Set to true by FMC pages when the plan on this FMS instance is in modification and awaiting a cancel or exec. */
   public readonly planInMod = this.flightPlanRepo.planInMod;
 
   /** Set to true when an event is received from the bus indicating that another instrument is in MOD on the plan. */
   public remotePlanInMod = false;
-
-  private static readonly geoPointCache = [new GeoPoint(0, 0)];
 
   public readonly ppos = new GeoPoint(0, 0);
 
@@ -166,7 +167,6 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     this.lnavLegDistanceAlong = ConsumerValue.create(this.bus.getSubscriber<LNavEvents>().on('lnav_leg_distance_along'), 0);
     this.lnavLegDistanceRemaining = ConsumerValue.create(this.bus.getSubscriber<LNavEvents>().on('lnav_leg_distance_remaining'), 0);
 
-    this.bus.getSubscriber<GNSSEvents>().on('gps-position').atFrequency(1).handle(pos => this.ppos.set(pos.lat, pos.long));
     this.bus.getSubscriber<GNSSEvents>().on('track_deg_true').handle((track) => this.aircraftTrack = track);
     this.bus.getSubscriber<AdcEvents>().on('indicated_alt').handle((track) => this.aircraftAltitude = track);
     this.bus.getSubscriber<NavEvents>().on('cdi_select').handle(source => this.cdiSource = source);
@@ -339,7 +339,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
 
       this.flightPlanRepo.copyModPlanIntoActivePlan();
       this.getPrimaryFlightPlan().calculate(0);
-      this.flightPlanRepo.emptyModFlightPlans();
+      this.flightPlanRepo.emptyOrDeleteModFlightPlans();
       this.planInMod.set(false);
 
       const actPlan = this.getPrimaryFlightPlan();
@@ -383,35 +383,36 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     if (this.planInMod.get()) {
       this.legWasActivatedInModPlan = false;
       this.dtoWasCreatedInModPlan = false;
-      this.emptyFlightPlanForEdit(WTLineLegacyFlightPlans.Active);
+      this.flightPlanRepo.emptyOrDeleteModFlightPlans();
+
       this.planInMod.set(false);
     }
   }
 
   /**
    * Gets the current lateral flight plan index for the FMC pages based on whether the plan is in MOD or ACT.
-   * @param mainPlanIndex the main plan to target
+   * @param mainPlanIndex the plan to target
    * @returns A Lateral Flight Plan
    */
-  public getPlanIndexToDisplay(mainPlanIndex: MainFlightPlanIndexType<T>): FlightPlanIndexType<T> {
+  public getPlanIndexToDisplay(mainPlanIndex: FlightPlanIndexType<T>): FlightPlanIndexType<T> {
     return this.flightPlanRepo.getPlanIndexToDisplay(mainPlanIndex);
   }
 
   /**
    * Gets the current lateral flight plan for the FMC pages based on whether the plan is in MOD or ACT.
-   * @param mainPlanIndex the main plan to target
+   * @param mainPlanIndex the in plan to target
    * @returns A Lateral Flight Plan
    */
-  public getPlanToDisplay(mainPlanIndex: MainFlightPlanIndexType<T>): FlightPlan {
+  public getPlanToDisplay(mainPlanIndex: FlightPlanIndexType<T>): FlightPlan {
     return this.flightPlanRepo.getPlanToDisplay(mainPlanIndex);
   }
 
   /**
    * Gets the current vertical flight plan for the FMC pages based on whether the plan is in MOD or ACT.
-   * @param mainPlanIndex the main plan to target
+   * @param mainPlanIndex the plan to target
    * @returns A Vertical Flight Plan
    */
-  public getVerticalPlanToDisplay(mainPlanIndex: MainFlightPlanIndexType<T>): VerticalFlightPlan {
+  public getVerticalPlanToDisplay(mainPlanIndex: FlightPlanIndexType<T>): VerticalFlightPlan {
     if (mainPlanIndex === WTLineLegacyFlightPlans.Secondary) {
       return this.getSecondaryVerticalFlightPlan();
     }
@@ -459,6 +460,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
   };
 
   private onPlanCalculated = (e: FlightPlanCalculatedEvent): void => {
+    // FIXME clean this up
     if (e.planIndex === WTLineFmsUtils.PRIMARY_ACT_PLAN_INDEX && this.planInMod.get()) {
       const plan = this.getPlanToEdit(WTLineLegacyFlightPlans.Active);
 
@@ -659,6 +661,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
    * @param segmentLegIndex The index of the leg in its segment.
    * @returns Whether the leg is a valid direct to target.
    * @throws Error if a leg could not be found at the specified location.
+   * @deprecated use {@link WTLineFmsUtils.canDirectTo} instead
    */
   public canDirectTo(segmentIndex: number, segmentLegIndex: number): boolean {
     const plan = this.hasPrimaryFlightPlan() && this.getPrimaryFlightPlan();
@@ -667,23 +670,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       return false;
     }
 
-    const leg = plan.tryGetLeg(segmentIndex, segmentLegIndex);
-
-    if (!leg || leg.leg.fixIcao === '' || leg.leg.fixIcao === ICAO.emptyIcao) {
-      return false;
-    }
-
-    switch (leg.leg.type) {
-      case LegType.IF:
-      case LegType.TF:
-      case LegType.DF:
-      case LegType.CF:
-      case LegType.AF:
-      case LegType.RF:
-        return true;
-    }
-
-    return false;
+    return WTLineFmsUtils.canDirectTo(plan, segmentIndex, segmentLegIndex);
   }
 
   /**
@@ -837,49 +824,35 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
    * @param facility is the new facility to add a leg to.
    * @param segmentIndex is index of the segment to add the waypoint to
    * @param legIndex is the index to insert the waypoint (if none, append)
-   * @param mainPlanIndex is the index of the flight plan on which to target the edit
+   * @param planIndex is the index of the flight plan on which to target the edit
    * @returns whether the waypoint was successfully inserted.
+   * @throws if attempting to insert at the active leg index.
    */
-  public insertWaypoint(facility: Facility, segmentIndex?: number, legIndex?: number, mainPlanIndex: MainFlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active): boolean {
+  public insertWaypoint(facility: Facility, segmentIndex?: number, legIndex?: number, planIndex: FlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active): boolean {
     const leg = FlightPlan.createLeg({
       type: LegType.TF,
       fixIcaoStruct: facility.icaoStruct,
     });
 
-    let plan = this.getPlanToDisplay(mainPlanIndex);
-
-    // TODO clean this up and only create the mod plan when really necessary
-    let createdModPlan = false;
+    let plan = this.getPlanToDisplay(planIndex);
 
     if (segmentIndex === undefined) {
-      const lastSegment = plan.segmentCount > 0 ? plan.getSegment(plan.segmentCount - 1) : undefined;
-
-      if (lastSegment) {
-        if (lastSegment.segmentType !== FlightPlanSegmentType.Enroute) {
-          segmentIndex = this.planInsertSegmentOfType(mainPlanIndex, FlightPlanSegmentType.Enroute, lastSegment.segmentIndex + 1);
-          legIndex = 0; // Makes sure we later go to case 1.2
-
-          if (plan.planIndex !== WTLineLegacyFlightPlans.Mod && plan.planIndex !== WTLineLegacyFlightPlans.Secondary) {
-            createdModPlan = true;
-          }
-        } else {
-          segmentIndex = lastSegment.segmentIndex;
-          legIndex = undefined; // Makes sure we later go to case 3
-        }
-      } else {
-        return false;
-      }
+      return this.insertWaypointAtEndOfPlan(plan.planIndex, facility);
     }
 
     const segment = plan.getSegment(segmentIndex);
+
+    if (legIndex !== undefined && segment.offset + legIndex === plan.activeLateralLeg) {
+      throw new Error('[WTLineFms](insertWaypoint) Cannot insert a waypoint at the active leg index');
+    }
+
     const prevLeg = plan.getPrevLeg(segmentIndex, legIndex ?? Infinity);
     const nextLeg = plan.getNextLeg(segmentIndex, legIndex === undefined ? Infinity : legIndex - 1);
 
     // Make sure we are not inserting a duplicate leg
     if ((prevLeg && this.isDuplicateLeg(prevLeg.leg, leg)) || (nextLeg && this.isDuplicateLeg(leg, nextLeg.leg))) {
-      if (createdModPlan) {
-        this.cancelMod();
-      }
+      // FIXME throw DUPLICATE WPT error here instead of in the UI when we have WTLineSDK FMS errors
+
       return false;
     }
 
@@ -889,29 +862,29 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       const isDirectToTarget = BitFlags.isAll(prevLeg?.flags, WT21LegDefinitionFlags.DirectToTarget);
 
       if (isInDirectTo && !isDirectToTarget) {
-        if (createdModPlan) {
-          this.cancelMod();
-        }
         return false;
       }
     }
 
-    plan = this.getPlanToEdit(mainPlanIndex);
+    plan = this.getPlanToEdit(planIndex);
 
+    let finalSegmentIndex = segmentIndex;
+    let finalLeg: LegDefinition;
     if (legIndex === 0) {
       // Case 1 - We are inserting at the start of a segment.
 
       if (segment.legs.length !== 0) {
         // Case 1.1 - It has at least one leg. Create a segment before this one and insert there
-        const newSegmentIndex = plan.insertSegment(segmentIndex, FlightPlanSegmentType.Enroute).segmentIndex;
+        const newSegmentIndex = finalSegmentIndex = plan.insertSegment(segmentIndex, FlightPlanSegmentType.Enroute).segmentIndex;
 
-        plan.addLeg(newSegmentIndex, leg);
+        finalLeg = plan.addLeg(newSegmentIndex, leg);
 
         if (segment.airway !== undefined) {
-          // If the original segment was an airway segment, we also need to make everything our insertion
+          // If the original segment was an airway segment, we also need to make everything after our insertion
           // a DIRECT, since that's no longer on our airway
           const airwayReplacementSegmentIndex = plan.insertSegment(segmentIndex + 1, FlightPlanSegmentType.Enroute).segmentIndex;
 
+          // FIXME this needs some airway logic like in splitSegmentThreeWays, right now this makes a big (and invalid) DIRECT segment
           for (let i = 0; i < segment.legs.length; i++) {
             this.cloneLegTo(plan.planIndex, segment.legs[i], airwayReplacementSegmentIndex, i);
           }
@@ -921,22 +894,125 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
         }
       } else {
         // Case 1.2 - It has no legs, meaning we just created it above. Insert there.
-        plan.addLeg(segmentIndex, leg);
+        finalLeg = plan.addLeg(segmentIndex, leg);
       }
     } else if (legIndex === undefined || legIndex === segment.legs.length) {
-      // Case 2 - We are inserting at the end of a segment (because legIndex is undefined or one past the last leg). Create a new
-      // enroute segment after it and insert there.
-      const newSegmentIndex = plan.insertSegment(segmentIndex + 1, FlightPlanSegmentType.Enroute).segmentIndex;
+      // Case 2 - We are inserting at the end of a segment (because legIndex is undefined or one past the last leg) - create a new
+      // segment after this one and insert there.
 
-      plan.addLeg(newSegmentIndex, leg);
+      const newSegmentIndex = finalSegmentIndex = plan.insertSegment(segmentIndex + 1, FlightPlanSegmentType.Enroute).segmentIndex;
+
+      finalLeg = plan.addLeg(newSegmentIndex, leg);
     } else {
       // Case 3 - We are inserting in the middle of a segment. Split it into three.
-      const newSegmentIndex = this.splitSegmentThreeWays(plan.planIndex, segmentIndex, legIndex).segmentIndex;
+      const newSegmentIndex = finalSegmentIndex = this.splitSegmentThreeWays(plan.planIndex, segmentIndex, legIndex).segmentIndex;
 
       // Insert the waypoint into the new segment
-      plan.addLeg(newSegmentIndex, leg);
+      finalLeg = plan.addLeg(newSegmentIndex, leg);
     }
 
+    // Check if we inserted the leg right after a leg that did not have a discontinuity after it before (because
+    // it was at the end of the flight plan), and if so, insert one now
+    const finalLegIndex = plan.getLegIndexesFromLeg(finalLeg, WTLineFms.legIndicesCache).segmentLegIndex;
+    this.insertDiscontinuityBeforeLegIfNeeded(plan, finalSegmentIndex, finalLegIndex);
+
+    // Now, check downstream in the flight plan for legs that are both XF legs and terminate at the same facility
+    const insertedLegGlobalIndex = plan.getLegIndexFromLeg(finalLeg);
+
+    let duplicateLegGlobalIndex = -1;
+    for (let i = insertedLegGlobalIndex + 1; i < plan.length; i++) {
+      const checkLeg = plan.getLeg(i);
+
+      if (BitFlags.isAll(checkLeg.flags, LegDefinitionFlags.MissedApproach)) {
+        // We don't want to consider a leg a duplicate if it's after a missed approach
+        break;
+      }
+
+      if (this.isDuplicateLeg(finalLeg.leg, checkLeg.leg)) {
+        duplicateLegGlobalIndex = i;
+      }
+    }
+
+    if (duplicateLegGlobalIndex !== -1) {
+      // Remove all legs between the inserted leg (exclusive) and the duplicate leg (inclusive)
+      const legsToRemove = duplicateLegGlobalIndex - insertedLegGlobalIndex;
+
+      for (let i = 0; i < legsToRemove; i++) {
+        const legIndices = plan.getLegIndexesFromLeg(plan.getLeg(insertedLegGlobalIndex + 1), WTLineFms.legIndicesCache);
+
+        plan.removeLeg(legIndices.segmentIndex, legIndices.segmentLegIndex);
+
+        this.checkAndRemoveEmptySegment(plan, legIndices.segmentIndex);
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Inserts a waypoint at the end of the specified flight plan.
+   * @param planIndex The index of the flight plan to insert the waypoint into.
+   * @param facility The facility of the waypoint to insert.
+   * @returns Whether the waypoint was successfully inserted.
+   */
+  private insertWaypointAtEndOfPlan(planIndex: FlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active, facility: Facility): boolean {
+    const plan = this.getPlanToEdit(planIndex);
+
+    let targetSegmentIndex: number;
+
+    // Find the segment index of the last leg in the plan
+    const lastLegSegmentIndex = plan.length > 0 ? plan.getSegmentIndex(plan.length - 1) : -1;
+
+    if (lastLegSegmentIndex === -1) {
+      // The plan is empty
+
+      const lastEnrouteSegmentIndex = this.findLastEnrouteSegmentIndex(plan);
+
+      if (lastEnrouteSegmentIndex !== -1) {
+        // The plan has at least one enroute segment, use the last one
+        targetSegmentIndex = lastEnrouteSegmentIndex;
+      } else {
+        // The plan has no segments, create the first segment
+        targetSegmentIndex = plan.insertSegment(0, FlightPlanSegmentType.Enroute).segmentIndex;
+      }
+    } else {
+      targetSegmentIndex = lastLegSegmentIndex;
+    }
+
+    const segment = plan.getSegment(targetSegmentIndex);
+
+    // If the target segment is an enroute segment
+    if (segment.segmentType === FlightPlanSegmentType.Enroute) {
+      // ...and it is empty or only contains a discontinuity, we can insert into it
+      if (
+        segment.legs.length === 0 ||
+        (segment.legs.length === 1 && FlightPlanUtils.isDiscontinuityLeg(segment.legs[0].leg.type))
+      ) {
+        // Do nothing, we can insert into this segment
+      } else {
+        // Otherwise, create a new enroute segment after the target segment
+        targetSegmentIndex = plan.insertSegment(targetSegmentIndex + 1, FlightPlanSegmentType.Enroute).segmentIndex;
+      }
+    } else {
+      // Otherwise, create a new enroute segment at the end of the
+      // plan (we want it to be after any arrival/approach/dest departure segments)
+      targetSegmentIndex = plan.insertSegment(plan.segmentCount, FlightPlanSegmentType.Enroute).segmentIndex;
+    }
+
+    const leg = FlightPlan.createLeg({
+      type: LegType.TF,
+      fixIcaoStruct: facility.icaoStruct,
+    });
+
+    // Make sure we are not inserting a duplicate leg
+    const prevLeg = plan.getPrevLeg(targetSegmentIndex, Infinity);
+    if (prevLeg && this.isDuplicateLeg(prevLeg.leg, leg)) {
+      // FIXME throw DUPLICATE WPT error here instead of in the UI when we have WTLineSDK FMS errors
+
+      return false;
+    }
+
+    plan.addLeg(targetSegmentIndex, leg);
     return true;
   }
 
@@ -958,7 +1034,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     skipHoldDelete = false,
     planIndex: FlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active,
   ): boolean {
-    const plan = this.getPlanToDisplay(planIndex);
+    let plan = this.getPlanToDisplay(planIndex);
 
     const leg = plan.tryGetLeg(segmentIndex, segmentLegIndex);
 
@@ -974,6 +1050,8 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       return false;
     }
 
+    plan = this.getPlanToEdit(plan.planIndex);
+
     const legDeleted = this.planRemoveLeg(plan.planIndex, segmentIndex, segmentLegIndex);
     const nextLeg = plan.tryGetLeg(segmentIndex, segmentLegIndex);
 
@@ -982,6 +1060,8 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
         this.planRemoveLeg(plan.planIndex, segmentIndex, segmentLegIndex, true, true, true);
       }
     }
+
+    this.checkAndRemoveEmptySegment(plan, segmentIndex);
 
     return legDeleted;
   }
@@ -1043,8 +1123,12 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
 
     const newLegData = FlightPlan.createLeg({ ...leg.leg, flyOver: value !== undefined ? value : !leg.leg.flyOver });
 
+    const batch = plan.openBatch(WTLineFlightPlanEditBatch.ChangeLegFlyover);
+
     this.cloneLegTo(plan.planIndex, leg, segmentIndex, localLegIndex, leg.flags, newLegData);
     plan.removeLeg(segmentIndex, localLegIndex + 1);
+
+    plan.closeBatch(batch);
 
     return true;
   }
@@ -1126,89 +1210,86 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
   }
 
   /**
-   * Method to add a new origin airport and runway to the flight plan.
-   * @param airport is the facility of the origin airport.
-   * @param runway is the new runway
+   * Method to set the origin airport of the flight plan.
    * @param planIndex is the index of the plan to target the edit to
+   * @param airportIcao is the facility ICAO of the origin airport.
    */
-  public setOrigin(airport: AirportFacility | undefined, runway?: OneWayRunway, planIndex: MainFlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active): void {
+  public setOriginAirport(planIndex: FlightPlanIndexType<T>, airportIcao: IcaoValue | undefined): void {
     const plan = this.getPlanToEdit(planIndex);
 
-    const segmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Departure);
-
-    if (airport) {
-      if (plan.originAirport !== airport.icao) {
-        plan.setOriginAirport(airport.icaoStruct);
-      }
-
-      plan.setOriginRunway(runway);
-
-      this.removeDeparture(plan.planIndex);
-
-      this.planAddOriginDestinationLeg(plan.planIndex, true, segmentIndex, airport, runway);
-
-      WTLineFmsUtils.setFlightPlanProcedureIdents(
-        plan,
-        {
-          ...WTLineFmsUtils.getFlightPlanProcedureIdents(plan),
-          departureIdent: null,
-          departureEnrouteTransitionIdent: null,
-        }
-      );
-
-      const prevLeg = plan.getPrevLeg(segmentIndex, 1);
-      const nextLeg = plan.getNextLeg(segmentIndex, 0);
-
-      if (prevLeg && nextLeg && this.isDuplicateLeg(prevLeg.leg, nextLeg.leg)) {
-        this.planRemoveDuplicateLeg(plan.planIndex, prevLeg, nextLeg);
+    if (airportIcao) {
+      if (plan.originAirportIcao === undefined || !ICAO.valueEquals(plan.originAirportIcao, airportIcao)) {
+        plan.setOriginAirport(airportIcao);
       }
     } else {
       plan.removeOriginAirport();
-
-      this.setApproachDetails(false, ApproachType.APPROACH_TYPE_UNKNOWN, RnavTypeFlags.None, false, false, null);
-      this.planClearSegment(plan.planIndex, segmentIndex, FlightPlanSegmentType.Departure);
     }
-
-    this.facilityInfo.originFacility = airport;
 
     plan.calculate(0);
   }
 
   /**
-   * Method to add a new destination airport and runway to the flight plan.
-   * @param airport is the facility of the destination airport.
-   * @param runway is the selected runway at the destination facility.
-   * @param mainPlanIndex is the plan index to target the edit to
+   * Method to set the departure runway of a given airport, either the origin airport or the destination airport.
+   * @param planIndex is the plan index to target the edit to
+   * @param airportIcao is the facility ICAO of the airport.
+   * @param runway is the selected runway at the facility.
+   * @param isOrigin whether the airport is the origin airport (true) or the destination airport (false).
    */
-  public setDestination(airport: AirportFacility | undefined, runway?: OneWayRunway, mainPlanIndex: MainFlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active): void {
-    const plan = this.getPlanToEdit(mainPlanIndex);
+  public async setDepartureRunway(planIndex: FlightPlanIndexType<T>, airportIcao: IcaoValue, runway: OneWayRunway | undefined, isOrigin: boolean): Promise<void> {
+    const plan = this.getPlanToEdit(planIndex);
 
-    // This probably isn't correct, but it's better than what we currently do
-    // This is the easy way to get the DEP/ARR pages to show the correct info when changing the DEST
+    if (isOrigin) {
+      plan.setOriginRunway(runway);
+
+      await this.removeDeparture(plan.planIndex, true);
+    } else {
+      WTLineFmsUtils.setFlightPlanDestinationAirportDepartureProcedure(
+        plan,
+        {
+          airportIcao,
+          runway: runway ?? null,
+          departureIndex: -1,
+          departureRunwayTransitionIndex: -1,
+          departureEnrouteTransitionIndex: -1,
+        }
+      );
+
+      await this.removeDeparture(plan.planIndex, false);
+    }
+
+    plan.calculate(0);
+  }
+
+  /**
+   * Method to set the destination airport of the flight plan.
+   * @param planIndex is the index of the plan to target the edit to
+   * @param airportIcao is the facility ICAO of the destination airport.
+   */
+  public setDestinationAirport(planIndex: FlightPlanIndexType<T>, airportIcao: IcaoValue | undefined): void {
+    const plan = this.getPlanToEdit(planIndex);
+
     this.removeApproach(plan.planIndex);
     this.removeArrival(plan.planIndex);
 
-    if (airport) {
-      plan.setDestinationAirport(airport.icaoStruct);
-      plan.setDestinationRunway(runway);
-
+    if (airportIcao) {
+      plan.setDestinationAirport(airportIcao);
     } else {
       plan.removeDestinationAirport();
     }
-
-    this.facilityInfo.destinationFacility = airport;
 
     plan.calculate(0);
   }
 
   /**
    * Method to ensure only one segment of a specific type exists in the flight plan and optionally insert it if needed.
+   * This method should not be used for Departure segments, because they can exist as two separate
+   * procedures (origin and destination departures).
    * @param planIndex is the index of the plan to edit.
    * @param segmentType is the segment type we want to evaluate.
    * @param insert is whether to insert the segment if missing
    * @returns segmentIndex of the only segment of this type in the flight plan, -1 if insert is false and and the segment does not exist.
    */
-  protected ensureOnlyOneSegmentOfType(planIndex: FlightPlanIndexType<T>, segmentType: FlightPlanSegmentType, insert = true): number {
+  protected ensureOnlyOneSegmentOfType(planIndex: FlightPlanIndexType<T>, segmentType: Exclude<FlightPlanSegmentType, FlightPlanSegmentType.Departure>, insert = true): number {
     const plan = this.getPlanToEdit(planIndex);
 
     let segmentIndex: number;
@@ -1227,7 +1308,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
         segmentIndex = -1;
       }
     } else if (segmentIndexArray.length > 1) {
-      for (let i = 0; i < segmentIndexArray.length; i++) {
+      for (let i = segmentIndexArray.length - 1; i >= 0; i--) {
         this.planRemoveSegment(plan.planIndex, segmentIndexArray[i]);
       }
 
@@ -1268,6 +1349,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     } else {
       // Active leg is not part of a direct-to. In this case we return every leg in the active segment prior to and
       // including the active leg.
+      // FIXME this should only be the FROM and TO leg
 
       return segment.legs.slice(0, plan.activeLateralLeg - segment.offset + 1);
     }
@@ -1281,39 +1363,44 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
    * @param segmentIndex The index of the flight plan segment into which to displace the legs.
    * @param activeLegArray The sequence of flight plan legs to displace. The sequence should contain all of the legs
    * contained in the former active segment up to and including the active leg.
-   * @param insertAtEnd Whether to insert the displaced legs at the end of the segment instead of the beginning.
    */
-  private displaceActiveLegsIntoSegment(plan: FlightPlan, segmentIndex: number, activeLegArray: LegDefinition[], insertAtEnd: boolean): void {
+  private displaceActiveLegsIntoSegment(plan: FlightPlan, segmentIndex: number, activeLegArray: LegDefinition[]): void {
     WTLineFmsUtils.removeDisplacedActiveLegs(plan);
 
     const segment = plan.getSegment(segmentIndex);
 
-    const insertAtIndex = insertAtEnd ? segment.legs.length : 0;
+    let insertAtIndex = 0;
+    let addedDiscontinuity = false;
 
-    if (insertAtEnd) {
-      plan.addLeg(segmentIndex, FlightPlan.createLeg({ type: LegType.Discontinuity }), insertAtIndex, WT21LegDefinitionFlags.DisplacedActiveLeg);
-    } else {
-      const segmentFirstLeg = segment.legs[0];
+    const prevLeg = plan.getPrevLeg(segmentIndex, 0);
 
-      // We don't want to insert duplicate discontinuities if there is already one at the start of the segment
-      const discontinuityAlreadyPresent = segmentFirstLeg && WTLineFmsUtils.isDiscontinuityLeg(segmentFirstLeg.leg.type);
+    if (prevLeg) {
+      this.insertDiscontinuity(plan, segmentIndex, 0, WT21LegDefinitionFlags.DisplacedActiveLeg);
 
-      if (!discontinuityAlreadyPresent) {
-        plan.addLeg(segmentIndex, FlightPlan.createLeg({ type: LegType.Discontinuity }), insertAtIndex, WT21LegDefinitionFlags.DisplacedActiveLeg);
+      if (segment.legs[0] && FlightPlanUtils.isDiscontinuityLeg(segment.legs[0].leg.type)) {
+        insertAtIndex += 1;
+        addedDiscontinuity = true;
       }
     }
 
     // The active leg is guaranteed to be the last leg in the array.
-    const activeLeg = activeLegArray[activeLegArray.length - 1];
+    const activeLegIndex = activeLegArray.length - 1;
+    const activeLeg = activeLegArray[activeLegIndex];
     const isActiveLegDto = BitFlags.isAll(activeLeg.flags, LegDefinitionFlags.DirectTo);
-    const dtoTargetLegIndex = isActiveLegDto ? activeLegArray.length - 1 - WTLineFmsUtils.DTO_LEG_OFFSET : undefined;
+    const dtoTargetLegIndex = isActiveLegDto ? activeLegIndex - WTLineFmsUtils.DTO_LEG_OFFSET : undefined;
     const dtoTargetLeg = dtoTargetLegIndex !== undefined ? activeLegArray[dtoTargetLegIndex] : undefined;
 
     let displacedDtoTargetLegIndex = undefined;
 
     // Add all displaced legs to the segment, skipping any active direct-to legs.
-    for (let i = dtoTargetLegIndex ?? activeLegArray.length - 1; i >= 0; i--) {
+    for (let i = dtoTargetLegIndex ?? activeLegIndex; i >= 0; i--) {
       const leg = activeLegArray[i];
+
+      // If we added a discontinuity at the start, and the displaced active leg is a discontinuity, we skip adding it, as
+      // we don't want back-to-back discontinuities.
+      if (addedDiscontinuity && FlightPlanUtils.isDiscontinuityLeg(leg.leg.type) && i === activeLegIndex) {
+        break;
+      }
 
       const newLeg = FlightPlan.createLeg(leg.leg);
 
@@ -1375,12 +1462,12 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       plan,
       {
         ...WTLineFmsUtils.getFlightPlanProcedureIdents(plan),
-        departureIdent: facility.departures[departureIndex].name,
-        departureEnrouteTransitionIdent: facility.departures[departureIndex].enRouteTransitions[enrouteTransitionIndex]?.name ?? null,
+        originDepartureIdent: facility.departures[departureIndex].name,
+        originDepartureEnrouteTransitionIdent: facility.departures[departureIndex].enRouteTransitions[enrouteTransitionIndex]?.name ?? null,
       },
     );
 
-    const segmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Departure);
+    const segmentIndex = this.ensureOnlyOneDepartureSegment(plan, true);
 
     // Grabbing the active legs (if there are any) in the existing departure semgent,
     // so that we can put them somewhere after clearing the segment.
@@ -1411,7 +1498,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     this.generateSegmentVerticalData(plan, segmentIndex);
 
     if (activeLegArray) {
-      this.displaceActiveLegsIntoSegment(plan, segmentIndex, activeLegArray, false);
+      this.displaceActiveLegsIntoSegment(plan, segmentIndex, activeLegArray);
     }
 
     plan.calculate(0);
@@ -1420,7 +1507,69 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
   private readonly loadDepartureOpIds: number[] = [];
 
   /**
+   * Loads a departure procedure from the origin airport into a flight plan.
+   * @param planIndex The index of the plan to target the edit to.
+   * @param facility The procedure's parent airport facility.
+   * @param departureIndex The index of the procedure in the parent airport facility's departure array.
+   * @param runwayTransitionIndex The index of the procedure's runway transition, or `-1` if the procedure does not
+   * @param enrouteTransitionIndex The index of the procedure's enroute transition, or `-1` if the procedure does not
+   * @param oneWayRunway The runway associated with the procedure, or `undefined` if there is no associated runway.
+   * include a runway transition.
+   * @returns A Promise which fulfills with whether the specified departure procedure was successfully loaded.
+   */
+  public async loadOriginDeparture(
+    planIndex: FlightPlanIndexType<T>,
+    facility: AirportFacility,
+    departureIndex: number,
+    runwayTransitionIndex: number,
+    enrouteTransitionIndex: number,
+    oneWayRunway: OneWayRunway | undefined,
+  ): Promise<boolean> {
+    return this.loadDepartureImpl(
+      planIndex,
+      true,
+      facility,
+      departureIndex,
+      runwayTransitionIndex,
+      enrouteTransitionIndex,
+      oneWayRunway,
+    );
+  }
+
+  /**
+   * Loads a departure procedure from the destination airport into a flight plan.
+   * @param planIndex The index of the plan to target the edit to.
+   * @param facility The procedure's parent airport facility.
+   * @param departureIndex The index of the procedure in the parent airport facility's departure array.
+   * @param runwayTransitionIndex The index of the procedure's runway transition, or `-1` if the procedure does not
+   * @param enrouteTransitionIndex The index of the procedure's enroute transition, or `-1` if the procedure does not
+   * @param oneWayRunway The runway associated with the procedure, or `undefined` if there is no associated runway.
+   * include a runway transition.
+   * @returns A Promise which fulfills with whether the specified departure procedure was successfully loaded.
+   */
+  public async loadDestinationDeparture(
+    planIndex: FlightPlanIndexType<T>,
+    facility: AirportFacility,
+    departureIndex: number,
+    runwayTransitionIndex: number,
+    enrouteTransitionIndex: number,
+    oneWayRunway: OneWayRunway | undefined,
+  ): Promise<boolean> {
+    return this.loadDepartureImpl(
+      planIndex,
+      false,
+      facility,
+      departureIndex,
+      runwayTransitionIndex,
+      enrouteTransitionIndex,
+      oneWayRunway,
+    );
+  }
+
+  /**
    * Loads a departure procedure into a flight plan.
+   * @param planIndex The index of the plan to target the edit to.
+   * @param isOrigin Whether the airport is the origin airport (true) or the destination airport (false).
    * @param facility The procedure's parent airport facility.
    * @param departureIndex The index of the procedure in the parent airport facility's departure array.
    * @param runwayTransitionIndex The index of the procedure's runway transition, or `-1` if the procedure does not
@@ -1428,16 +1577,16 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
    * @param enrouteTransitionIndex The index of the procedure's enroute transition, or `-1` if the procedure does not
    * include an enroute transition.
    * @param oneWayRunway The runway associated with the procedure, or `undefined` if there is no associated runway.
-   * @param planIndex The index of the plan to target the edit to.
    * @returns A Promise which fulfills with whether the specified departure procedure was successfully loaded.
    */
-  public async loadDeparture(
+  protected async loadDepartureImpl(
+    planIndex: FlightPlanIndexType<T>,
+    isOrigin: boolean,
     facility: AirportFacility,
     departureIndex: number,
     runwayTransitionIndex: number,
     enrouteTransitionIndex: number,
-    oneWayRunway?: OneWayRunway | undefined,
-    planIndex: FlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active,
+    oneWayRunway: OneWayRunway | undefined,
   ): Promise<boolean> {
     this.loadDepartureOpIds[planIndex] ??= 0;
     const opId = ++this.loadDepartureOpIds[planIndex];
@@ -1449,52 +1598,134 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     }
 
     const plan = this.getPlanToEdit(planIndex);
-
-    plan.setDeparture(facility.icaoStruct, departureIndex, enrouteTransitionIndex, runwayTransitionIndex);
-    WTLineFmsUtils.setFlightPlanProcedureIdents(
-      plan,
-      {
-        ...WTLineFmsUtils.getFlightPlanProcedureIdents(plan),
-        departureIdent: facility.departures[departureIndex].name,
-        departureEnrouteTransitionIdent: facility.departures[departureIndex].enRouteTransitions[enrouteTransitionIndex]?.name ?? null,
-      },
-    );
-
-    const segmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Departure);
+    const segmentIndex = this.ensureOnlyOneDepartureSegment(plan, isOrigin);
+    const depSegment = plan.getSegment(segmentIndex);
 
     // Grabbing the active legs (if there are any) in the existing departure semgent,
     // so that we can put them somewhere after clearing the segment.
+    // FIXME don't use SimPlane
     const activeLegArray = !Simplane.getIsGrounded() && plan.activeLateralLeg > 0 ? this.getSegmentActiveLegsToDisplace(plan, segmentIndex) : undefined;
 
     this.planClearSegment(plan.planIndex, segmentIndex, FlightPlanSegmentType.Departure);
 
-    if (!plan.originAirportIcao || !ICAO.valueEquals(plan.originAirportIcao, facility.icaoStruct)) {
-      plan.setOriginAirport(facility.icaoStruct);
-    }
+    if (isOrigin) {
+      WTLineFmsUtils.setFlightPlanProcedureIdents(
+        plan,
+        {
+          ...WTLineFmsUtils.getFlightPlanProcedureIdents(plan),
+          originDepartureIdent: facility.departures[departureIndex].name,
+          originDepartureEnrouteTransitionIdent: facility.departures[departureIndex].enRouteTransitions[enrouteTransitionIndex]?.name ?? null,
+        },
+      );
+      plan.setDeparture(facility.icaoStruct, departureIndex, enrouteTransitionIndex, runwayTransitionIndex);
 
-    plan.setOriginRunway(oneWayRunway);
+      if (!plan.originAirportIcao || !ICAO.valueEquals(plan.originAirportIcao, facility.icaoStruct)) {
+        plan.setOriginAirport(facility.icaoStruct);
+      }
+
+      plan.setOriginRunway(oneWayRunway);
+    } else {
+      WTLineFmsUtils.setFlightPlanDestinationAirportDepartureProcedure(
+        plan,
+        {
+          airportIcao: facility.icaoStruct,
+          runway: oneWayRunway ?? null,
+          departureIndex,
+          departureRunwayTransitionIndex: runwayTransitionIndex,
+          departureEnrouteTransitionIndex: enrouteTransitionIndex,
+        },
+      );
+      WTLineFmsUtils.setFlightPlanProcedureIdents(
+        plan,
+        {
+          ...WTLineFmsUtils.getFlightPlanProcedureIdents(plan),
+          destinationDepartureIdent: facility.departures[departureIndex].name,
+          destinationDepartureEnrouteTransitionIdent: facility.departures[departureIndex].enRouteTransitions[enrouteTransitionIndex]?.name ?? null,
+        },
+      );
+
+      const prevLeg = plan.getPrevLeg(segmentIndex, 0);
+
+      if (prevLeg) {
+        this.insertDiscontinuity(plan, segmentIndex, 0, WT21LegDefinitionFlags.ProcedureLeg);
+      }
+    }
 
     for (const procedureLeg of insertProcedureObject.procedureLegs) {
       this.planAddLeg(plan.planIndex, segmentIndex, procedureLeg, undefined, WT21LegDefinitionFlags.ProcedureLeg);
     }
 
     const nextLeg = plan.getNextLeg(segmentIndex, Infinity);
-    const depSegment = plan.getSegment(segmentIndex);
     const lastDepLeg = depSegment.legs[depSegment.legs.length - 1];
 
     if (nextLeg && lastDepLeg && this.isDuplicateLeg(lastDepLeg.leg, nextLeg.leg)) {
       this.planRemoveDuplicateLeg(plan.planIndex, lastDepLeg, nextLeg);
     }
 
-    this.generateSegmentVerticalData(plan, segmentIndex);
-
     if (activeLegArray) {
-      this.displaceActiveLegsIntoSegment(plan, segmentIndex, activeLegArray, false);
+      this.displaceActiveLegsIntoSegment(plan, segmentIndex, activeLegArray);
     }
+
+    this.checkDiscontinuityAtEndOfSegment(plan, segmentIndex);
+    this.generateSegmentVerticalData(plan, segmentIndex);
 
     await plan.calculate(0);
 
     return true;
+  }
+
+  /**
+   * Ensures that only a single departure segment for the origin or destination exists in a flight plan.
+   *
+   * If there were multiple departure segments, all but the first are removed, including any non-departure segments
+   * between them. If there were no departure segments, one is inserted at the appropriate position.
+   *
+   * @param plan The flight plan to modify,
+   * @param origin Whether to check for origin (true) or destination (false) departure segments.
+   * @returns The index of the ensured departure segment.
+   */
+  private ensureOnlyOneDepartureSegment(plan: FlightPlan, origin: boolean): number {
+    const firstDepartureSegmentIndex = WTLineFmsUtils.getFirstDepartureSegmentIndex(plan, origin);
+    const lastDepartureSegmentIndex = WTLineFmsUtils.getLastDepartureSegmentIndex(plan, origin);
+
+    if (firstDepartureSegmentIndex === -1 || lastDepartureSegmentIndex === -1) {
+      if (origin) {
+        this.planInsertSegment(plan.planIndex, 0, FlightPlanSegmentType.Departure);
+
+        return 0;
+      } else {
+        const insertionIndex = this.getSegmentForDestinationDepartureInsertion(plan);
+
+        this.planInsertSegment(plan.planIndex, insertionIndex, FlightPlanSegmentType.Departure);
+
+        return insertionIndex;
+      }
+    }
+
+    const numSegmentsToRemove = lastDepartureSegmentIndex - firstDepartureSegmentIndex;
+
+    for (let i = 0; i < numSegmentsToRemove; i++) {
+      this.planRemoveSegment(plan.planIndex, firstDepartureSegmentIndex + 1);
+    }
+
+    return firstDepartureSegmentIndex;
+  }
+
+  /**
+   * Finds the segment index at which to insert a destination departure segment.
+   * @param plan The flight plan in which to insert the segment.
+   * @returns The segment index at which to insert a destination departure segment.
+   */
+  private getSegmentForDestinationDepartureInsertion(plan: FlightPlan): number {
+    for (let i = 0; i < plan.segmentCount; i++) {
+      const segment = plan.getSegment(i);
+
+      if (segment.segmentType === FlightPlanSegmentType.Destination) {
+        return i + 1;
+      }
+    }
+
+    return -1;
   }
 
   /**
@@ -1636,13 +1867,6 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
 
     const activeSegment = WTLineFmsUtils.getActiveSegment(plan);
 
-    if (plan.procedureDetails.approachIndex < 0) {
-      if (plan.destinationAirport !== facility.icao) {
-        plan.setDestinationAirport(facility.icaoStruct);
-      }
-      plan.setDestinationRunway(oneWayRunway);
-    }
-
     let arrivalSegment = plan.getSegment(this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Arrival));
 
     const activeLegArray = this.getSegmentActiveLegsToDisplace(plan, arrivalSegment.segmentIndex);
@@ -1653,7 +1877,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       arrivalActiveLegIcao = plan.tryGetLeg(plan.activeLateralLeg)?.leg?.fixIcao;
     }
 
-    plan.setArrival(facility.icaoStruct, arrivalIndex, enrouteTransitionIndex, arrivalRunwayTransitionIndex);
+    plan.setArrival(facility.icaoStruct, arrivalIndex, enrouteTransitionIndex, arrivalRunwayTransitionIndex, oneWayRunway);
     WTLineFmsUtils.setFlightPlanProcedureIdents(
       plan,
       {
@@ -1727,7 +1951,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     const matchingActiveProcedureLegIndex = WTLineFmsUtils.findIcaoInSegment(arrivalSegment, arrivalActiveLegIcao);
 
     if (activeLegArray && matchingActiveProcedureLegIndex === undefined) {
-      this.displaceActiveLegsIntoSegment(plan, arrivalSegment.segmentIndex, activeLegArray, false);
+      this.displaceActiveLegsIntoSegment(plan, arrivalSegment.segmentIndex, activeLegArray);
     } else if (matchingActiveProcedureLegIndex !== undefined) {
       plan.setLateralLeg(arrivalSegment.offset + matchingActiveProcedureLegIndex);
     }
@@ -1774,12 +1998,8 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
 
     const activeSegment = WTLineFmsUtils.getActiveSegment(plan);
 
-    if (plan.procedureDetails.approachIndex < 0) {
-      if (!plan.destinationAirportIcao || !ICAO.valueEquals(plan.destinationAirportIcao, facility.icaoStruct)) {
-        plan.setDestinationAirport(facility.icaoStruct);
-      }
-      plan.setDestinationRunway(oneWayRunway);
-    }
+    plan.procedureDetails.arrivalFacilityIcaoStruct = facility.icaoStruct;
+    plan.setProcedureDetails(plan.procedureDetails);
 
     let arrivalSegment = plan.getSegment(this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Arrival));
 
@@ -1791,7 +2011,6 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       arrivalActiveLegIcao = plan.tryGetLeg(plan.activeLateralLeg)?.leg?.fixIcao;
     }
 
-    plan.setArrival(facility.icaoStruct, arrivalIndex, enrouteTransitionIndex, runwayTransitionIndex);
     WTLineFmsUtils.setFlightPlanProcedureIdents(
       plan,
       {
@@ -1800,6 +2019,9 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
         arrivalEnrouteTransitionIdent: facility.arrivals[arrivalIndex].enRouteTransitions[enrouteTransitionIndex]?.name ?? null,
       },
     );
+    // Change procedure details after setting idents to make sure consumers get the updated idents
+    plan.setArrival(facility.icaoStruct, arrivalIndex, enrouteTransitionIndex, runwayTransitionIndex, oneWayRunway, false);
+    plan.setProcedureDetails({ destinationRunway: oneWayRunway });
 
     if (arrivalSegment.legs.length > 0) {
       arrivalSegment = this.planClearSegment(plan.planIndex, arrivalSegment.segmentIndex, FlightPlanSegmentType.Arrival);
@@ -1858,16 +2080,17 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     }
 
     // If we didn't remove a duplicate, insert a discontinuity at the start of the arrival
-    if (!deduplicatedEnrouteLeg && (!prevLeg || !FlightPlanUtils.isManualDiscontinuityLeg(prevLeg.leg.type))) {
+    if (!deduplicatedEnrouteLeg && prevLeg) {
       this.tryInsertDiscontinuity(plan, arrivalSegment.segmentIndex);
     }
 
+    this.checkDiscontinuityAtEndOfSegment(plan, arrivalSegment.segmentIndex);
     this.generateSegmentVerticalData(plan, arrivalSegment.segmentIndex);
 
     const matchingActiveProcedureLegIndex = WTLineFmsUtils.findIcaoInSegment(arrivalSegment, arrivalActiveLegIcao);
 
     if (activeLegArray && matchingActiveProcedureLegIndex === undefined) {
-      this.displaceActiveLegsIntoSegment(plan, arrivalSegment.segmentIndex, activeLegArray, false);
+      this.displaceActiveLegsIntoSegment(plan, arrivalSegment.segmentIndex, activeLegArray);
     } else if (matchingActiveProcedureLegIndex !== undefined) {
       plan.setLateralLeg(arrivalSegment.offset + matchingActiveProcedureLegIndex);
     }
@@ -1903,45 +2126,58 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
    * @param plan The Lateral Flight Plan.
    */
   private tryConnectProcedures(plan: FlightPlan): void {
-    if (plan.procedureDetails.approachIndex > -1 && plan.procedureDetails.arrivalIndex > -1) {
-      // find the first leg in the approach
-      let firstApproachLeg: LegDefinition | undefined;
-      let firstApproachSegmentLegIndex: number | undefined;
-      let matchedArrivalLegSegmentLegIndex: number | undefined;
+    if (plan.procedureDetails.approachIndex === -1 || plan.procedureDetails.arrivalIndex === -1) {
+      return;
+    }
 
-      const approachSegmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Approach, false);
-      const arrivalSegmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Arrival, false);
+    // find the first leg in the approach
+    let firstApproachLeg: LegDefinition | undefined;
+    let firstApproachSegmentLegIndex: number | undefined;
+    let matchedArrivalLegSegmentLegIndex: number | undefined;
 
-      if (approachSegmentIndex > -1 && arrivalSegmentIndex > -1) {
-        const approachSegment = plan.getSegment(approachSegmentIndex);
-        const arrivalSegment = plan.getSegment(arrivalSegmentIndex);
+    const arrivalSegmentIndex = WTLineFmsUtils.getLastSegmentOfType(plan, FlightPlanSegmentType.Arrival);
+    const approachSegmentIndex = WTLineFmsUtils.getFirstSegmentOfType(plan, FlightPlanSegmentType.Approach);
 
-        for (let l = 0; l < approachSegment.legs.length; l++) {
-          const approachLeg = approachSegment.legs[l];
-          if (approachLeg.leg.type !== LegType.Discontinuity && approachLeg.leg.type !== LegType.ThruDiscontinuity) {
-            firstApproachLeg = approachLeg;
-            firstApproachSegmentLegIndex = l;
-            break;
-          }
-        }
+    if (approachSegmentIndex === -1 || arrivalSegmentIndex === -1) {
+      return;
+    }
 
-        for (let i = arrivalSegment.legs.length - 1; i > 0; i--) {
-          const arrivalLeg = arrivalSegment.legs[i];
-          if (arrivalLeg?.name && firstApproachLeg?.name && arrivalLeg.name === firstApproachLeg.name) {
-            matchedArrivalLegSegmentLegIndex = i;
-            break;
-          }
-        }
+    const approachSegment = plan.getSegment(approachSegmentIndex);
+    const arrivalSegment = plan.getSegment(arrivalSegmentIndex);
 
-        if (firstApproachSegmentLegIndex !== undefined && matchedArrivalLegSegmentLegIndex !== undefined) {
-          while (arrivalSegment.legs.length > matchedArrivalLegSegmentLegIndex) {
-            plan.removeLeg(arrivalSegmentIndex, matchedArrivalLegSegmentLegIndex);
-          }
+    for (let l = 0; l < approachSegment.legs.length; l++) {
+      const approachLeg = approachSegment.legs[l];
 
-          for (let j = 0; j < firstApproachSegmentLegIndex; j++) {
-            plan.removeLeg(approachSegmentIndex, j);
-          }
-        }
+      if (!FlightPlanUtils.isDiscontinuityLeg(approachLeg.leg.type)) {
+        firstApproachLeg = approachLeg;
+        firstApproachSegmentLegIndex = l;
+        break;
+      }
+    }
+
+    if (firstApproachLeg === undefined || firstApproachSegmentLegIndex === undefined) {
+      return;
+    }
+
+    for (let i = arrivalSegment.legs.length - 1; i > 0; i--) {
+      const arrivalLeg = arrivalSegment.legs[i];
+
+      if (
+        FlightPlanUtils.isToFixLeg(arrivalLeg.leg.type) &&
+        ICAO.valueEquals(arrivalLeg.leg.fixIcaoStruct, firstApproachLeg.leg.fixIcaoStruct)
+      ) {
+        matchedArrivalLegSegmentLegIndex = i;
+        break;
+      }
+    }
+
+    if (firstApproachSegmentLegIndex !== undefined && matchedArrivalLegSegmentLegIndex !== undefined) {
+      while (arrivalSegment.legs.length > matchedArrivalLegSegmentLegIndex) {
+        plan.removeLeg(arrivalSegmentIndex, matchedArrivalLegSegmentLegIndex);
+      }
+
+      for (let j = 0; j < firstApproachSegmentLegIndex; j++) {
+        plan.removeLeg(approachSegmentIndex, j);
       }
     }
   }
@@ -2119,10 +2355,16 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     let enrouteSegmentFound = 0;
     for (let i = 1; i < plan.segmentCount; i++) {
       const segment = plan.getSegment(i);
+
+      if (segment.segmentType === FlightPlanSegmentType.Destination) {
+        break;
+      }
+
       if (segment.segmentType === FlightPlanSegmentType.Enroute) {
         enrouteSegmentFound = i;
       }
     }
+
     return enrouteSegmentFound;
   }
 
@@ -2188,14 +2430,14 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       return false;
     }
 
-    if (plan.length > 0 && plan.procedureDetails.approachIndex < 0 && plan.destinationAirportIcao) {
+    if (plan.length > 0 && plan.procedureDetails.approachIndex < 0 && plan.procedureDetails.arrivalFacilityIcaoStruct) {
       const lastLeg = plan.tryGetLeg(plan.length - 1);
       if (lastLeg) {
         const lastLegSegment = plan.getSegmentFromLeg(lastLeg);
         if (
           lastLegSegment
           && lastLegSegment.segmentType !== FlightPlanSegmentType.Departure
-          && ICAO.valueEquals(lastLeg.leg.fixIcaoStruct, plan.destinationAirportIcao)
+          && ICAO.valueEquals(lastLeg.leg.fixIcaoStruct, plan.procedureDetails.arrivalFacilityIcaoStruct)
         ) {
           plan.removeLeg(plan.getSegmentIndex(plan.length - 1));
         }
@@ -2208,12 +2450,14 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       plan.deleteUserData('visual_approach');
     }
 
-    plan.setApproach(facility.icaoStruct, approachIndex, approachTransitionIndex);
     WTLineFmsUtils.setFlightPlanProcedureIdents(
       plan,
       {
         ...WTLineFmsUtils.getFlightPlanProcedureIdents(plan),
         approachIdent: visualRunway
+          ? `VISUAL ${RunwayUtils.getRunwayNameString(visualRunway.direction, visualRunway.runwayDesignator)}`
+          : WTLineFmsUtils.getApproachNameAsString(facility, approachIndex, approachTransitionIndex, false, false),
+        paddedApproachIdent: visualRunway
           ? `VISUAL ${RunwayUtils.getRunwayNameString(visualRunway.direction, visualRunway.runwayDesignator)}`
           : WTLineFmsUtils.getApproachNameAsString(facility, approachIndex, approachTransitionIndex, false, true),
         approachTransitionIdent: visualRunway
@@ -2221,12 +2465,21 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
           : facility.approaches[approachIndex].transitions[approachTransitionIndex]?.name ?? null,
       },
     );
+    // Change procedure details after setting idents to make sure consumers get the updated idents
+    plan.setApproach(facility.icaoStruct, approachIndex, approachTransitionIndex, false);
+    plan.setProcedureDetails({
+      arrivalFacilityIcaoStruct: facility.icaoStruct,
+      destinationRunway: insertProcedureObject.runway,
+      arrivalRunway: insertProcedureObject.runway,
+    });
 
-    const directToState = this.getDirectToState(WTLineFmsUtils.PRIMARY_MOD_PLAN_INDEX);
+    const directToState = this.getDirectToState(WTLineLegacyFlightPlans.Active);
 
     let skipDestinationLegCheck = false;
-    if (directToState === DirectToState.TOEXISTING) {
-      if (this.getDirectToLeg(planIndex)?.fixIcao === plan.destinationAirport) {
+    if (directToState === DirectToState.TOEXISTING && plan.destinationAirportIcao !== undefined) {
+      const directToLeg = this.getDirectToLeg(planIndex);
+
+      if (directToLeg !== undefined && ICAO.valueEquals(directToLeg.fixIcaoStruct, plan.destinationAirportIcao)) {
         skipDestinationLegCheck = true;
       }
     }
@@ -2235,11 +2488,8 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       this.moveDirectToDestinationLeg(plan, FlightPlanSegmentType.Enroute);
     }
 
-    if (!plan.destinationAirportIcao || !ICAO.valueEquals(plan.destinationAirportIcao, facility.icaoStruct)) {
-      plan.setDestinationAirport(facility.icaoStruct);
-    }
-
     const segmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Approach);
+    const missedApproachSegmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.MissedApproach);
 
     const activeLegArray = this.getSegmentActiveLegsToDisplace(plan, segmentIndex);
 
@@ -2249,33 +2499,43 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       apprSegment = this.planClearSegment(plan.planIndex, segmentIndex, FlightPlanSegmentType.Approach);
     }
 
-    if (insertProcedureObject.runway) {
-      plan.setDestinationRunway(insertProcedureObject.runway);
-    } else {
-      plan.setDestinationRunway(undefined);
+    const missedApprSegment = plan.getSegment(missedApproachSegmentIndex);
+
+    if (missedApprSegment.legs.length > 0) {
+      this.planClearSegment(plan.planIndex, missedApproachSegmentIndex, FlightPlanSegmentType.MissedApproach);
     }
 
-    let haveAddedMap = false;
-    insertProcedureObject.procedureLegs.forEach((l) => {
-      let isMissedLeg = false;
+    let mapIndex = -1;
+    for (let i = 0; i < insertProcedureObject.procedureLegs.length; i++) {
+      const leg = insertProcedureObject.procedureLegs[i];
+
       if (visualRunway !== undefined) {
-        this.addVisualFacilityFromLeg(l, visualRunway.designation);
-        if (haveAddedMap) {
-          isMissedLeg = true;
-        }
-        if (l.fixTypeFlags & FixTypeFlags.MAP) {
-          haveAddedMap = true;
-        }
+        this.addVisualFacilityFromLeg(leg, visualRunway.designation);
       }
 
-      let flags = l.legDefinitionFlags ?? WT21LegDefinitionFlags.None;
+      let flags = leg.legDefinitionFlags ?? WT21LegDefinitionFlags.None;
       flags |= WT21LegDefinitionFlags.ProcedureLeg;
-      if (isMissedLeg) {
-        flags |= WT21LegDefinitionFlags.MissedApproach;
-      }
 
-      this.planAddLeg(plan.planIndex, segmentIndex, l, undefined, flags);
-    });
+      this.planAddLeg(plan.planIndex, segmentIndex, leg, undefined, flags);
+
+      if (leg.fixTypeFlags & FixTypeFlags.MAP) {
+        mapIndex = i;
+        break;
+      }
+    }
+
+    const numMissedApproachLegs = insertProcedureObject.procedureLegs.length - (mapIndex + 1);
+
+    if (mapIndex !== -1 && numMissedApproachLegs > 0) {
+      for (let i = mapIndex + 1; i < insertProcedureObject.procedureLegs.length; i++) {
+        const leg = insertProcedureObject.procedureLegs[i];
+
+        let flags = leg.legDefinitionFlags ?? WT21LegDefinitionFlags.None;
+        flags |= (WT21LegDefinitionFlags.ProcedureLeg | WT21LegDefinitionFlags.MissedApproach);
+
+        this.planAddLeg(plan.planIndex, missedApproachSegmentIndex, leg, undefined, flags);
+      }
+    }
 
     const prevLeg = plan.getPrevLeg(segmentIndex, 0);
     const firstAppLeg = apprSegment.legs[0];
@@ -2305,14 +2565,14 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     this.setApproachDetails(true, approachType, approachRnavTypeFlags, false, approachIsCircling, approachReferenceFacility);
 
     // If we didn't remove a duplicate, insert a discontinuity at the start of the approach
-    if (!deduplicatedArrivalLeg && (!prevLeg || !FlightPlanUtils.isManualDiscontinuityLeg(prevLeg.leg.type))) {
+    if (!deduplicatedArrivalLeg && prevLeg) {
       this.tryInsertDiscontinuity(plan, segmentIndex);
     }
 
     this.generateSegmentVerticalData(plan, segmentIndex);
 
     if (activeLegArray) {
-      this.displaceActiveLegsIntoSegment(plan, segmentIndex, activeLegArray, false);
+      this.displaceActiveLegsIntoSegment(plan, segmentIndex, activeLegArray);
     }
 
     this.cleanupLegsAfterApproach(plan);
@@ -2450,6 +2710,36 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     }
 
     return this.remapProcedureLegs(insertProcedureObject);
+  }
+
+  /**
+   * Checks for discontinuities at the end of a segment after procedure insertion and moves them if needed.
+   * @param plan The Flight Plan.
+   * @param segmentIndex The segment index to check.
+   */
+  private checkDiscontinuityAtEndOfSegment(plan: FlightPlan, segmentIndex: number): void {
+    const segment = plan.getSegment(segmentIndex);
+
+    if (segment.legs.length === 0) {
+      return;
+    }
+
+    const lastSegmentLeg = segment.legs[segment.legs.length - 1];
+
+    // If the last procedure leg is now a discontinuity...
+    if (FlightPlanUtils.isDiscontinuityLeg(lastSegmentLeg.leg.type)) {
+      this.planRemoveLeg(plan.planIndex, segmentIndex, segment.legs.length - 1);
+
+      const nextLeg = plan.getNextLeg(segmentIndex, Infinity);
+      const nextSegmentIndex = nextLeg ? plan.getSegmentFromLeg(nextLeg)?.segmentIndex : undefined;
+
+      if (nextSegmentIndex !== undefined) {
+        this.insertDiscontinuity(plan, nextSegmentIndex, 0);
+      } else {
+        // ...otherwise just remove it
+        // TODO need to make sure that we re-add this later on
+      }
+    }
   }
 
   /**
@@ -2736,39 +3026,76 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
 
   /**
    * Method to remove the departure from the flight plan.
+   *
+   * If a departure airport and runway were specified, this method will also add an origin runway leg.
+   *
    * @param planIndex the index of the flight plan to target the edit to.
+   * @param origin Whether to remove the origin departure (true) or destination airport departure (false).
    */
-  public async removeDeparture(planIndex: FlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active): Promise<void> {
+  public async removeDeparture(planIndex: FlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active, origin = true): Promise<void> {
     const plan = this.getPlanToEdit(planIndex);
 
-    const segmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Departure);
+    const segmentIndex = this.ensureOnlyOneDepartureSegment(plan, origin);
 
-    plan.setDeparture();
-    WTLineFmsUtils.setFlightPlanProcedureIdents(
-      plan,
-      {
-        ...WTLineFmsUtils.getFlightPlanProcedureIdents(plan),
-        departureIdent: null,
-        departureEnrouteTransitionIdent: null,
-      },
-    );
+    if (origin) {
+      plan.setDeparture();
+      WTLineFmsUtils.setFlightPlanProcedureIdents(
+        plan,
+        {
+          ...WTLineFmsUtils.getFlightPlanProcedureIdents(plan),
+          originDepartureIdent: null,
+          originDepartureEnrouteTransitionIdent: null,
+        },
+      );
+    } else {
+      WTLineFmsUtils.setFlightPlanDestinationAirportDepartureProcedure(
+        plan,
+        {
+          ...WTLineFmsUtils.getFlightPlanDestinationAirportDepartureProcedure(plan),
+          departureIndex: -1,
+          departureRunwayTransitionIndex: -1,
+          departureEnrouteTransitionIndex: -1,
+        }
+      );
+      WTLineFmsUtils.setFlightPlanProcedureIdents(
+        plan,
+        {
+          ...WTLineFmsUtils.getFlightPlanProcedureIdents(plan),
+          destinationDepartureIdent: null,
+          destinationDepartureEnrouteTransitionIdent: null,
+        },
+      );
+    }
 
     this.planClearSegment(plan.planIndex, segmentIndex, FlightPlanSegmentType.Departure);
 
-    // Remove constraints from first enroute leg
-    this.clearFirstEnrouteLegVerticalData(plan);
+    if (origin) {
+      // Remove constraints from first enroute leg
+      this.clearFirstEnrouteLegVerticalData(plan);
+    }
 
-    if (plan.originAirportIcao) {
-      const airport = await this.facLoader.getFacility(FacilityType.Airport, plan.originAirportIcao, AirportFacilityDataFlags.Minimal | AirportFacilityDataFlags.Runways);
-      const updatedSegmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Departure);
+    const airportIcao = origin ? plan.originAirportIcao : plan.destinationAirportIcao;
+    const departureData = WTLineFmsUtils.getFlightPlanDepartureData(plan, origin);
 
-      this.planAddOriginDestinationLeg(plan.planIndex, true, updatedSegmentIndex, airport, plan.procedureDetails.originRunway);
+    if (airportIcao && !ICAO.isValueEmpty(airportIcao) && departureData.runway) {
+      const airport = await this.facLoader.getFacility(FacilityType.Airport, airportIcao, AirportFacilityDataFlags.Minimal);
 
-      const prevLeg = plan.getPrevLeg(updatedSegmentIndex, 1);
-      const nextLeg = plan.getNextLeg(updatedSegmentIndex, 0);
+      this.planAddOriginDestinationLeg(plan.planIndex, true, segmentIndex, airport, departureData.runway);
 
-      if (prevLeg && nextLeg && this.isDuplicateLeg(prevLeg.leg, nextLeg.leg)) {
-        this.planRemoveDuplicateLeg(plan.planIndex, prevLeg, nextLeg);
+      const leg = plan.getLeg(segmentIndex, 0);
+      const prevLeg = plan.getPrevLeg(segmentIndex, 0);
+      const nextLeg = plan.getNextLeg(segmentIndex, 0);
+
+      if (prevLeg) {
+        this.insertDiscontinuity(plan, segmentIndex, 0);
+      }
+
+      if (nextLeg) {
+        if (this.isDuplicateLeg(leg.leg, nextLeg.leg)) {
+          this.planRemoveDuplicateLeg(plan.planIndex, leg, nextLeg);
+        } else {
+          this.insertDiscontinuity(plan, segmentIndex + 1, 0);
+        }
       }
     }
 
@@ -2798,7 +3125,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
 
     this.cleanupLegsAfterApproach(plan);
 
-    this.planRemoveSegment(plan.planIndex, segmentIndex);
+    this.planClearSegment(plan.planIndex, segmentIndex);
 
     // Remove constraints from last enroute leg
     this.clearLastEnrouteLegVerticalData(plan);
@@ -2824,15 +3151,34 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
   public async removeApproach(planIndex: FlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active): Promise<void> {
     const plan = this.getPlanToEdit(planIndex);
 
+    const firstApproachSegmentIndex = WTLineFmsUtils.getFirstSegmentOfType(plan, FlightPlanSegmentType.Approach);
+    let lastApproachSegmentIndex = WTLineFmsUtils.getLastSegmentOfType(plan, FlightPlanSegmentType.MissedApproach);
+
+    if (lastApproachSegmentIndex === -1) {
+      lastApproachSegmentIndex = WTLineFmsUtils.getLastSegmentOfType(plan, FlightPlanSegmentType.Approach);
+    }
+
+    if (firstApproachSegmentIndex === -1 || lastApproachSegmentIndex === -1) {
+      return;
+    }
+
     if (plan.getUserData('visual_approach')) {
       plan.deleteUserData('visual_approach');
     }
 
     this.setApproachDetails(false, ApproachType.APPROACH_TYPE_UNKNOWN, RnavTypeFlags.None, false, false, null);
 
-    const segmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Approach);
+    let activeLegArray;
 
-    const activeLegArray = this.getSegmentActiveLegsToDisplace(plan, segmentIndex);
+    // Go through each approach and missed approach segment to find active legs to displace
+    for (let i = firstApproachSegmentIndex; i <= lastApproachSegmentIndex; i++) {
+      const segmentActiveLegs = this.getSegmentActiveLegsToDisplace(plan, i);
+
+      if (segmentActiveLegs) {
+        activeLegArray = segmentActiveLegs;
+        break;
+      }
+    }
 
     plan.procedureDetails.arrivalRunwayTransitionIndex = -1;
     plan.setDestinationRunway(undefined, false);
@@ -2842,28 +3188,60 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       {
         ...WTLineFmsUtils.getFlightPlanProcedureIdents(plan),
         approachIdent: null,
+        paddedApproachIdent: null,
         approachTransitionIdent: null,
       },
     );
 
     this.cleanupLegsAfterApproach(plan);
 
-    this.planRemoveSegment(plan.planIndex, segmentIndex);
+    // Remove all approach and missed approach segments, and anything in between
+    const approachSegment = plan.getSegment(this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Approach));
+
+    if (approachSegment.legs.length > 0) {
+      this.planClearSegment(planIndex, approachSegment.segmentIndex, FlightPlanSegmentType.Approach);
+    }
+
+    const missedApproachSegment = plan.getSegment(this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.MissedApproach));
+
+    if (missedApproachSegment.legs.length > 0) {
+      this.planClearSegment(planIndex, missedApproachSegment.segmentIndex, FlightPlanSegmentType.MissedApproach);
+    }
 
     // Remove constraints from last enroute leg if there wasn't an arrival
     if (plan.procedureDetails.arrivalIndex === -1) {
       this.clearLastEnrouteLegVerticalData(plan);
     }
 
-    const prevLeg = plan.getPrevLeg(segmentIndex, 0);
-    const nextLeg = plan.getNextLeg(segmentIndex, -1);
+    const prevLeg = plan.getPrevLeg(firstApproachSegmentIndex, 0);
+    const nextLeg = plan.getNextLeg(firstApproachSegmentIndex, -1);
 
     if (prevLeg && nextLeg && this.isDuplicateLeg(prevLeg.leg, nextLeg.leg)) {
       this.planRemoveDuplicateLeg(plan.planIndex, prevLeg, nextLeg);
     }
 
     if (activeLegArray) {
-      this.displaceActiveLegsToEnroute(plan, activeLegArray, true);
+      this.displaceActiveLegsToEnroute(plan, activeLegArray);
+    }
+
+    plan.calculate(0);
+  }
+
+  /**
+   * Method to remove the missed approach from the flight plan.
+   * @param planIndex the index of the plan to target the edit to.
+   */
+  public removeMissedApproach(planIndex: FlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active): void {
+    const plan = this.getPlanToEdit(planIndex);
+
+    const activeLegArray = this.getSegmentActiveLegsToDisplace(plan, this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.MissedApproach));
+
+    const missedApproachSegmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.MissedApproach);
+
+    this.planRemoveSegment(plan.planIndex, missedApproachSegmentIndex);
+
+    if (activeLegArray) {
+      this.displaceActiveLegsToEnroute(plan, activeLegArray);
     }
 
     plan.calculate(0);
@@ -2920,18 +3298,17 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
    * @param plan The flight plan into which to displace the legs.
    * @param activeLegArray The sequence of flight plan legs to displace. The sequence should contain all of the legs
    * contained in the former active segment up to and including the active leg.
-   * @param checkForArrivalSegment Whether to check first for an arrival segment to add the legs to.
    */
-  private displaceActiveLegsToEnroute(plan: FlightPlan, activeLegArray: LegDefinition[], checkForArrivalSegment = false): void {
+  private displaceActiveLegsToEnroute(plan: FlightPlan, activeLegArray: LegDefinition[]): void {
     let segmentIndex = this.findLastEnrouteSegmentIndex(plan);
-    if (checkForArrivalSegment && plan.procedureDetails.arrivalIndex > -1) {
-      const arrivalSegmentIndex = this.ensureOnlyOneSegmentOfType(plan.planIndex, FlightPlanSegmentType.Arrival, false);
-      if (arrivalSegmentIndex > -1) {
-        segmentIndex = arrivalSegmentIndex;
-      }
+
+    const segment = plan.getSegment(segmentIndex);
+
+    if (segment.legs.length > 0) {
+      segmentIndex = this.planInsertSegment(plan.planIndex, segmentIndex + 1, FlightPlanSegmentType.Enroute).segmentIndex;
     }
 
-    this.displaceActiveLegsIntoSegment(plan, segmentIndex, activeLegArray, true);
+    this.displaceActiveLegsIntoSegment(plan, segmentIndex, activeLegArray);
   }
 
   /**
@@ -2993,7 +3370,9 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
    * 3. The FROM leg, initializes to the present position (PPOS).
    * 4. The TO leg.
    * @param segmentIndex is the index of the segment containing the leg to activate as direct to.
+   * If `undefined`, this creates a direct to random, at the end of the plan.
    * @param segmentLegIndex is the index of the leg in the specified segment to activate as direct to.
+   * If `undefined`, this the last leg of the segment that will be used for the direct to is targeted.
    * @param isNewDTO whether to treat this as a new directo to or not.
    * @param course is the course for this direct to in degrees magnetic, if specified.
    * @param facility is the new facility to add to the plan and then create a direct to for, for the case of a direct to random.
@@ -3018,11 +3397,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
       const lastSegment = plan.segmentCount > 0 ? plan.getSegment(plan.segmentCount - 1) : undefined;
 
       if (lastSegment) {
-        if (lastSegment.segmentType !== FlightPlanSegmentType.Enroute) {
-          segmentIndex = this.planInsertSegmentOfType(plan.planIndex, FlightPlanSegmentType.Enroute, lastSegment.segmentIndex + 1);
-        } else {
-          segmentIndex = lastSegment.segmentIndex;
-        }
+        segmentIndex = this.planInsertSegmentOfType(plan.planIndex, FlightPlanSegmentType.Enroute, lastSegment.segmentIndex + 1);
       } else {
         return;
       }
@@ -3137,7 +3512,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
 
     WTLineFmsUtils.reconcileDirectToData(plan);
 
-    this.setDestination(airportFacility);
+    this.setDestinationAirport(plan.planIndex, airportFacility.icaoStruct);
     this.createDirectTo(undefined, undefined, true, undefined, airportFacility);
   }
 
@@ -3240,7 +3615,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
   }
 
   /**
-   * Updates the DTO Origin Leg Lat/Lon with the PPOS.
+   * Updates the DTO Origin Leg Lat/Lon with the PPOS. Opens a {@link WTLineFlightPlanEditBatch.UpdateDTOOrigin} batch.
    * @param plan The Flight Plan.
    */
   private updateDtoOrigin(plan: FlightPlan): void {
@@ -3248,14 +3623,21 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     if (!this.dtoWasCreatedInModPlan) {
       return;
     }
+
     const pposLeg = plan.tryGetLeg(plan.directToData.segmentIndex, plan.directToData.segmentLegIndex + 2);
+
     // Making sure that we are in a DTO
     if (!pposLeg) {
       return;
     }
+
+    const batch = plan.openBatch(WTLineFlightPlanEditBatch.UpdateDTOOrigin);
+
     // We need to recreate the DTO so that the proper events get sent and legs get recreated and what not
     // We do not mark it as pending, because that is the decision of whatever created the original DTO
     this.createDirectTo(plan.directToData.segmentIndex, plan.directToData.segmentLegIndex, false);
+
+    plan.closeBatch(batch);
   }
 
   /**
@@ -3392,12 +3774,15 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     WTLineFmsUtils.setFlightPlanProcedureIdents(
       plan,
       {
-        departureIdent: null,
-        departureEnrouteTransitionIdent: null,
+        originDepartureIdent: null,
+        originDepartureEnrouteTransitionIdent: null,
         arrivalIdent: null,
         arrivalEnrouteTransitionIdent: null,
         approachIdent: null,
+        paddedApproachIdent: null,
         approachTransitionIdent: null,
+        destinationDepartureIdent: null,
+        destinationDepartureEnrouteTransitionIdent: null,
       },
     );
   }
@@ -3418,7 +3803,11 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
   ): Promise<number> {
     const plan = this.getPlanToEdit(planIndex);
 
-    const airwaySegmentIndex = plan.insertSegment(segmentIndex ?? plan.segmentCount, FlightPlanSegmentType.Enroute, airway.name).segmentIndex;
+    const airwaySegmentIndex = plan.insertSegment(
+      segmentIndex ?? WTLineFmsUtils.getLastSegmentOfType(plan, FlightPlanSegmentType.Enroute) + 1,
+      FlightPlanSegmentType.Enroute,
+      airway.name,
+    ).segmentIndex;
 
     // Add legs if exit is specified
     if (exit !== undefined) {
@@ -3431,6 +3820,43 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     plan.calculate(0, true);
 
     return airwaySegmentIndex;
+  }
+
+  /**
+   * Adds an airway and airway segment to the flight plan, originating from a fix at a given leg index.
+   * @param planIndex Is the index of the plan to target the edit to.
+   * @param airway The airway object.
+   * @param exit The exit intersection facility. If `undefined`, the airway segment is created containing only a discontinuity.
+   * @param segmentIndex Is the segment index for the entry leg.
+   * @param localLegIndex Is the local leg index for the entry leg.
+   * @returns The index of the airway segment that was added to the flight plan.
+   */
+  public async insertAirwayAtLeg(
+    planIndex: FlightPlanIndexType<T>,
+    airway: AirwayData,
+    exit: IntersectionFacility | undefined,
+    segmentIndex: number,
+    localLegIndex: number,
+  ): Promise<void> {
+    const plan = this.getPlanToEdit(planIndex);
+    const segment = plan.getSegment(segmentIndex);
+
+    let airwaySegment;
+    if (localLegIndex < segment.legs.length - 1) {
+      // If the fix is not the last leg in the segment, split that segment in three
+      airwaySegment = this.splitSegmentThreeWays(planIndex, segmentIndex, localLegIndex + 1, airway.name);
+    } else {
+      // Otherwise, insert the airway segment after
+      airwaySegment = plan.insertSegment(segmentIndex + 1, FlightPlanSegmentType.Enroute, airway.name);
+    }
+
+    // Add legs if exit is specified
+    if (exit !== undefined) {
+      await this.populateAirwaySegmentToExitFix(plan.planIndex, airwaySegment.segmentIndex, airway, exit);
+    } else {
+      // Add a discontinuity
+      this.insertDiscontinuity(plan, airwaySegment.segmentIndex);
+    }
   }
 
   /**
@@ -3703,10 +4129,11 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
    * @param segmentIndex the index of the segment to split
    * @param localLegIndex the index of the leg in the segment at which
    * to split the segment - this leg will be the first leg included in the newly formed third segment
+   * @param middleSgmentAirway the airway ident to set on the new middle segment
    * @returns the newly created middle segment
    * @throws if {@link localLegIndex} does not satisfy `0 < localLegIndex < segment.legs.length`
    */
-  private splitSegmentThreeWays(planIndex: FlightPlanIndexType<T>, segmentIndex: number, localLegIndex: number): FlightPlanSegment {
+  private splitSegmentThreeWays(planIndex: FlightPlanIndexType<T>, segmentIndex: number, localLegIndex: number, middleSgmentAirway?: string): FlightPlanSegment {
     // FIXME this method needs to break up procedure/airway segments into one DIRECT segment
     //  per leg to more closely align with the IRL behavior
 
@@ -3751,7 +4178,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
 
     const newSegment3 = plan.insertSegment(segmentIndex, segment3Type, keepSegment3AsAirway ? originalSegment.airway : undefined);
     const newSegment1 = plan.insertSegment(segmentIndex, segment1Type, originalSegment.airway);
-    const newSegment2 = plan.insertSegment(segmentIndex + 1, FlightPlanSegmentType.Enroute);
+    const newSegment2 = plan.insertSegment(segmentIndex + 1, FlightPlanSegmentType.Enroute, middleSgmentAirway);
 
     // Insert before segment
     for (let i = 0; i < legsBefore.length; i++) {
@@ -3774,7 +4201,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
         this.cloneLegTo(plan.planIndex, legToInsert, newSegment3.segmentIndex, i, BitFlags.set(legToInsert.flags, 0, segment3FlagsToRemove));
       }
     } else {
-      // Otherwise, we put everything in segment #$
+      // Otherwise, we put everything in segment #3
       for (let i = 0; i < legsAfter.length; i++) {
         const legToInsert = legsAfter[i];
 
@@ -3896,47 +4323,26 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
   public removeAirway(segmentIndex: number, planIndex: FlightPlanIndexType<T> = WTLineLegacyFlightPlans.Active): void {
     const plan = this.getPlanToEdit(planIndex);
 
-    let combineSegments = false;
-
     const segment = plan.getSegment(segmentIndex);
-    const exitLeg = segment.legs[segment.legs.length - 1].leg;
+    const isActiveSegment = segmentIndex === WTLineFmsUtils.getActiveSegmentIndex(plan);
 
-    // FIXME adjust this to not merge DIRECT segments
-
-    if (segmentIndex > 0) {
-      const priorSegmentEnrouteNonAirway = segmentIndex > 1 &&
-        plan.getSegment(segmentIndex - 1).segmentType === FlightPlanSegmentType.Enroute && plan.getSegment(segmentIndex - 1).airway === undefined;
-      const nextSegmentEnrouteNonAirway = plan.segmentCount > segmentIndex + 1 &&
-        plan.getSegment(segmentIndex + 1).segmentType === FlightPlanSegmentType.Enroute && plan.getSegment(segmentIndex + 1).airway === undefined;
-
-      if (priorSegmentEnrouteNonAirway && nextSegmentEnrouteNonAirway) {
-        combineSegments = true;
-      }
-
-      // Add the exit leg as a direct in the prior segment if it is enroute and not an airway.
-      if (priorSegmentEnrouteNonAirway) {
-        this.planAddLeg(plan.planIndex, segmentIndex - 1, exitLeg);
-      }
-
-      // Remove the airway segment
-      this.planRemoveSegment(plan.planIndex, segmentIndex);
-
-      // If we have two adjacent enroute non-airway segments, merge them.
-      if (combineSegments) {
-        this.mergeSegments(plan, segmentIndex - 1);
-      }
-
-      // If we need to add a non-airway enroute segment
-      if (!priorSegmentEnrouteNonAirway) {
-        if (!nextSegmentEnrouteNonAirway) {
-          segmentIndex = this.planInsertSegmentOfType(plan.planIndex, FlightPlanSegmentType.Enroute, segmentIndex);
-        }
-
-        this.planAddLeg(plan.planIndex, segmentIndex, exitLeg);
-      }
+    if (segmentIndex <= 0) {
+      return;
     }
 
-    plan.calculate(0, true);
+    if (isActiveSegment) {
+      // Remove the airway segment - planRemoveSegment ensures we then do a direct to the active leg
+      this.planRemoveSegment(plan.planIndex, segmentIndex);
+    } else {
+      // Turn this into a DIRECT segment and only keep the last leg
+      plan.setAirway(segmentIndex, undefined);
+
+      while (segment.legs.length > 1) {
+        plan.removeLeg(segmentIndex, 0);
+      }
+
+      plan.calculate();
+    }
   }
 
   /**
@@ -4080,13 +4486,33 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
   }
 
   /**
+   * Inserts a discontinuity before a leg if the previous leg type requires it.
+   * @param plan the flight plan to modify
+   * @param segmentIndex the segment index of the leg to insert the discontinuity before
+   * @param segmentLegIndex the leg index of the leg to insert the discontinuity before
+   */
+  private insertDiscontinuityBeforeLegIfNeeded(plan: FlightPlan, segmentIndex: number, segmentLegIndex: number): void {
+    const prevLeg = plan.getPrevLeg(segmentIndex, segmentLegIndex);
+
+    if (!prevLeg) {
+      return;
+    }
+
+    if (this.shouldDiscontinuityFollowLeg(prevLeg.leg.type)) {
+      this.insertDiscontinuity(plan, segmentIndex, segmentLegIndex);
+    }
+  }
+
+  /**
    * Method to insert a discontinuity in a provided plan at a specified position.
    * @param plan The FlightPlan to modify.
    * @param segmentIndex The segment index to insert the disco in.
    * @param segmentLegIndex The leg index to insert the disco at.
+   * @param flags Leg definition flags to apply to the new leg. Defaults to `None` (0).
    */
-  private insertDiscontinuity(plan: FlightPlan, segmentIndex: number, segmentLegIndex?: number): void {
+  private insertDiscontinuity(plan: FlightPlan, segmentIndex: number, segmentLegIndex?: number, flags?: number): void {
     const segment = plan.getSegment(segmentIndex);
+
     if (segmentLegIndex === undefined) {
       segmentLegIndex = Math.max(0, segment.legs.length - 1);
     }
@@ -4094,11 +4520,11 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     const prevLeg = plan.getPrevLeg(segmentIndex, segmentLegIndex);
     const leg = plan.tryGetLeg(segmentIndex, segmentLegIndex);
 
-    if ((prevLeg && prevLeg.leg.type === LegType.Discontinuity) || (leg && leg.leg.type === LegType.Discontinuity)) {
+    if ((prevLeg && FlightPlanUtils.isDiscontinuityLeg(prevLeg.leg.type)) || (leg && FlightPlanUtils.isDiscontinuityLeg(leg.leg.type))) {
       return;
     }
 
-    this.planAddLeg(plan.planIndex, segmentIndex, FlightPlan.createLeg({ type: LegType.Discontinuity }), segmentLegIndex);
+    this.planAddLeg(plan.planIndex, segmentIndex, FlightPlan.createLeg({ type: LegType.Discontinuity }), segmentLegIndex, flags);
   }
 
   /**
@@ -4167,7 +4593,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     skipDupCheck = false,
     skipCancelDirectTo = false,
   ): boolean {
-    let plan = this.getPlanToEdit(planIndex);
+    let plan = this.getPlanToDisplay(planIndex);
 
     if (segmentIndex < 0 || segmentIndex >= plan.segmentCount) {
       return false;
@@ -4183,7 +4609,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const isDirectToExistingActive = this.getDirectToState() === DirectToState.TOEXISTING;
 
-    plan = this.getPlanToEdit(WTLineLegacyFlightPlans.Active);
+    plan = this.getPlanToEdit(planIndex);
 
     let removed = false;
     const airwayLegType = this.getAirwayLegType(plan, segmentIndex, segmentLegIndex);
@@ -4418,32 +4844,55 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
   /**
    * Checks if a flight plan segment is empty, and removes the segment if it is eligible to be removed. Only Enroute
    * segments that are followed by another Enroute segment are eligible to be removed if empty.
+   *
+   * If the segment only contained a discontinuity leg, the discontinuity is moved to the next eligible segment.
+   *
    * @param plan A flight plan.
    * @param segmentIndex The index of the segment to check.
    * @returns Whether the segment was removed.
    */
   private checkAndRemoveEmptySegment(plan: FlightPlan, segmentIndex: number): boolean {
-    if (this.checkIfRemoveLeftEmptySegmentToDelete(plan, segmentIndex)) {
-      this.planRemoveSegment(plan.planIndex, segmentIndex);
+    const segment = plan.getSegment(segmentIndex);
 
-      const prevSegmentIndex = segmentIndex - 1;
-      const nextSegmentIndex = segmentIndex;
-      const prevSegment = prevSegmentIndex >= 0 ? plan.getSegment(prevSegmentIndex) : undefined;
-      const nextSegment = nextSegmentIndex < plan.segmentCount ? plan.getSegment(nextSegmentIndex) : undefined;
-      if (
-        prevSegment?.segmentType === FlightPlanSegmentType.Enroute
-        && prevSegment.airway === undefined
-        && nextSegment?.segmentType === FlightPlanSegmentType.Enroute
-        && nextSegment.airway === undefined
-      ) {
-        // We are left with two consecutive non-airway enroute segments -> merge the two
-        this.mergeSegments(plan, prevSegmentIndex);
+    let segmentToInsertRemovedDiscontinuityAt = -1;
+    let discontinuityFlags = 0;
+    if (segment.legs.length === 1 && FlightPlanUtils.isDiscontinuityLeg(segment.legs[0].leg.type)) {
+      const nextEligibleSegment = WTLineFmsUtils.getNextNonEmptySegmentIndex(plan, segmentIndex);
+
+      if (nextEligibleSegment !== -1) {
+        segmentToInsertRemovedDiscontinuityAt = nextEligibleSegment;
+        discontinuityFlags = segment.legs[0].flags;
       }
 
-      return true;
-    } else {
+      plan.removeLeg(segmentIndex, 0);
+    }
+
+    if (!this.shouldRemoveEmptySegment(plan, segmentIndex)) {
       return false;
     }
+
+    this.planRemoveSegment(plan.planIndex, segmentIndex);
+
+    if (segmentToInsertRemovedDiscontinuityAt !== -1) {
+      this.insertDiscontinuity(plan, segmentToInsertRemovedDiscontinuityAt - 1, 0, discontinuityFlags);
+    }
+
+    // TODO remove this, only merge if consecutive airway segments
+    const prevSegmentIndex = segmentIndex - 1;
+    const nextSegmentIndex = segmentIndex;
+    const prevSegment = prevSegmentIndex >= 0 ? plan.getSegment(prevSegmentIndex) : undefined;
+    const nextSegment = nextSegmentIndex < plan.segmentCount ? plan.getSegment(nextSegmentIndex) : undefined;
+    if (
+      prevSegment?.segmentType === FlightPlanSegmentType.Enroute
+      && prevSegment.airway === undefined
+      && nextSegment?.segmentType === FlightPlanSegmentType.Enroute
+      && nextSegment.airway === undefined
+    ) {
+      // We are left with two consecutive non-airway enroute segments -> merge the two
+      this.mergeSegments(plan, prevSegmentIndex);
+    }
+
+    return true;
   }
 
   /**
@@ -4452,27 +4901,32 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
    * @param segmentIndex The segment to add the leg to.
    * @returns whether to remove the segment.
    */
-  private checkIfRemoveLeftEmptySegmentToDelete(plan: FlightPlan, segmentIndex: number): boolean {
+  private shouldRemoveEmptySegment(plan: FlightPlan, segmentIndex: number): boolean {
     const segment = plan.getSegment(segmentIndex);
+
     let nextSegment: FlightPlanSegment | undefined;
     if (segmentIndex < plan.segmentCount - 1) {
       nextSegment = plan.getSegment(segmentIndex + 1);
     }
-    if (segment.legs.length < 1) {
-      switch (segment.segmentType) {
-        case FlightPlanSegmentType.Enroute: {
-          if (nextSegment && nextSegment.segmentType === FlightPlanSegmentType.Enroute) {
-            return true;
-          }
-          const priorSegment = plan.getSegment(segmentIndex - 1);
-          if (priorSegment.segmentType === FlightPlanSegmentType.Approach || priorSegment.segmentType === FlightPlanSegmentType.Arrival) {
-            return true;
-          }
-        }
-          break;
-        //TODO: Add more cases as appropriate
-      }
+
+    if (segment.legs.length >= 1) {
+      return false;
     }
+
+    switch (segment.segmentType) {
+      case FlightPlanSegmentType.Enroute: {
+        if (nextSegment && nextSegment.segmentType === FlightPlanSegmentType.Enroute) {
+          return true;
+        }
+        const priorSegment = plan.getSegment(segmentIndex - 1);
+        if (priorSegment.segmentType === FlightPlanSegmentType.Approach || priorSegment.segmentType === FlightPlanSegmentType.Arrival) {
+          return true;
+        }
+      }
+        break;
+      //TODO: Add more cases as appropriate
+    }
+
     return false;
   }
 
@@ -4482,41 +4936,26 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
    * legs are added to the beginning of the specified segment. Destination legs are added to the end of the specified
    * segment.
    * @param planIndex The index of the flight plan to edit.
-   * @param isOrigin Whether to add an origin leg.
+   * @param isDeparture Whether the leg to add is part of a departure (true) or arrival (false).
    * @param segmentIndex The index of the segment to which to add the leg.
    * @param airport The origin airport.
    * @param runway The origin runway.
    */
-  private planAddOriginDestinationLeg(planIndex: FlightPlanIndexType<T>, isOrigin: boolean, segmentIndex: number, airport: AirportFacility, runway?: OneWayRunway): void {
+  private planAddOriginDestinationLeg(planIndex: FlightPlanIndexType<T>, isDeparture: boolean, segmentIndex: number, airport: AirportFacility, runway?: OneWayRunway): void {
     let leg;
     if (runway) {
-      leg = WTLineFmsUtils.buildRunwayLeg(airport, runway, isOrigin);
+      leg = WTLineFmsUtils.buildRunwayLeg(airport, runway, isDeparture);
     } else {
       leg = FlightPlan.createLeg({
         lat: airport.lat,
         lon: airport.lon,
-        type: isOrigin ? LegType.IF : LegType.TF,
+        type: isDeparture ? LegType.IF : LegType.TF,
         fixIcaoStruct: airport.icaoStruct,
-        altitude1: airport.runways[0].elevation + UnitType.FOOT.convertTo(50, UnitType.METER)
+        altitude1: airport.altitude + UnitType.FOOT.convertTo(50, UnitType.METER)
       });
     }
 
-    if (leg) {
-      this.planAddLeg(planIndex, segmentIndex, leg, isOrigin ? 0 : undefined);
-
-      if (!isOrigin) {
-        const plan = this.getPlanToEdit(planIndex);
-
-        const lastEnrouteSegmentIndex = this.findLastEnrouteSegmentIndex(plan);
-        const lastEnrouteSegment = plan.getSegment(lastEnrouteSegmentIndex);
-
-        for (let i = lastEnrouteSegment.legs.length - 1; i >= 0; i--) {
-          if (lastEnrouteSegment.legs[i].leg.fixIcao === airport.icao) {
-            this.planRemoveLeg(plan.planIndex, lastEnrouteSegmentIndex, i, true, true);
-          }
-        }
-      }
-    }
+    this.planAddLeg(planIndex, segmentIndex, leg, isDeparture ? 0 : undefined);
   }
 
   /**
@@ -4545,6 +4984,11 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
         case FlightPlanSegmentType.Departure:
           segmentIndex = 0;
           break;
+        case FlightPlanSegmentType.Enroute:
+          segmentIndex = this.findLastSegmentIndex(segments, (v) => {
+            return v.segmentType === FlightPlanSegmentType.Enroute;
+          }, 1);
+          break;
         case FlightPlanSegmentType.Arrival:
           segmentIndex = this.findLastSegmentIndex(segments, (v) => {
             return v.segmentType === FlightPlanSegmentType.Enroute;
@@ -4553,17 +4997,17 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
         case FlightPlanSegmentType.Approach:
           segmentIndex = this.findLastSegmentIndex(segments, (v) => {
             return v.segmentType === FlightPlanSegmentType.Enroute || v.segmentType === FlightPlanSegmentType.Arrival;
-          }, 2);
-          break;
-        case FlightPlanSegmentType.MissedApproach:
-          segmentIndex = this.findLastSegmentIndex(segments, (v) => {
-            return v.segmentType === FlightPlanSegmentType.Approach;
-          }, 2);
+          }, 3);
           break;
         case FlightPlanSegmentType.Destination:
           segmentIndex = this.findLastSegmentIndex(segments, (v) => {
             return v.segmentType === FlightPlanSegmentType.Enroute || v.segmentType === FlightPlanSegmentType.Arrival
               || v.segmentType === FlightPlanSegmentType.Approach;
+          }, 4);
+          break;
+        case FlightPlanSegmentType.MissedApproach:
+          segmentIndex = this.findLastSegmentIndex(segments, (v) => {
+            return v.segmentType === FlightPlanSegmentType.Approach;
           }, 5);
           break;
         default:
@@ -4647,6 +5091,7 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
     // then we need to do something to preserve the active legs so they aren't deleted.
     // We only need to do this for the Enroute segment, because if other segments are getting deleted,
     // their functions are already handling this.
+    // FIXME don't use SimPlane
     if (activeSegmentIndex === segmentIndex && !Simplane.getIsGrounded() && plan.length > 1 && segment.segmentType === FlightPlanSegmentType.Enroute) {
       // I think this block of code is only supposed to run when called from the cleanupLegsAfterApproach() function
       const currentToLeg = plan.getLeg(plan.activeLateralLeg);
@@ -4780,6 +5225,8 @@ export class WTLineFms<T extends FlightPlanIndexTypes<number, number>> {
    * @returns the merged leg.
    */
   private mergeDuplicateLegData(target: FlightPlanLeg, source: FlightPlanLeg, fallbackToTarget = false): FlightPlanLeg {
+    // FIXME this should prompt user with SELECT ALT dialog/page when this is not done as a result of modifying procedures
+
     const merged = FlightPlan.createLeg(target);
     merged.fixTypeFlags |= source.fixTypeFlags;
     if (source.altDesc !== AltitudeRestrictionType.Unused || !fallbackToTarget) {

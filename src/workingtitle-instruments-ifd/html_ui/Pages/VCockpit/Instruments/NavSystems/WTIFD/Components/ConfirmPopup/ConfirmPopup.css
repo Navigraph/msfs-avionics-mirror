@@ -1,0 +1,53 @@
+.confirm-popup {
+  position: absolute;
+
+  --pale-green: #329a67;
+  --light-green: #61af87;
+  --dark-green: #002a1c;
+  --button-popup-bottom-position: 36px;
+  --button-popup-width: 150px;
+
+  bottom: var(--button-popup-bottom-position);
+  right: 0;
+  min-width: var(--button-popup-width);
+
+  display: flex;
+  flex-direction: column;
+  padding: 9px;
+  background-color: var(--pale-green);
+  border-radius: 5px;
+  border-style: solid;
+  border-width: 2px;
+  border-top-color: var(--wtdyne-color-white);
+  border-bottom-color: var(--dark-green);
+  border-left-color: var(--light-green);
+  border-right-color: var(--wtdyne-color-black);
+  color: var(--wtdyne-color-mint);
+  font-size: 20px;
+  font-family: "Arial Bold";
+  transition: transform 750ms;
+}
+
+.confirm-popup .touch-button {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  justify-content: center;
+  background-color: var(--dark-green);
+  border-radius: 5px;
+  padding: 5px;
+  line-height: 20px;
+}
+
+.confirm-popup .confirm-button-text {
+  margin: auto;
+  white-space: pre-wrap;
+}
+
+.confirm-popup.no-wrap .confirm-button-text {
+  white-space: pre;
+}
+
+.confirm-popup .touch-button-hidden {
+  display: none;
+}

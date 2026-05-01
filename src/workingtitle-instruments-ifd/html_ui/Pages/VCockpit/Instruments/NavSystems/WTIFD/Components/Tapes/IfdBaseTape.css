@@ -1,0 +1,42 @@
+.svs-page .wt-ifd-tape {
+  position: absolute;
+}
+
+.svs-page .wt-ifd-tape line {
+  stroke: var(--wtdyne-color-white);
+  stroke-width: 3px;
+  fill: none;
+}
+
+.svs-page .wt-ifd-tape line.shadow {
+  stroke: var(--wtdyne-color-black);
+  stroke-width: 4px;
+}
+
+.svs-page .wt-ifd-tape line.highlight {
+  stroke-width: 5px;
+}
+
+.svs-page .wt-ifd-tape line.shadow.highlight {
+  stroke-width: 6px;
+}
+
+.svs-page .wt-ifd-tape text {
+  font-family: "Arial Bold", sans-serif;
+  stroke: var(--wtdyne-color-black);
+  fill: var(--wtdyne-color-white);
+  paint-order: stroke;
+}
+
+.svs-page .wt-ifd-tape tspan.big-text {
+  font-size: 23px;
+  letter-spacing: -1px;
+}
+
+.svs-page .wt-ifd-tape tspan.normal-text {
+  font-size: 20px;
+}
+
+.svs-page .wt-ifd-tape tspan.small-text {
+  font-size: 10px;
+}

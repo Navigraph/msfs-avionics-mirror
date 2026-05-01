@@ -1,8 +1,9 @@
 import {
   AccelerometerEvents, Accessible, AdcEvents, AhrsEvents, BaseLNavEvents, BasicNavAngleSubject, BasicNavAngleUnit,
-  ClockEvents, Consumer, EngineEvents, EventBus, EventSubscriber, GNSSEvents, LNavEvents, LNavUtils,
-  MappedSubscribable, NavAngleUnit, NavAngleUnitFamily, NavMath, NumberUnitInterface, NumberUnitSubject,
-  PressurizationEvents, Subject, Subscribable, SubscribableUtils, UnitFamily, UnitType, VNavUtils
+  ClockEvents, CompoundableUnit, CompoundUnit, Consumer, EngineEvents, EventBus, EventSubscriber, GNSSEvents,
+  LNavEvents, LNavUtils, MappedSubscribable, NavAngleUnit, NavAngleUnitFamily, NavMath, NumberUnitInterface,
+  NumberUnitSubject, PressurizationEvents, Subject, Subscribable, SubscribableUtils, Unit, UnitFamily, UnitType,
+  VNavUtils
 } from '@microsoft/msfs-sdk';
 
 import { BaseGarminVNavDataEvents, GarminVNavDataEvents } from '../../autopilot/vnav/GarminVNavDataEvents';
@@ -411,12 +412,29 @@ export class NavDataBarFieldDtkModelFactory extends EventBusNavDataBarFieldTypeM
 
 /**
  * Creates data models for Fuel Economy navigation data bar fields.
+ * 
+ * The models calculate fuel economy using the fuel data retrieved from the event bus topics `fuel_flow_total` (defined in
+ * {@link EngineEvents}) and `ground_speed` (defined in {@link GNSSEvents}).
  */
 export class NavDataBarFieldEcoModelFactory extends EventBusNavDataBarFieldTypeModelFactory<NavDataFieldType.FuelEconomy, GNSSEvents & EngineEvents> {
+  protected readonly fuelEconomyUnit: Unit<UnitFamily.DistancePerWeight>;
+
+  /**
+   * Creates a new instance of NavDataBarFieldEcoModelFactory.
+   * @param bus The event bus.
+   * @param fuelUnit The unit with which to interpret the fuel values retrieved from the event bus. The unit should
+   * define the weight equivalent of one U.S. gallon of fuel. Defaults to {@link UnitType.GALLON_FUEL}.
+   */
+  public constructor(bus: EventBus, fuelUnit: CompoundableUnit<UnitFamily.Weight> = UnitType.GALLON_FUEL) {
+    super(bus);
+
+    this.fuelEconomyUnit = new CompoundUnit(UnitFamily.DistancePerWeight, [UnitType.NMILE], [fuelUnit]);
+  }
+
   /** @inheritdoc */
   public create(gpsValidity: Subscribable<NavDataFieldGpsValidity>): NavDataBarFieldModel<NumberUnitInterface<UnitFamily.DistancePerWeight>> {
     return new NavDataBarFieldConsumerValueModel(
-      NumberUnitSubject.create(UnitType.NMILE_PER_GALLON_FUEL.createNumber(NaN)),
+      NumberUnitSubject.create(this.fuelEconomyUnit.createNumber(NaN)),
       gpsValidity,
       [
         this.sub.on('fuel_flow_total'),
@@ -617,12 +635,28 @@ export class NavDataBarFieldEteModelFactory extends EventBusNavDataBarFieldTypeM
 
 /**
  * Creates data models for Fuel Flow navigation data bar fields.
+ * 
+ * The models retrieve fuel flow values from the event bus topic `fuel_flow_total` (defined in {@link EngineEvents}).
  */
 export class NavDataBarFieldFuelFlowModelFactory extends EventBusNavDataBarFieldTypeModelFactory<NavDataFieldType.FuelFlow, EngineEvents> {
+  protected readonly fuelFlowUnit: Unit<UnitFamily.WeightFlux>;
+
+  /**
+   * Creates a new instance of NavDataBarFieldFuelFlowModelFactory.
+   * @param bus The event bus.
+   * @param fuelUnit The unit with which to interpret the fuel values retrieved from the event bus. The unit should
+   * should define the weight equivalent of one U.S. gallon of fuel. Defaults to {@link UnitType.GALLON_FUEL}.
+   */
+  public constructor(bus: EventBus, fuelUnit: CompoundableUnit<UnitFamily.Weight> = UnitType.GALLON_FUEL) {
+    super(bus);
+
+    this.fuelFlowUnit = new CompoundUnit(UnitFamily.WeightFlux, [fuelUnit], [UnitType.HOUR]);
+  }
+
   /** @inheritdoc */
   public create(gpsValidity: Subscribable<NavDataFieldGpsValidity>): NavDataBarFieldModel<NumberUnitInterface<UnitFamily.WeightFlux>> {
     return new NavDataBarFieldConsumerValueModel(
-      NumberUnitSubject.create(UnitType.GPH_FUEL.createNumber(NaN)),
+      NumberUnitSubject.create(this.fuelFlowUnit.createNumber(NaN)),
       gpsValidity,
       [
         this.sub.on('fuel_flow_total'),
@@ -658,19 +692,37 @@ export class NavDataBarFieldFlightLevelModelFactory extends EventBusNavDataBarFi
 
 /**
  * Creates data models for Fuel on Board navigation data bar fields.
+ * 
+ * The models retrieve fuel on board values from the event bus topic `fuel_usable_total` (defined in
+ * {@link EngineEvents}).
  */
 export class NavDataBarFieldFobModelFactory extends EventBusNavDataBarFieldTypeModelFactory<NavDataFieldType.FuelOnBoard, EngineEvents> {
+  /**
+   * Creates a new instance of NavDataBarFieldFobModelFactory.
+   * @param bus The event bus.
+   * @param fuelUnit The unit with which to interpret the fuel values retrieved from the event bus. The unit should
+   * define the weight equivalent of one U.S. gallon of fuel. Defaults to {@link UnitType.GALLON_FUEL}.
+   */
+  public constructor(bus: EventBus, protected readonly fuelUnit: Unit<UnitFamily.Weight> = UnitType.GALLON_FUEL) {
+    super(bus);
+  }
+
   /** @inheritdoc */
   public create(gpsValidity: Subscribable<NavDataFieldGpsValidity>): NavDataBarFieldModel<NumberUnitInterface<UnitFamily.Weight>> {
     return new NavDataBarFieldConsumerValueNumberUnitModel(
       gpsValidity,
-      this.sub.on('fuel_usable_total'), 0, UnitType.GALLON_FUEL
+      this.sub.on('fuel_usable_total'), 0, this.fuelUnit
     );
   }
 }
 
 /**
  * Creates data models for Fuel Over Destination navigation data bar fields.
+ * 
+ * The models calculate fuel over destination using the fuel data retrieved from the event bus topics
+ * `fuel_usable_total` and `fuel_flow_total` (defined in {@link EngineEvents}), the ground speed retrieved from the
+ * topic `ground_speed` (defined in {@link GNSSEvents}), and the LNAV data retrieved from the topics `lnav_is_tracking`
+ * (defined in {@link LNavEvents}) and `lnavdata_destination_distance` (defined in {@link LNavDataEvents}).
  */
 export class NavDataBarFieldFodModelFactory
   extends EventBusNavDataBarFieldTypeModelFactory<NavDataFieldType.FuelOverDestination, GNSSEvents & LNavEvents & LNavDataEvents & EngineEvents> {
@@ -679,8 +731,14 @@ export class NavDataBarFieldFodModelFactory
    * Creates a new instance of NavDataBarFieldFodModelFactory.
    * @param bus The event bus.
    * @param lnavIndex The index of the LNAV from which to source data. Defaults to `0`.
+   * @param fuelUnit The unit with which to interpret fuel values retrieved from the event bus. The unit should define
+   * the weight equivalent of one U.S. gallon of fuel. Defaults to {@link UnitType.GALLON_FUEL}.
    */
-  public constructor(bus: EventBus, protected readonly lnavIndex: number | Subscribable<number> = 0) {
+  public constructor(
+    bus: EventBus,
+    protected readonly lnavIndex: number | Subscribable<number> = 0,
+    protected readonly fuelUnit: Unit<UnitFamily.Weight> = UnitType.GALLON_FUEL
+  ) {
     super(bus);
   }
 
@@ -695,7 +753,7 @@ export class NavDataBarFieldFodModelFactory
     ] as const;
 
     return new NavDataBarFieldConsumerValueModel(
-      NumberUnitSubject.create(UnitType.GALLON_FUEL.createNumber(NaN)),
+      NumberUnitSubject.create(this.fuelUnit.createNumber(NaN)),
       gpsValidity,
       consumers,
       [false, 0, 0, 0, 0] as [boolean, number, number, number, number],

@@ -34,6 +34,7 @@ export class G3000APConfig extends GarminAPConfig {
     private readonly pluginOptions: readonly G3000AutopilotPluginOptions[]
   ) {
     super(bus, {
+      flightDirectorCount: 1,
       deactivateAutopilotOnGa: config.autopilot.deactivateAutopilotOnGa,
       useIndicatedMach: true,
       lnavOptions: {
@@ -60,6 +61,8 @@ export class G3000APConfig extends GarminAPConfig {
         canSwitchCdi: navToNavComputer.canSwitchCdi,
         isExternalCdiSwitchInProgress: Value.create(false)
       },
+      defaultMaxNoseUpPitchAngle: config.autopilot.globalPitchOptions.maxNoseUpPitchAngle,
+      defaultMaxNoseDownPitchAngle: config.autopilot.globalPitchOptions.maxNoseDownPitchAngle,
       rollMinBankAngle: config.autopilot.rollOptions.minBankAngle,
       rollMaxBankAngle: config.autopilot.rollOptions.maxBankAngle,
       hdgMaxBankAngle: config.autopilot.hdgOptions.maxBankAngle,

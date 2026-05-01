@@ -1,6 +1,6 @@
 {
   "name": "@microsoft/msfs-epic2-shared",
-  "version": "2.2.8",
+  "version": "2.2.12",
   "description": "Working Title Epic 2 Common Library",
   "main": "wte2shared.js",
   "files": ["wte2shared.js", "wte2shared.d.ts", "wte2shared.css"],

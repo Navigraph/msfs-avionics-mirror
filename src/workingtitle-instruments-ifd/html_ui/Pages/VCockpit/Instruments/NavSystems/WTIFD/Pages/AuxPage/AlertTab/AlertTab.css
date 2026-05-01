@@ -1,0 +1,118 @@
+.ifd-aux-alert-tab {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  color: var(--wtdyne-color-mint);
+}
+
+.ifd-aux-alert-tab .no-active-alerts {
+  /* Should be 'Arial Black' but it's not in the sim. */
+  font-family: 'Arial Bold';
+  font-size: 48px;
+}
+
+.ifd-aux-alert-tab .active-alert-container {
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  padding: 10px 11px 2px 2px;
+
+  /** Hide the No Active Alerts below when we're visible. */
+  background: var(--wtdyne-color-black);
+
+  display: flex;
+  flex-direction: column;
+}
+
+.ifd-aux-alert-tab .alert-category {
+  position: relative;
+  width: 100%;
+  min-height: 100px;
+  margin: 24px auto 0 auto;
+  padding: 12px 0 0 0;
+
+  border: var(--wtdyne-border-blue);
+  border-radius: 4px;
+}
+
+.ifd-aux-alert-tab .alert-category .header {
+  position: absolute;
+  top: -9px;
+  left: 0px;
+  width: 100%;
+
+  font-size: 13px;
+  letter-spacing: 0.05em;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.ifd-aux-alert-tab .alert-category .header div {
+  background: var(--wtdyne-color-black);
+  padding: 0 2px 0 4px;
+}
+
+.ifd-aux-alert-tab .alert-category .header .duration {
+  position: absolute;
+  right: 16px
+}
+
+.ifd-aux-alert-tab .active-alert {
+  margin: 4px 0;
+  font-size: 24px;
+  line-height: 24px;
+
+  display: flex;
+  flex-direction: row;
+}
+
+.ifd-aux-alert-tab .alert-message {
+  font-family: 'Arial Bold';
+  white-space: pre;
+  width: 35%;
+  text-align: center;
+}
+
+.ifd-aux-alert-tab .alert-description {
+  width: 58%;
+  display: flex;
+  align-items: center;
+}
+
+.ifd-aux-alert-tab .alert-duration {
+  font-size: 22px;
+  width: 22%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/** Give the short message/title the colour associated with its category. */
+.ifd-aux-alert-tab .alert-category.warnings .alert-message {
+  color: var(--wtdyne-color-red);
+}
+.ifd-aux-alert-tab .alert-category.cautions .alert-message {
+  color: var(--wtdyne-color-yellow);
+}
+.ifd-aux-alert-tab .alert-category.advisories .alert-message {
+  color: var(--wtdyne-color-cyan);
+}
+.ifd-aux-alert-tab .alert-category.notices .alert-message {
+  color: var(--wtdyne-color-green);
+}
+
+/** Make the digits in the duration white, but not the colons */
+.ifd-aux-alert-tab .active-alert .alert-duration span:nth-child(odd) {
+  color: var(--wtdyne-color-white);
+}

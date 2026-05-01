@@ -1,0 +1,15 @@
+.svs-trk-flag {
+  height: 30px;
+  width: 60px;
+  margin: 0 2px;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.svs-trk-flag .wtdyne-text {
+  height: unset;
+  font-size: 0.85em;
+}

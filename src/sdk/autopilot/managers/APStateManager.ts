@@ -1,14 +1,15 @@
 import { EventBus } from '../../data/EventBus';
 import { KeyEventData, KeyEventManager, KeyEvents } from '../../data/KeyEventManager';
-import { SimVarValueType } from '../../data/SimVars';
+import { RegisteredSimVarUtils } from '../../data/SimVars';
 import { APEvents, APLockType } from '../../instruments';
-import { MSFSAPStates } from '../../navigation';
 import { MappedSubject } from '../../sub/MappedSubject';
 import { SubEvent, SubEventInterface } from '../../sub/SubEvent';
 import { Subject } from '../../sub/Subject';
 import { Subscribable } from '../../sub/Subscribable';
 import { SubscribableMapFunctions } from '../../sub/SubscribableMapFunctions';
+import { Wait } from '../../utils/time/Wait';
 import { APConfig } from '../APConfig';
+import { MSFSAPStates } from '../MSFSAPStates';
 
 /** AP Mode Types */
 export enum APModeType {
@@ -33,14 +34,21 @@ export abstract class APStateManager {
 
   private readonly apListenerPromise: Promise<void>;
   private readonly keyEventManagerPromise: Promise<KeyEventManager>;
+  private readonly keyEventManagerReadyPromise: Promise<KeyEventManager>;
+  private keyEventManagerReadyPromiseResolve?: (manager: KeyEventManager) => void;
 
   protected apListenerRegistered = false;
 
   protected keyEventManager?: KeyEventManager;
 
+  protected readonly flightDirectorCount = this.apConfig.flightDirectorCount ?? 2;
   protected readonly flightDirectorStateSimVars = {
     [1]: 'AUTOPILOT FLIGHT DIRECTOR ACTIVE:1',
     [2]: 'AUTOPILOT FLIGHT DIRECTOR ACTIVE:2',
+  };
+  protected readonly flightDirectorStateRegisteredSimVars = {
+    [1]: RegisteredSimVarUtils.createBoolean(this.flightDirectorStateSimVars[1]),
+    [2]: RegisteredSimVarUtils.createBoolean(this.flightDirectorStateSimVars[2]),
   };
   private readonly flightDirectorSimStates: Record<1 | 2, boolean | undefined> = {
     [1]: undefined,
@@ -55,6 +63,7 @@ export abstract class APStateManager {
     [2]: false,
   };
 
+  private initializationPromise?: Promise<void>;
   private readonly _stateManagerInitialized = Subject.create(false);
   /** Whether this manager has been initialized. */
   public readonly stateManagerInitialized = this._stateManagerInitialized as Subscribable<boolean>;
@@ -65,10 +74,13 @@ export abstract class APStateManager {
   public vnavPressed: SubEventInterface<this, boolean> = new SubEvent<this, boolean>();
 
   public apMasterOn = Subject.create(false);
+
   protected _isFlightDirectorOn = Subject.create(false);
   public isFlightDirectorOn = this._isFlightDirectorOn as Subscribable<boolean>;
+
   protected _isFlightDirectorCoPilotOn = Subject.create(false);
   public isFlightDirectorCoPilotOn = this._isFlightDirectorCoPilotOn as Subscribable<boolean>;
+
   /** Whether any flight director is switched on. */
   public readonly isAnyFlightDirectorOn = MappedSubject.create(
     SubscribableMapFunctions.or(),
@@ -84,6 +96,7 @@ export abstract class APStateManager {
   public constructor(protected readonly bus: EventBus, protected readonly apConfig: APConfig) {
     this.apListenerPromise = this.initAPListener();
     this.keyEventManagerPromise = this.initKeyEventManager();
+    this.keyEventManagerReadyPromise = new Promise(resolve => { this.keyEventManagerReadyPromiseResolve = resolve; });
   }
 
   /**
@@ -103,15 +116,13 @@ export abstract class APStateManager {
   }
 
   /**
-   * Initializes the key event manager and calls `this.onKeyEventManagerReady()` when the manager has been retrieved.
-   * @returns A Promise which is fulfilled with the key event manager when it has been retrieved and
-   * `this.onKeyEventManagerReady()` is finished executing.
+   * Initializes the key event manager.
+   * @returns A Promise which is fulfilled with the key event manager when it has been retrieved.
    */
   private initKeyEventManager(): Promise<KeyEventManager> {
     return new Promise<KeyEventManager>(resolve => {
       KeyEventManager.getManager(this.bus).then(manager => {
         this.keyEventManager = manager;
-        this.onKeyEventManagerReady(manager);
         resolve(manager);
       });
     });
@@ -128,12 +139,20 @@ export abstract class APStateManager {
   }
 
   /**
+   * Waits until the key event manager has been retrieved.
+   * @returns A Promise which is fulfilled when the key event manager has been retrieved.
+   */
+  protected awaitKeyEventManagerAvailable(): Promise<KeyEventManager> {
+    return this.keyEventManagerPromise;
+  }
+
+  /**
    * Waits until the key event manager has been retrieved and `this.onKeyEventManagerReady()` has finished executing.
    * @returns A Promise which is fulfilled when the key event manager has been retrieved and
    * `this.onKeyEventManagerReady()` has finished executing.
    */
   protected awaitKeyEventManagerReady(): Promise<KeyEventManager> {
-    return this.keyEventManagerPromise;
+    return this.keyEventManagerReadyPromise;
   }
 
   /**
@@ -191,20 +210,41 @@ export abstract class APStateManager {
    * @returns A Promise which will be fulfilled when the manager has been initialized. If the manager has already been
    * initialized, then the Promise will be fulfilled immediately.
    */
-  public async initialize(): Promise<void> {
-    if (this._stateManagerInitialized.get()) {
-      return;
+  public initialize(): Promise<void> {
+    if (this.initializationPromise) {
+      return this.initializationPromise;
     }
 
+    return this.initializationPromise = this.doInitialize();
+  }
+
+  /**
+   * Performs the tasks required to initialize this manager.
+   */
+  private async doInitialize(): Promise<void> {
     this.onBeforeInitialize();
 
-    await Promise.all([this.awaitApListenerRegistered(), this.awaitKeyEventManagerReady()]);
+    await Promise.all([this.awaitApListenerRegistered(), this.awaitKeyEventManagerAvailable()]);
     await this.enableAvionicsManagedMode();
+
+    this.onKeyEventManagerReady(this.keyEventManager!);
+    this.keyEventManagerReadyPromiseResolve?.(this.keyEventManager!);
+    this.keyEventManagerReadyPromiseResolve = undefined;
+
+    // Wait one frame to allow key intercepts that were set up in onKeyEventManagerReady() to finish initializing
+    // (the request to create an intercept from JS takes one frame to be sent into the sim). This ensures that when
+    // we fetch the initial native sim autopilot modes below in handleInitialAutopilotModes(), all desired key
+    // intercepts are in place and in theory nothing external can change any of the native sim autopilot modes that
+    // we care about.
+    await Wait.awaitFrames(1);
+
+    this.handleInitialAutopilotModes();
 
     this.updateFlightDirectorStateFromSim(1);
     this.updateFlightDirectorStateFromSim(2);
 
     this.initFlightDirector();
+
     this._stateManagerInitialized.set(true);
   }
 
@@ -212,15 +252,37 @@ export abstract class APStateManager {
    * Enables avionics managed mode for the autopilot.
    */
   private async enableAvionicsManagedMode(): Promise<void> {
-    if (!this.apListenerRegistered) {
-      await this.awaitApListenerRegistered();
-    }
-
     await Coherent.call('apSetAutopilotMode', MSFSAPStates.AvionicsManaged, 1);
   }
 
   /**
-   * Initializes the flight director to a default value.
+   * Handles the initial state of native sim autopilot modes.
+   */
+  private handleInitialAutopilotModes(): void {
+    // Retrieve the states of all sim autopilot modes.
+    let modeFlags = 0;
+    for (let i = 0; i < 32; i++) {
+      const flag = 1 << i;
+      modeFlags |= APController.apGetAutopilotModeActive(flag) ? flag : 0;
+    }
+
+    this.onInitialAutopilotModes(modeFlags);
+  }
+
+  /**
+   * A method that is called during initialization, after avionics managed mode has been enabled and
+   * `this.onKeyEventManagerReady()` has finished executing, which allows this state manager to handle the initial
+   * state of native sim autopilot modes.
+   * @param modeFlags Bitflags representing the state of all native sim autopilot modes.
+   * {@link MSFSAPStates} enumerates all native sim autopilot mode flags.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected onInitialAutopilotModes(modeFlags: number): void {
+    // noop
+  }
+
+  /**
+   * Initializes the flight director(s) to a default value.
    */
   protected initFlightDirector(): void {
     this.setFlightDirector(false);
@@ -229,12 +291,15 @@ export abstract class APStateManager {
   /**
    * Sets the flight director state.
    * @param state The state to set: `true` = on, `false` = off.
-   * @param index The index of the flight director to set. If not defined, then the state of both flight directors will
-   * be set. This parameter is ignored if the autopilot is not configured with independent flight directors, in which
-   * case the state of both flight directors will always be set.
+   * @param index The index of the flight director to set. If not defined, then the state of all supported flight
+   * directors will be set. If an index is defined and the specified flight director is not supported, then no action
+   * will be taken. This parameter is ignored if the autopilot is not configured with independent flight directors, in
+   * which case the state of all supported flight directors will always be set.
    */
   public setFlightDirector(state: boolean, index?: 1 | 2): void {
-    if (!this.apConfig.independentFds) {
+    if (this.flightDirectorCount === 1) {
+      index ??= 1;
+    } else if (!this.apConfig.independentFds) {
       index = undefined;
     }
 
@@ -270,7 +335,9 @@ export abstract class APStateManager {
    */
   public onBeforeUpdate(): void {
     this.updateFlightDirectorStateFromSim(1);
-    this.updateFlightDirectorStateFromSim(2);
+    if (this.flightDirectorCount === 2) {
+      this.updateFlightDirectorStateFromSim(2);
+    }
   }
 
   /**
@@ -278,7 +345,7 @@ export abstract class APStateManager {
    * @param index The index of the flight director to update.
    */
   protected updateFlightDirectorStateFromSim(index: 1 | 2): void {
-    const simState = SimVar.GetSimVarValue(this.flightDirectorStateSimVars[1], SimVarValueType.Bool) !== 0;
+    const simState = this.flightDirectorStateRegisteredSimVars[index].get();
     if (simState !== this.flightDirectorSimStates[index]) {
       this.flightDirectorSimStates[index] = simState;
       this.flightDirectorPendingStates[index] = simState;
@@ -293,7 +360,7 @@ export abstract class APStateManager {
    * @param state The flight director's new state.
    */
   protected onFlightDirectorSimStateChanged(index: 1 | 2, state: boolean): void {
-    if (!this.apConfig.independentFds) {
+    if (!this.apConfig.independentFds && this.flightDirectorCount === 2) {
       this.setFlightDirectorState(index === 1 ? 2 : 1, state);
     }
 
@@ -309,7 +376,9 @@ export abstract class APStateManager {
    */
   public onAfterUpdate(): void {
     this.pushPendingFlightDirectorStateToSim(1);
-    this.pushPendingFlightDirectorStateToSim(2);
+    if (this.flightDirectorCount === 2) {
+      this.pushPendingFlightDirectorStateToSim(2);
+    }
   }
 
   /**

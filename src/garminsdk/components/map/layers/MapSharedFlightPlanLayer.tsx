@@ -46,6 +46,16 @@ export class MapSharedFlightPlanLayer extends MapLayer<MapSharedFlightPlanLayerP
   }
 
   /** @inheritDoc */
+  public onWake(): void {
+    this.canvasLayerRef.instance.onWake();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.canvasLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.canvasLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
   }
@@ -58,32 +68,31 @@ export class MapSharedFlightPlanLayer extends MapLayer<MapSharedFlightPlanLayerP
   /** @inheritDoc */
   public render(): VNode {
     return (
-      <div style='position: absolute; left: 0; top: 0; width: 100%; height: 100%;'>
-        <MapSharedCachedCanvasLayer
-          ref={this.canvasLayerRef}
-          model={this.props.model}
-          mapProjection={this.props.mapProjection}
-          overdrawFactor={Math.SQRT2}
-        >
-          {this.props.model.getModule(GarminMapKeys.FlightPlan).entries.map(entry => {
-            return (
-              <MapSharedFlightPlanSubLayer
-                model={this.props.model}
-                show={entry.show}
-                dataProvider={entry.dataProvider}
-                drawEntirePlan={entry.drawEntirePlan}
-                waypointRenderer={entry.waypointRenderer}
-                waypointRecordManager={entry.waypointRecordManager}
-                pathRenderer={entry.pathRenderer}
-              />
-            );
-          })}
-        </MapSharedCachedCanvasLayer>
-      </div>
+      <MapSharedCachedCanvasLayer
+        ref={this.canvasLayerRef}
+        model={this.props.model}
+        mapProjection={this.props.mapProjection}
+        overdrawFactor={Math.SQRT2}
+        collapseOnSleep
+      >
+        {this.props.model.getModule(GarminMapKeys.FlightPlan).entries.map(entry => {
+          return (
+            <MapSharedFlightPlanSubLayer
+              model={this.props.model}
+              show={entry.show}
+              dataProvider={entry.dataProvider}
+              drawEntirePlan={entry.drawEntirePlan}
+              waypointRenderer={entry.waypointRenderer}
+              waypointRecordManager={entry.waypointRecordManager}
+              pathRenderer={entry.pathRenderer}
+            />
+          );
+        })}
+      </MapSharedCachedCanvasLayer>
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     this.canvasLayerRef.getOrDefault()?.destroy();
 
@@ -158,6 +167,8 @@ class MapSharedFlightPlanSubLayer extends MapSharedCachedCanvasSubLayer<MapShare
   private needRepickWaypoints = false;
   private needUpdateVNavWaypoint = false;
 
+  private isAwake = true;
+
   private readonly subs: Subscription[] = [];
 
   /** @inheritDoc */
@@ -217,8 +228,20 @@ class MapSharedFlightPlanSubLayer extends MapSharedCachedCanvasSubLayer<MapShare
   }
 
   /** @inheritDoc */
+  public onWake(): void {
+    this.isAwake = true;
+
+    this.updateClipBounds();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.isAwake = false;
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
-    if (BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
+    if (this.isAwake && BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
       this.updateClipBounds();
     }
   }

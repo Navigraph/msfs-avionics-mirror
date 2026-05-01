@@ -221,18 +221,17 @@ export class DefaultFlightPathPlanRenderer implements MapFlightPathPlanRenderer 
     lnavData?: LNavTrackingState,
     obsCourse?: number
   ): void {
-    const isObsActive = obsCourse !== undefined;
+    const activeLeg = plan.tryGetLeg(activeLegIndex);
+    const isObsActive = obsCourse !== undefined && !!activeLeg;
 
     const baseRouteStartIndex = this.getBaseRouteStartIndex(plan, renderEntirePlan, activeLegIndex, isObsActive);
     this.baseRouteRenderer.render(plan, baseRouteStartIndex, undefined, context, streamStack);
 
     if (isObsActive) {
-      this.obsRenderer.render(plan.getLeg(activeLegIndex), context, streamStack, obsCourse);
+      this.obsRenderer.render(activeLeg, context, streamStack, obsCourse);
     } else {
       const fullRouteStartIndex = this.getFullRouteStartIndex(plan, renderEntirePlan, activeLegIndex);
-      const isMissedApproachActive = activeLegIndex >= 0
-        && activeLegIndex < plan.length
-        && BitFlags.isAny(plan.getLeg(activeLegIndex).flags, LegDefinitionFlags.MissedApproach);
+      const isMissedApproachActive = !!activeLeg && BitFlags.isAny(activeLeg.flags, LegDefinitionFlags.MissedApproach);
       this.fullRouteRenderer.render(plan, fullRouteStartIndex, undefined, context, streamStack, lnavData, isMissedApproachActive);
     }
   }

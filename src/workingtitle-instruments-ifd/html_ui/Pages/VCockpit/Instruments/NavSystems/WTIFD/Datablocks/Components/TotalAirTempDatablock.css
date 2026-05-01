@@ -1,0 +1,13 @@
+.datablock.datablock-tat {
+  width: 100%;
+  flex-direction: row;
+}
+
+.datablock-tat .datablock-tat-value {
+  flex-grow: 1;
+  text-align: right;
+}
+
+.datablock-tat .datablock-tat-unit {
+  padding-right: 30px;
+}

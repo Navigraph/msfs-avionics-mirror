@@ -28,6 +28,7 @@ import { AdcSettingsSoftKeyMenu } from '../../SoftKey/AdcSettingsSoftKeyMenu';
 import { AhrsSettingsSoftKeyMenu } from '../../SoftKey/AhrsSettingsSoftKeyMenu';
 import { AltitudeUnitsSoftKeyMenu } from '../../SoftKey/AltitudeUnitsSoftKeyMenu';
 import { AttitudeOverlaysSoftKeyMenu } from '../../SoftKey/AttitudeOverlaysSoftKeyMenu';
+import { CasSoftKeyMenu } from '../../SoftKey/CasSoftKeyMenu';
 import { DataLinkSettingsSoftKeyMenu } from '../../SoftKey/DataLinkSettingsSoftKeyMenu';
 import { MapLayoutSoftKeyMenu } from '../../SoftKey/MapLayoutSoftKeyMenu';
 import { MapOverlays1SoftKeyMenu, MapOverlays2SoftKeyMenu } from '../../SoftKey/MapOverlaysSoftKeyMenu';
@@ -45,6 +46,7 @@ import { AoaIndicator } from '../Aoa/AoaIndicator';
 import { BearingInfoBanner } from '../BearingInfo/BearingInfoBanner';
 import { BottomInfoPanel } from '../BottomInfoPanel/BottomInfoPanel';
 import { ComInfoBox } from '../ComInfoBox/ComInfoBox';
+import { AfcsStatusBoxPluginOptions } from '../Fma';
 import { Fma } from '../Fma/Fma';
 import { HorizonDisplay } from '../Horizon/HorizonDisplay';
 import { DefaultHsiDataProvider } from '../HSI/DefaultHsiDataProvider';
@@ -64,7 +66,6 @@ import { VerticalSpeedIndicator } from '../VSI/VerticalSpeedIndicator';
 import { WindDisplay } from '../Wind/WindDisplay';
 
 import './PfdInstrumentContainer.css';
-import { AfcsStatusBoxPluginOptions } from '../Fma';
 
 /**
  * Component props for PfdInstrumentContainer.
@@ -323,8 +324,8 @@ export class PfdInstrumentContainer extends DisplayPaneView<PfdInstrumentContain
         cdiNavIndicator,
         this.obsSuspDataProvider,
         this.props.pfdSettingManager,
-        this.props.config.radios,
-        this.props.config.fms,
+        this.props.config,
+        this.props.instrumentConfig,
         this.declutterManager.declutter,
         false
       )
@@ -353,8 +354,8 @@ export class PfdInstrumentContainer extends DisplayPaneView<PfdInstrumentContain
         cdiNavIndicator,
         this.obsSuspDataProvider,
         this.props.pfdSettingManager,
-        this.props.config.radios,
-        this.props.config.fms,
+        this.props.config,
+        this.props.instrumentConfig,
         this.declutterManager.declutter,
         true
       )
@@ -375,6 +376,11 @@ export class PfdInstrumentContainer extends DisplayPaneView<PfdInstrumentContain
     this.softKeyMenuSystem.registerMenu('sensors-split', menuSystem => new SensorsSoftKeyMenu(menuSystem, true));
     this.softKeyMenuSystem.registerMenu('adc-settings-split', menuSystem => new AdcSettingsSoftKeyMenu(menuSystem, this.pfdIndex, this.props.config.sensors.adcCount, this.pfdSensorsAliasedSettingManager, true));
     this.softKeyMenuSystem.registerMenu('ahrs-settings-split', menuSystem => new AhrsSettingsSoftKeyMenu(menuSystem, this.props.config.sensors.ahrsCount, this.pfdSensorsAliasedSettingManager, true));
+
+    if (this.props.instrumentConfig.softkey.includeCasControls) {
+      this.softKeyMenuSystem.registerMenu('cas', menuSystem => new CasSoftKeyMenu(menuSystem, this.pfdIndex, false));
+      this.softKeyMenuSystem.registerMenu('cas-split', menuSystem => new CasSoftKeyMenu(menuSystem, this.pfdIndex, true));
+    }
 
     this.props.pluginSystem.callPlugins(plugin => {
       plugin.registerSoftkeyMenus(this.softKeyMenuSystem as SoftKeyMenuSystem, this.pfdIndex);

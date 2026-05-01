@@ -1,0 +1,56 @@
+.touch-tab {
+  --touch-tab-outline-color: var(--wtdyne-color-blue);
+  --touch-tab-width: 69px;
+  --touch-tab-selected-border-thickness: 3px;
+
+  width: var(--touch-tab-width);
+  height: 30px;
+  margin: -4px 0px;
+  border-radius: 3em / 11em;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: 0 0 0 var(--touch-tab-selected-border-thickness) var(--touch-tab-outline-color);
+  background: var(--wtdyne-color-black);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 16px;
+  color: var(--wtdyne-color-light-cyan);
+}
+
+.touch-tab.touch-tab-selected {
+  --touch-tab-outline-color: var(--wtdyne-color-cyan);
+  color: var(--wtdyne-color-cyan);
+  transform: scale(1.1) translateY(-2px);
+  font-size: 18px;
+  -webkit-text-stroke: 0.5px var(--wtdyne-color-cyan);
+  padding-top: 1px;
+  border-radius: 3em / 11em;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.touch-tab .touch-tab-label {
+  margin-top: 3px;
+  color: currentColor;
+  transform: scaleY(1.15);
+}
+
+.touch-tab.touch-tab-highlight-yellow {
+  --touch-tab-outline-color: rgb(186, 174, 0);
+  background: var(--wtdyne-color-yellow);
+  color: var(--wtdyne-color-black);
+}
+
+.touch-tab.touch-tab-highlight-red {
+  --touch-tab-outline-color: rgb(170, 0, 0);
+  background: var(--wtdyne-color-red);
+  color: var(--wtdyne-color-white);
+  -webkit-text-stroke: 0.5px currentColor;
+}
+
+.touch-tab.touch-tab-highlight-cyan {
+  --touch-tab-outline-color: rgb(0, 150, 150);
+  background: var(--wtdyne-color-cyan);
+  color: var(--wtdyne-color-black);
+}

@@ -1,19 +1,34 @@
 import {
-  DisplayComponent, FacilityWaypoint, FSComponent, MappedSubscribable, SetSubject, Subscribable,
-  SubscribableMapFunctions, SubscribableSet, SubscribableUtils, Subscription, VNode
+  ClassProp, DisplayComponent, FacilityWaypoint, FSComponent, MappedSubscribable, SetSubject, Subscribable,
+  SubscribableMapFunctions, SubscribableUtils, Subscription, VNode
 } from '@microsoft/msfs-sdk';
-import { GtcWaypointDisplay, GtcWaypointDisplayProps } from '../Waypoint/GtcWaypointDisplay';
+
+import { GtcWaypointDisplay } from '../Waypoint/GtcWaypointDisplay';
 import { GtcTouchButton, GtcTouchButtonProps } from './GtcTouchButton';
+
 import './GtcWaypointButton.css';
 
 /**
- * Component props for GtcWaypointButton.
+ * Component props for {@link GtcWaypointButton}.
  */
-export interface GtcWaypointButtonProps extends Omit<GtcTouchButtonProps, 'label'>, GtcWaypointDisplayProps {
-  /** The CSS class(es) to apply to the button's root element. */
-  class?: string | SubscribableSet<string>;
-  /** Label to display on the button when waypoint is null. */
+export interface GtcWaypointButtonProps extends Omit<GtcTouchButtonProps, 'label' | 'class'> {
+  /** The waypoint to display. */
+  waypoint: FacilityWaypoint | null | Subscribable<FacilityWaypoint | null>;
+
+  /** The string to display in place of the ident when the displayed waypoint is `null`. Defaults to the empty string. */
+  nullIdent?: string | Subscribable<string>;
+
+  /** The string to display in place of the name when the displayed waypoint is `null`. Defaults to the empty string. */
+  nullName?: string | Subscribable<string>;
+
+  /**
+   * The label text to display on the button when the displayed waypoint is `null`. If not defined, then no special
+   * label text will be displayed when the displayed waypoint is `null`.
+   */
   nullLabel?: string | Subscribable<string>;
+
+  /** The CSS class(es) to apply to the button's root element. */
+  class?: ClassProp;
 }
 
 /**
@@ -31,28 +46,18 @@ export class GtcWaypointButton extends DisplayComponent<GtcWaypointButtonProps> 
       ? this.props.nullLabel.map(SubscribableMapFunctions.identity())
       : this.props.nullLabel ? SubscribableUtils.toSubscribable(this.props.nullLabel, false) : undefined;
 
-  private readonly classList = SetSubject.create(['gtc-wpt-button']);
+  private readonly cssClass = SetSubject.create(['gtc-wpt-button']);
 
-  private readonly subs = [] as Subscription[];
+  private readonly subscriptions = [] as Subscription[];
 
   /** @inheritdoc */
   public onAfterRender(): void {
     if (this.nullLabel) {
-      this.subs.push(
+      this.subscriptions.push(
         this.waypoint.sub(waypoint => {
-          this.classList.toggle('show-null-label', waypoint === null);
+          this.cssClass.toggle('show-null-label', waypoint === null);
         }, true)
       );
-    }
-
-    if (typeof this.props.class === 'object') {
-      this.subs.push(FSComponent.bindCssClassSet(this.classList, this.props.class, GtcWaypointButton.RESERVED_CSS_CLASSES));
-    } else {
-      if (this.props.class !== undefined && this.props.class.length > 0) {
-        FSComponent.parseCssClassesFromString(this.props.class, classToAdd => !GtcWaypointButton.RESERVED_CSS_CLASSES.includes(classToAdd)).forEach(classToAdd => {
-          this.classList.add(classToAdd);
-        });
-      }
     }
   }
 
@@ -67,6 +72,11 @@ export class GtcWaypointButton extends DisplayComponent<GtcWaypointButtonProps> 
 
   /** @inheritdoc */
   public render(): VNode {
+    const classSub = FSComponent.bindSetToCssClasses(this.cssClass, GtcWaypointButton.RESERVED_CSS_CLASSES, this.props.class);
+    if (classSub) {
+      this.subscriptions.push(classSub);
+    }
+
     return (
       <GtcTouchButton
         ref={this.buttonRef}
@@ -85,7 +95,7 @@ export class GtcWaypointButton extends DisplayComponent<GtcWaypointButtonProps> 
         inhibitOnDrag={this.props.inhibitOnDrag}
         inhibitOnDragAxis={this.props.inhibitOnDragAxis}
         dragThresholdPx={this.props.dragThresholdPx}
-        class={this.classList}
+        class={this.cssClass}
       >
         {this.nullLabel !== undefined && <div class="null-label">{this.nullLabel}</div>}
         <GtcWaypointDisplay
@@ -111,7 +121,9 @@ export class GtcWaypointButton extends DisplayComponent<GtcWaypointButtonProps> 
       this.nullLabel.destroy();
     }
 
-    this.subs.forEach(sub => sub.destroy());
+    for (const sub of this.subscriptions) {
+      sub.destroy();
+    }
 
     super.destroy();
   }

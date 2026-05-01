@@ -39,7 +39,7 @@ export class MapSystemPlanRenderer extends AbstractFlightPathPlanRenderer {
     super(renderOrder, renderActiveLegLast);
   }
 
-  protected readonly legRenderer = new MapSystemLegRenderer();
+  protected readonly legRenderer: MapSystemLegRenderer<any[]> = new MapSystemLegRenderer();
 
   /**
    * A handler that returns a leg rendering style for a given set of leg data.
@@ -84,14 +84,21 @@ export class MapSystemPlanRenderer extends AbstractFlightPathPlanRenderer {
 /**
  * A map system flight plan leg renderer that uses a swappable style.
  */
-export class MapSystemLegRenderer extends AbstractFlightPathLegRenderer {
+export class MapSystemLegRenderer<Args extends any[] = []> extends AbstractFlightPathLegRenderer<Args> {
   protected readonly vectorRenderer = new FlightPathVectorLineRenderer();
   public currentRenderStyle: FlightPathRenderStyle | FlightPathVectorStyle = new FlightPathRenderStyle();
 
   /** @inheritdoc */
-  protected renderVector(vector: Readonly<FlightPathVector>, isIngress: boolean, isEgress: boolean, leg: LegDefinition, context: CanvasRenderingContext2D,
-    streamStack: GeoProjectionPathStreamStack): void {
-
+  protected renderVector(
+    vector: Readonly<FlightPathVector>,
+    isIngress: boolean,
+    isEgress: boolean,
+    leg: LegDefinition,
+    context: CanvasRenderingContext2D,
+    streamStack: GeoProjectionPathStreamStack,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...args: Args
+  ): void {
     if ('styleBuilder' in this.currentRenderStyle) {
       const currentRenderStyle = this.currentRenderStyle.styleBuilder(vector, isIngress, isEgress);
       this.vectorRenderer.render(

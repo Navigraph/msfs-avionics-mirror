@@ -1,0 +1,24 @@
+.info-item.communications-item {
+  display: flex;
+  align-items: center;
+  border: 2px solid #333333;
+  padding: 4px;
+  padding-left: 4px;
+  margin-bottom: 0;
+  margin-right: 0;
+  font-size: 16px;
+
+}
+
+.communications-item .freq {
+  margin-right: 10px;
+  padding-left: 2px;
+  padding-right: 2px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+}
+
+.communications-item .freq.selected {
+  background-color: black;
+  border-color: var(--wtdyne-color-cyan);
+}

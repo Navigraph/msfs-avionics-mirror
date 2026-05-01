@@ -1,6 +1,6 @@
 import {
-  FSComponent, MappedSubject, MathUtils, MutableSubscribable, NodeReference, Subject, SubscribableUtils, Subscription,
-  VNode
+  FSComponent, MappedSubject, MathUtils, MutableSubscribable, NavSourceType, NodeReference, Subject, SubscribableUtils,
+  Subscription, VNode
 } from '@microsoft/msfs-sdk';
 
 import { NavReferenceSource } from '@microsoft/msfs-garminsdk';
@@ -11,7 +11,7 @@ import { UiTouchButton } from '../../../Shared/Components/TouchButton/UiTouchBut
 import { G3XTouchNavSourceName } from '../../../Shared/NavReference/G3XTouchNavReference';
 import { UiKnobId } from '../../../Shared/UiSystem/UiKnobTypes';
 import { AbstractSimpleUiNumberDialog } from '../../Dialogs/AbstractSimpleUiNumberDialog';
-import { UiNumberDialogInput } from '../../Dialogs/AbstractUiNumberDialog';
+import { UiNumberDialogInput, UiNumberDialogInputDefinition } from '../../Dialogs/AbstractUiNumberDialog';
 
 import './SelectedCourseDialog.css';
 
@@ -19,18 +19,23 @@ import './SelectedCourseDialog.css';
  * A request input for {@link SelectedCourseDialog}.
  */
 export interface SelectedCourseDialogInput extends UiNumberDialogInput {
-  /** The navigation reference source from which to retrieve course sync data. */
+  /** The navigation reference source for which to select a course. */
   navSource: NavReferenceSource<G3XTouchNavSourceName>;
+
+  /**
+   * Whether GPS OBS mode is active. Ignored if the navigation reference source is not a GPS-type source. Defaults to
+   * false.
+   */
+  isObsActive?: boolean;
 }
 
 /**
  * A dialog that allows the user to enter a selected course value.
  */
 export class SelectedCourseDialog extends AbstractSimpleUiNumberDialog<SelectedCourseDialogInput, number> {
-  private readonly syncCourseRef = FSComponent.createRef<UiTouchButton>();
-
   private readonly navSource = Subject.create<NavReferenceSource<G3XTouchNavSourceName> | null>(null);
 
+  private readonly syncCourseRef = FSComponent.createRef<UiTouchButton>();
   private readonly navSourceIsLocalizer = Subject.create(false);
   private readonly navSourceLocalizerCourse = Subject.create<number | null>(null);
   private readonly navSourceBearing = Subject.create<number | null>(null);
@@ -41,13 +46,14 @@ export class SelectedCourseDialog extends AbstractSimpleUiNumberDialog<SelectedC
     this.navSourceBearing
   );
 
+  private readonly releaseObsHoldRef = FSComponent.createRef<UiTouchButton>();
+  private readonly showReleaseObsHold = Subject.create(false);
+
   private readonly subscriptions: Subscription[] = [];
 
   /** @inheritDoc */
   public onAfterRender(): void {
     super.onAfterRender();
-
-    this.title.set('Select VOR Course');
 
     this._knobLabelState.set([
       [UiKnobId.SingleOuter, 'Select Course'],
@@ -85,8 +91,28 @@ export class SelectedCourseDialog extends AbstractSimpleUiNumberDialog<SelectedC
   }
 
   /** @inheritDoc */
+  protected onEditingActiveChanged(isEditingActive: boolean, activeInputDef: UiNumberDialogInputDefinition): void {
+    super.onEditingActiveChanged(isEditingActive, activeInputDef);
+
+    if (isEditingActive) {
+      const navSource = this.navSource.get();
+      if (navSource && navSource.getType() === NavSourceType.Gps) {
+        this.showReleaseObsHold.set(true);
+      }
+    }
+  }
+
+  /** @inheritDoc */
   protected onRequest(input: SelectedCourseDialogInput): number {
     this.navSource.set(input.navSource);
+
+    if (input.navSource.getType() === NavSourceType.Gps) {
+      this.title.set('Select OBS Course');
+      this.showReleaseObsHold.set(input.isObsActive ?? false);
+    } else {
+      this.title.set('Select VOR Course');
+      this.showReleaseObsHold.set(false);
+    }
 
     const initialValue = MathUtils.clamp(input.initialValue, 0, 360);
 
@@ -122,7 +148,7 @@ export class SelectedCourseDialog extends AbstractSimpleUiNumberDialog<SelectedC
   }
 
   /**
-   * Responds to when this dialog's 'Sync Course' is pressed.
+   * Responds to when this dialog's "Sync Course" button is pressed.
    */
   private onSyncCoursePressed(): void {
     const course = this.syncCourseValue.get();
@@ -136,16 +162,36 @@ export class SelectedCourseDialog extends AbstractSimpleUiNumberDialog<SelectedC
     this.setBackButtonStyle('cancel');
   }
 
+  /**
+   * Responds to when this dialog's "Release OBS Hold" button is pressed.
+   */
+  private onReleaseObsHoldPressed(): void {
+    this.resultObject = {
+      wasCancelled: false,
+      payload: NaN,
+    };
+    this.props.uiService.goBackMfd();
+  }
+
   /** @inheritDoc */
   protected renderOtherContents(): VNode | null {
     return (
-      <UiTouchButton
-        ref={this.syncCourseRef}
-        label={'Sync\nCourse'}
-        isEnabled={this.syncCourseValue.map(value => value !== null)}
-        onPressed={this.onSyncCoursePressed.bind(this)}
-        class='selected-crs-dialog-sync'
-      />
+      <>
+        <UiTouchButton
+          ref={this.syncCourseRef}
+          label={'Sync\nCourse'}
+          isEnabled={this.syncCourseValue.map(value => value !== null)}
+          onPressed={this.onSyncCoursePressed.bind(this)}
+          class='selected-crs-dialog-sync'
+        />
+        <UiTouchButton
+          ref={this.releaseObsHoldRef}
+          label={'Release\nOBS Hold'}
+          isVisible={this.showReleaseObsHold}
+          onPressed={this.onReleaseObsHoldPressed.bind(this)}
+          class='selected-crs-dialog-release-obs'
+        />
+      </>
     );
   }
 

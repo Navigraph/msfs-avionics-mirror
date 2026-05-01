@@ -1,7 +1,8 @@
 import {
-  AbstractMapWaypointIcon, BitFlags, FacilityWaypointUtils, FlightPathWaypoint, ICAO, MapCullableLocationTextLabel, MapCullableTextLabel,
-  MapLocationTextLabelOptions, MapWaypointIcon, MapWaypointImageIcon, MapWaypointRendererIconFactory, MapWaypointRendererLabelFactory,
-  ReadonlyFloat64Array, Subscribable, VNavWaypoint, Waypoint
+  AbstractMapWaypointIcon, FacilityWaypointUtils, FlightPathWaypoint, MapCullableLocationTextLabel,
+  MapCullableTextLabel, MapLocationTextLabelOptions, MapWaypointIcon, MapWaypointImageIcon,
+  MapWaypointRendererIconFactory, MapWaypointRendererLabelFactory, ReadonlyFloat64Array, Subscribable, VNavWaypoint,
+  Waypoint
 } from '@microsoft/msfs-sdk';
 
 import { WaypointIconImageCache } from '../../graphics/img/WaypointIconImageCache';
@@ -66,15 +67,15 @@ export type MapWaypointLabelStyles = {
  */
 export interface MapWaypointDisplayBuilder {
   /**
-   * Configures this builder to have the waypoint renderer use specific icon and label factories for certain render
-   * roles.
-   * @param roles The render roles for which to use the factories.
+   * Configures this builder to have the waypoint renderer use specific icon and label factories for a certain render
+   * role.
+   * @param role The render role for which to use the factories.
    * @param icon A function which creates the icon factory to use.
    * @param label A function which creates the label factory to use.
    * @returns This builder, after it has been configured.
    */
   withFactory(
-    roles: number,
+    role: number,
     icon: () => MapWaypointRendererIconFactory<Waypoint>,
     label: () => MapWaypointRendererLabelFactory<Waypoint>
   ): this;
@@ -182,6 +183,20 @@ export interface MapWaypointDisplayBuilder {
     iconStyleSelector: (waypoint: Waypoint) => MapWaypointIconStyles,
     labelStyleSelector: (waypoint: Waypoint) => MapWaypointLabelStyles
   ): this;
+
+  /**
+   * Configures this builder to have the waypoint renderer use specific icon and label styles for waypoints rendered
+   * under the hovered single role and hovered combined roles. Icon and label factories which respect the specified
+   * styles will automatically be created for the roles.
+   * @param iconStyleSelector A function which selects styles for icons.
+   * @param labelStyleSelector A function which selects styles for labels.
+   * @returns This builder, after it has been configured.
+   */
+  withHoverStyles(
+    imgCache: WaypointIconImageCache,
+    iconStyleSelector: (combinedRole: MapWaypointRenderRole | 0, waypoint: Waypoint) => MapWaypointIconHighlightStyles,
+    labelStyleSelector: (combinedRole: MapWaypointRenderRole | 0, waypoint: Waypoint) => MapWaypointLabelStyles
+  ): this;
 }
 
 /**
@@ -203,13 +218,11 @@ export class MapWaypointDisplayBuilderClass implements MapWaypointDisplayBuilder
 
   /** @inheritdoc */
   public withFactory(
-    roles: number,
+    role: number,
     icon: () => MapWaypointRendererIconFactory<Waypoint>,
     label: () => MapWaypointRendererLabelFactory<Waypoint>
   ): this {
-    BitFlags.forEach(roles, (val, index) => {
-      this.factories.set(1 << index, { icon, label });
-    }, true);
+    this.factories.set(role, { icon, label });
 
     return this;
   }
@@ -335,6 +348,42 @@ export class MapWaypointDisplayBuilderClass implements MapWaypointDisplayBuilder
     return this;
   }
 
+  /** @inheritdoc */
+  public withHoverStyles(
+    imgCache: WaypointIconImageCache,
+    iconStyleSelector: (combinedRole: MapWaypointRenderRole | 0, waypoint: Waypoint) => MapWaypointIconHighlightStyles,
+    labelStyleSelector: (combinedRole: MapWaypointRenderRole | 0, waypoint: Waypoint) => MapWaypointLabelStyles
+  ): this {
+    this.factories.set(
+      MapWaypointRenderRole.Hover,
+      {
+        icon: () => new WaypointHighlightIconFactory(imgCache, waypoint => iconStyleSelector(0, waypoint)),
+        label: () => new WaypointLabelFactory(waypoint => labelStyleSelector(0, waypoint))
+      }
+    );
+
+    for (const combinedRole of [
+      MapWaypointRenderRole.Highlight,
+      MapWaypointRenderRole.FlightPlanActive,
+      MapWaypointRenderRole.FlightPlanInactive,
+      MapWaypointRenderRole.ProcedurePreview,
+      MapWaypointRenderRole.ProcedureTransitionPreview,
+      MapWaypointRenderRole.Normal,
+      MapWaypointRenderRole.Airway,
+      MapWaypointRenderRole.VNav,
+    ]) {
+      this.factories.set(
+        MapWaypointRenderRole.Hover | combinedRole,
+        {
+          icon: () => new WaypointHighlightIconFactory(imgCache, waypoint => iconStyleSelector(combinedRole, waypoint)),
+          label: () => new WaypointLabelFactory(waypoint => labelStyleSelector(combinedRole, waypoint))
+        }
+      );
+    }
+
+    return this;
+  }
+
   /**
    * Applies this builder's configurations to a waypoint renderer.
    * @param renderer A waypoint renderer.
@@ -351,6 +400,8 @@ export class MapWaypointDisplayBuilderClass implements MapWaypointDisplayBuilder
  * A waypoint icon factory.
  */
 class WaypointIconFactory implements MapWaypointRendererIconFactory<Waypoint> {
+  private static readonly MAX_CACHE_SIZE = 500;
+
   private readonly cache = new Map<string, MapWaypointIcon<Waypoint> | null>();
 
   /**
@@ -376,6 +427,9 @@ class WaypointIconFactory implements MapWaypointRendererIconFactory<Waypoint> {
     if (existing === undefined) {
       existing = this.createIcon(waypoint);
       this.cache.set(waypoint.uid, existing);
+      if (this.cache.size > WaypointIconFactory.MAX_CACHE_SIZE) {
+        this.cache.delete(this.cache.keys().next().value!);
+      }
     }
 
     return existing as MapWaypointIcon<T> | null;
@@ -417,6 +471,8 @@ class WaypointIconFactory implements MapWaypointRendererIconFactory<Waypoint> {
  * A waypoint label factory.
  */
 class WaypointLabelFactory implements MapWaypointRendererLabelFactory<Waypoint> {
+  private static readonly MAX_CACHE_SIZE = 500;
+
   private readonly cache = new Map<string, MapCullableTextLabel | null>();
 
   /**
@@ -432,6 +488,9 @@ class WaypointLabelFactory implements MapWaypointRendererLabelFactory<Waypoint> 
     if (existing === undefined) {
       existing = this.createLabel(waypoint);
       this.cache.set(waypoint.uid, existing);
+      if (this.cache.size > WaypointLabelFactory.MAX_CACHE_SIZE) {
+        this.cache.delete(this.cache.keys().next().value!);
+      }
     }
 
     return existing;
@@ -448,7 +507,7 @@ class WaypointLabelFactory implements MapWaypointRendererLabelFactory<Waypoint> 
     let text: string | undefined = undefined;
 
     if (FacilityWaypointUtils.isFacilityWaypoint(waypoint)) {
-      text = ICAO.getIdent(waypoint.facility.get().icao);
+      text = waypoint.facility.get().icaoStruct.ident;
     } else if (waypoint instanceof FlightPathWaypoint || waypoint instanceof ProcedureTurnLegWaypoint) {
       text = waypoint.ident;
     } else if (waypoint instanceof MapRunwayLabelWaypoint) {
@@ -467,6 +526,8 @@ class WaypointLabelFactory implements MapWaypointRendererLabelFactory<Waypoint> 
  * A waypoint icon factory for highlighted waypoints.
  */
 class WaypointHighlightIconFactory implements MapWaypointRendererIconFactory<Waypoint> {
+  private static readonly MAX_CACHE_SIZE = 500;
+
   private readonly cache = new Map<string, MapWaypointIcon<Waypoint> | null>();
 
   /**
@@ -486,6 +547,9 @@ class WaypointHighlightIconFactory implements MapWaypointRendererIconFactory<Way
     if (existing === undefined) {
       existing = this.createIcon(waypoint);
       this.cache.set(waypoint.uid, existing);
+      if (this.cache.size > WaypointHighlightIconFactory.MAX_CACHE_SIZE) {
+        this.cache.delete(this.cache.keys().next().value!);
+      }
     }
 
     return existing as MapWaypointIcon<T>;
@@ -524,7 +588,7 @@ class WaypointHighlightIconFactory implements MapWaypointRendererIconFactory<Way
 
     if (waypoint instanceof AirportWaypoint) {
       return new MapAirportIcon(waypoint, priority, img, size);
-    } else if (FacilityWaypointUtils.isFacilityWaypoint(waypoint)) {
+    } else if (FacilityWaypointUtils.isFacilityWaypoint(waypoint) || waypoint instanceof FlightPathWaypoint) {
       return new MapWaypointImageIcon(waypoint, priority, img, size);
     }
 

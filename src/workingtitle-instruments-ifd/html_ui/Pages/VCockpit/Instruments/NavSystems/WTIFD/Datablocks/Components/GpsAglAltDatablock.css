@@ -1,0 +1,18 @@
+.datablock-gps-alt-display {
+  display: flex;
+  flex-direction: column;
+}
+
+.datablocks-container-top-bar .datablock-gps-alt-display {
+  flex-direction: row;
+}
+
+.datablock-gps-alt-display .agl-alt-value-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.datablocks-container-top-bar .datablock-gps-alt-display .agl-alt-value-container {
+  width: 82px;
+}

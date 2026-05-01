@@ -90,7 +90,7 @@ export class MapWaypointsLayer extends MapLayer<MapWaypointsLayerProps> {
   private isIntersectionVisible = false;
   private isUserVisible = false;
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     super.onAttached();
 
@@ -98,12 +98,22 @@ export class MapWaypointsLayer extends MapLayer<MapWaypointsLayerProps> {
     this.initVisibilityFlags();
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.waypointsLayerRef.instance.onWake();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.waypointsLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.waypointsLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     this.waypointsLayerRef.instance.onUpdated(time, elapsed);
   }
@@ -275,7 +285,7 @@ export class MapWaypointsLayer extends MapLayer<MapWaypointsLayerProps> {
     return false;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   private shouldRefreshSearch(type: MapNearestWaypointsLayerSearchTypes): boolean {
     switch (type) {
       case FacilitySearchType.Airport:
@@ -354,7 +364,7 @@ export class MapWaypointsLayer extends MapLayer<MapWaypointsLayerProps> {
     return waypoints;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
       <MapNearestWaypointsLayer<MapWaypointRenderer>

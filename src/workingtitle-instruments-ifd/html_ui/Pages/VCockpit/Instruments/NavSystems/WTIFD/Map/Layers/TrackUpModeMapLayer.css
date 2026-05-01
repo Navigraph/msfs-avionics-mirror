@@ -1,0 +1,32 @@
+.hdk-trk-up-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hdk-trk-up-overlay .range-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hdk-trk-up-overlay .map-range-numbers {
+  position: absolute;
+}
+
+.hdk-trk-up-overlay .map-range-numbers .range-number-inner {
+  left: 8px;
+  bottom: 15px;
+}
+
+.hdk-trk-up-overlay .map-range-numbers .range-number-outer {
+  left: 38px;
+  bottom: 117px
+}

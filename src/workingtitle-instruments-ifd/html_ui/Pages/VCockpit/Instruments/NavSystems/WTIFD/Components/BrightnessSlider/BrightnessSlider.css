@@ -1,0 +1,34 @@
+.brightness-slider-container {
+  position: relative;
+  height: 25px;
+  margin-top: 3px;
+}
+
+.brightness-slider-container .brightness-slider-empty {
+  position: relative;
+  width: 205px;
+  height: 100%;
+  background: var(--wtdyne-color-black);
+  border: 2px solid #333333;
+}
+
+.brightness-slider-container .brightness-slider-empty.brightness-slider-selected {
+  border-color: var(--wtdyne-color-cyan);
+  border-radius: 5px;
+}
+
+.brightness-slider-container .brightness-slider-filled {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--wtdyne-color-green);
+}
+
+.brightness-slider-container .brightness-slider-value {
+  position: absolute;
+  bottom: -5px;
+  left: -60px;
+  width: 56px;
+  text-align: right;
+}

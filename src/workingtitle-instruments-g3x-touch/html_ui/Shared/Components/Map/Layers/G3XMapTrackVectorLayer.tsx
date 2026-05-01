@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
 import {
   AffineTransformPathStream, BitFlags, ClippedPathStream, FSComponent, MapDataIntegrityModule,
   MapLayer, MapLayerProps, MapOwnAirplanePropsModule, MappedSubject, MapProjection,
@@ -103,11 +101,13 @@ export class G3XMapTrackVectorLayer extends MapLayer<G3XMapTrackVectorLayerProps
   private distanceUnitsSub?: Subscription;
   private gsSub?: Subscription;
 
+  private isAwake = true;
+
   private readonly subscriptions: Subscription[] = [
     this.isVectorVisible
   ];
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onVisibilityChanged(isVisible: boolean): void {
     if (isVisible) {
       this.needUpdate = true;
@@ -116,7 +116,7 @@ export class G3XMapTrackVectorLayer extends MapLayer<G3XMapTrackVectorLayerProps
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     this.canvasLayerRef.instance.onAttached();
 
@@ -186,12 +186,34 @@ export class G3XMapTrackVectorLayer extends MapLayer<G3XMapTrackVectorLayerProps
     this.clipBounds.set(-10, -10, size[0] + 10, size[1] + 10);
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    this.isAwake = true;
+
+    this.canvasLayerRef.instance.onWake();
+
+    // We need to re-initialize canvas styles and schedule an update after waking up because the canvas is cleared and
+    // its context state is reset when the map goes to sleep (as a result of being collapsed).
+    this.initCanvasStyles();
+    this.needUpdate = true;
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.isAwake = false;
+
+    this.canvasLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.canvasLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
 
     if (BitFlags.isAny(changeFlags, MapProjectionChangeType.ProjectedSize)) {
-      this.initCanvasStyles();
+      if (this.isAwake) {
+        this.initCanvasStyles();
+      }
+
       this.updateClipBounds();
     }
 
@@ -199,7 +221,7 @@ export class G3XMapTrackVectorLayer extends MapLayer<G3XMapTrackVectorLayerProps
     this.needUpdate = true;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(): void {
     if (!this.needUpdate || !this.isVisible()) {
       return;
@@ -233,7 +255,7 @@ export class G3XMapTrackVectorLayer extends MapLayer<G3XMapTrackVectorLayerProps
    * @param distance The vector's total distance, in great-arc radians.
    * @param tickInterval The distance interval between each vector tick, in great-arc radians.
    */
-  public drawVector(
+  private drawVector(
     context: CanvasRenderingContext2D,
     projection: MapProjection,
     track: number,
@@ -284,14 +306,19 @@ export class G3XMapTrackVectorLayer extends MapLayer<G3XMapTrackVectorLayerProps
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
-      <MapSyncedCanvasLayer ref={this.canvasLayerRef} model={this.props.model} mapProjection={this.props.mapProjection} />
+      <MapSyncedCanvasLayer
+        ref={this.canvasLayerRef}
+        model={this.props.model}
+        mapProjection={this.props.mapProjection}
+        collapseOnSleep
+      />
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     this.canvasLayerRef.getOrDefault()?.destroy();
 

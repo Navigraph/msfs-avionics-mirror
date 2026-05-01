@@ -1,0 +1,53 @@
+/* Sidebar layout (default) */
+.datablock-local-time {
+  width: 100%;
+  min-height: 32px;
+  padding-left: 2px;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.datablock-local-time .datablock-time-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  overflow: hidden;
+  height: 44px;
+  width: 120px;
+}
+
+.datablock-local-time .datablock-time-title {
+  padding-top: 3px;
+}
+
+.datablock-local-time .datablock-time-ampm {
+  text-transform: uppercase;
+}
+
+/* Top bar layout */
+.datablock-local-time.datablock-topbar {
+  padding-top: 3px;
+}
+
+.datablock-local-time.datablock-topbar .datablock-time-display {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  overflow: hidden;
+  width: 146px;
+  height: 23px;
+}
+
+.datablock-local-time.datablock-topbar .datablock-time-title {
+  padding-top: 7px;
+}
+
+.datablock-local-time.datablock-topbar .datablock-time-value {
+  margin-left: 10px;
+  height: 28px;
+  white-space: nowrap;
+}

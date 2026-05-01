@@ -6,6 +6,7 @@ export * from './CAS';
 export * from './Charts';
 export * from './Components';
 export * from './Config';
+export * from './Dialogs';
 export * from './Eis';
 export * from './FlightPlan';
 export * from './Fuel';

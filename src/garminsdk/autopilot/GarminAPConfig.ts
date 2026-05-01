@@ -34,6 +34,9 @@ export type GarminLNavDirectorOptions = {
  * Options for configuring Garmin autopilots.
  */
 export type GarminAPConfigOptions = {
+  /** The number of flight directors supported by the autopilot. Defaults to 2. */
+  flightDirectorCount?: 1 | 2;
+
   /** The ID of the CDI associated with the autopilot. Defaults to the empty string (`''`). */
   cdiId?: string;
 
@@ -48,6 +51,24 @@ export type GarminAPConfigOptions = {
 
   /** The default rate at which commanded bank changes, in degrees per second. Defaults to `10`. */
   defaultBankRate?: number;
+
+  /**
+   * The default maximum bank angle, in degrees, to apply when a director does not define its own maximum bank angle.
+   * Defaults to `25`.
+   */
+  defaultMaxBankAngle?: number;
+
+  /**
+   * The default maximum absolute nose up pitch angle, in degrees, to apply when a director does not define its own
+   * maximum nose up pitch angle. Defaults to `30`.
+   */
+  defaultMaxNoseUpPitchAngle?: number;
+
+  /**
+   * The default maximum absolute nose down pitch angle, in degrees, to apply when a director does not define its own
+   * maximum nose down pitch angle. Defaults to `30`.
+   */
+  defaultMaxNoseDownPitchAngle?: number;
 
   /** Options for the LNAV (GPSS) director. If not defined, then the autopilot will not include an LNAV director */
   lnavOptions?: Readonly<GarminLNavDirectorOptions>;
@@ -93,19 +114,34 @@ export type GarminAPConfigOptions = {
   /** The minimum bank angle, in degrees, supported by the ROL director. Defaults to `6`. */
   rollMinBankAngle?: number;
 
-  /** The maximum bank angle, in degrees, supported by the ROL director. Defaults to `25`. */
+  /**
+   * The maximum bank angle, in degrees, supported by the ROL director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxBankAngle | `defaultMaxBankAngle`}.
+   */
   rollMaxBankAngle?: number;
 
-  /** The maximum bank angle, in degrees, supported by the HDG director. Defaults to `25`. */
+  /**
+   * The maximum bank angle, in degrees, supported by the HDG director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxBankAngle | `defaultMaxBankAngle`}.
+   */
   hdgMaxBankAngle?: number;
 
-  /** The maximum bank angle, in degrees, supported by the VOR director. Defaults to `25`. */
+  /**
+   * The maximum bank angle, in degrees, supported by the VOR director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxBankAngle | `defaultMaxBankAngle`}.
+   */
   vorMaxBankAngle?: number;
 
-  /** The maximum bank angle, in degrees, supported by the LOC director. Defaults to `25`. */
+  /**
+   * The maximum bank angle, in degrees, supported by the LOC director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxBankAngle | `defaultMaxBankAngle`}.
+   */
   locMaxBankAngle?: number;
 
-  /** The maximum bank angle, in degrees, supported by the LNAV director. Defaults to `25`. */
+  /**
+   * The maximum bank angle, in degrees, supported by the LNAV director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxBankAngle | `defaultMaxBankAngle`}.
+   */
   lnavMaxBankAngle?: number;
 
   /**
@@ -113,6 +149,90 @@ export type GarminAPConfigOptions = {
    * Defaults to `15`.
    */
   lowBankAngle?: number;
+
+  /**
+   * The maximum absolute nose up pitch angle, in degrees, supported by the ALT director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxNoseUpPitchAngle | `defaultMaxNoseUpPitchAngle`}.
+   */
+  altMaxNoseUpPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose down pitch angle, in degrees, supported by the ALT director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxNoseDownPitchAngle | `defaultMaxNoseDownPitchAngle`}.
+   */
+  altMaxNoseDownPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose up pitch angle, in degrees, supported by the ALTS/ALTV director. Defaults to the value
+   * of {@link GarminAPConfigOptions.defaultMaxNoseUpPitchAngle | `defaultMaxNoseUpPitchAngle`}.
+   */
+  altCapMaxNoseUpPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose down pitch angle, in degrees, supported by the ALTS/ALTV director. Defaults to the value
+   * of {@link GarminAPConfigOptions.defaultMaxNoseDownPitchAngle | `defaultMaxNoseDownPitchAngle`}.
+   */
+  altCapMaxNoseDownPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose up pitch angle, in degrees, supported by the VS director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxNoseUpPitchAngle | `defaultMaxNoseUpPitchAngle`}.
+   */
+  vsMaxNoseUpPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose down pitch angle, in degrees, supported by the VS director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxNoseDownPitchAngle | `defaultMaxNoseDownPitchAngle`}.
+   */
+  vsMaxNoseDownPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose up pitch angle, in degrees, supported by the FLC director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxNoseUpPitchAngle | `defaultMaxNoseUpPitchAngle`}.
+   */
+  flcMaxNoseUpPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose down pitch angle, in degrees, supported by the FLC director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxNoseDownPitchAngle | `defaultMaxNoseDownPitchAngle`}.
+   */
+  flcMaxNoseDownPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose up pitch angle, in degrees, supported by the (V)PATH director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxNoseUpPitchAngle | `defaultMaxNoseUpPitchAngle`}.
+   */
+  pathMaxNoseUpPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose down pitch angle, in degrees, supported by the (V)PATH director. Defaults to the value
+   * of {@link GarminAPConfigOptions.defaultMaxNoseDownPitchAngle | `defaultMaxNoseDownPitchAngle`}.
+   */
+  pathMaxNoseDownPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose up pitch angle, in degrees, supported by the GS/GP directors. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxNoseUpPitchAngle | `defaultMaxNoseUpPitchAngle`}.
+   */
+  gsGpMaxNoseUpPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose down pitch angle, in degrees, supported by the GS/GP directors. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxNoseDownPitchAngle | `defaultMaxNoseDownPitchAngle`}.
+   */
+  gsGpMaxNoseDownPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose up pitch angle, in degrees, supported by the LVL director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxNoseUpPitchAngle | `defaultMaxNoseUpPitchAngle`}.
+   */
+  lvlMaxNoseUpPitchAngle?: number;
+
+  /**
+   * The maximum absolute nose down pitch angle, in degrees, supported by the LVL director. Defaults to the value of
+   * {@link GarminAPConfigOptions.defaultMaxNoseDownPitchAngle | `defaultMaxNoseDownPitchAngle`}.
+   */
+  lvlMaxNoseDownPitchAngle?: number;
 
   /**
    * The target pitch angle, in degrees, commanded by the TO director. Positive values indicate upward pitch. Defaults
@@ -170,7 +290,13 @@ export class GarminAPConfig implements GarminAPConfigInterface {
 
   public defaultLateralMode = APLateralModes.ROLL;
   public defaultVerticalMode = APVerticalModes.PITCH;
-  public defaultMaxBankAngle = GarminAPConfig.DEFAULT_MAX_BANK_ANGLE;
+
+  public defaultMaxBankAngle: number;
+  public defaultMaxNoseUpPitchAngle: number;
+  public defaultMaxNoseDownPitchAngle: number;
+
+  /** @inheritDoc */
+  public readonly flightDirectorCount: 1 | 2;
 
   /** @inheritDoc */
   public readonly cdiId: string;
@@ -197,6 +323,20 @@ export class GarminAPConfig implements GarminAPConfigInterface {
   private readonly lnavMaxBankAngle: number;
   private readonly lowBankAngle: number;
 
+  private readonly altMaxPitchUpAngle: number | null;
+  private readonly altMaxPitchDownAngle: number | null;
+  private readonly altCapMaxPitchUpAngle: number | null;
+  private readonly altCapMaxPitchDownAngle: number | null;
+  private readonly vsMaxPitchUpAngle: number | null;
+  private readonly vsMaxPitchDownAngle: number | null;
+  private readonly flcMaxPitchUpAngle: number | null;
+  private readonly flcMaxPitchDownAngle: number | null;
+  private readonly pathMaxPitchUpAngle: number | null;
+  private readonly pathMaxPitchDownAngle: number | null;
+  private readonly gsGpMaxPitchUpAngle: number | null;
+  private readonly gsGpMaxPitchDownAngle: number | null;
+  private readonly lvlMaxPitchUpAngle: number | null;
+  private readonly lvlMaxPitchDownAngle: number | null;
   private readonly toPitchAngle: number;
   private readonly gaPitchAngle: number;
 
@@ -237,6 +377,7 @@ export class GarminAPConfig implements GarminAPConfigInterface {
     private readonly bus: EventBus,
     options?: Readonly<GarminAPConfigOptions>
   ) {
+    this.flightDirectorCount = options?.flightDirectorCount ?? 2;
     this.cdiId = options?.cdiId ?? '';
     this.deactivateAutopilotOnGa = options?.deactivateAutopilotOnGa ?? true;
 
@@ -244,6 +385,10 @@ export class GarminAPConfig implements GarminAPConfigInterface {
       pitchServoRate: options?.defaultPitchRate ?? GarminAPConfig.DEFAULT_PITCH_RATE,
       bankServoRate: options?.defaultBankRate ?? GarminAPConfig.DEFAULT_BANK_RATE
     };
+
+    this.defaultMaxBankAngle = options?.defaultMaxBankAngle ?? GarminAPConfig.DEFAULT_MAX_BANK_ANGLE;
+    this.defaultMaxNoseUpPitchAngle = options?.defaultMaxNoseUpPitchAngle ?? 30;
+    this.defaultMaxNoseDownPitchAngle = options?.defaultMaxNoseDownPitchAngle ?? 30;
 
     this.useIndicatedMach = options?.useIndicatedMach ?? false;
 
@@ -289,6 +434,20 @@ export class GarminAPConfig implements GarminAPConfigInterface {
     this.lowBankAngle = options?.lowBankAngle ?? GarminAPConfig.DEFAULT_LOW_BANK_ANGLE;
     this.hdgTurnReversalThreshold = options?.hdgTurnReversalThreshold ?? GarminAPConfig.DEFAULT_HDG_DIRECTION_UNLOCK_THRESHOLD;
 
+    this.altMaxPitchUpAngle = options?.altMaxNoseUpPitchAngle ?? null;
+    this.altMaxPitchDownAngle = options?.altMaxNoseDownPitchAngle ?? null;
+    this.altCapMaxPitchUpAngle = options?.altCapMaxNoseUpPitchAngle ?? null;
+    this.altCapMaxPitchDownAngle = options?.altCapMaxNoseDownPitchAngle ?? null;
+    this.vsMaxPitchUpAngle = options?.vsMaxNoseUpPitchAngle ?? null;
+    this.vsMaxPitchDownAngle = options?.vsMaxNoseDownPitchAngle ?? null;
+    this.flcMaxPitchUpAngle = options?.flcMaxNoseUpPitchAngle ?? null;
+    this.flcMaxPitchDownAngle = options?.flcMaxNoseDownPitchAngle ?? null;
+    this.pathMaxPitchUpAngle = options?.pathMaxNoseUpPitchAngle ?? null;
+    this.pathMaxPitchDownAngle = options?.pathMaxNoseDownPitchAngle ?? null;
+    this.gsGpMaxPitchUpAngle = options?.gsGpMaxNoseUpPitchAngle ?? null;
+    this.gsGpMaxPitchDownAngle = options?.gsGpMaxNoseDownPitchAngle ?? null;
+    this.lvlMaxPitchUpAngle = options?.lvlMaxNoseUpPitchAngle ?? null;
+    this.lvlMaxPitchDownAngle = options?.lvlMaxNoseDownPitchAngle ?? null;
     this.toPitchAngle = options?.toPitchAngle ?? GarminAPConfig.DEFAULT_TO_PITCH_ANGLE;
     this.gaPitchAngle = options?.gaPitchAngle ?? GarminAPConfig.DEFAULT_GA_PITCH_ANGLE;
   }
@@ -460,7 +619,10 @@ export class GarminAPConfig implements GarminAPConfigInterface {
    * @returns The autopilot's pitch mode director, or `undefined` to omit the director.
    */
   protected createPitchDirector(apValues: APValues): PlaneDirector | undefined {
-    return new APPitchDirector(this.bus, apValues);
+    return new APPitchDirector(this.bus, apValues, {
+      minPitch: -this.defaultMaxNoseDownPitchAngle,
+      maxPitch: this.defaultMaxNoseUpPitchAngle,
+    });
   }
 
   /**
@@ -469,7 +631,10 @@ export class GarminAPConfig implements GarminAPConfigInterface {
    * @returns The autopilot's pitch level mode director, or `undefined` to omit the director.
    */
   protected createPitchLevelerDirector(apValues: APValues): PlaneDirector | undefined {
-    return new APPitchLvlDirector(apValues);
+    return new APPitchLvlDirector(apValues, {
+      maxPitchUpAngle: this.lvlMaxPitchUpAngle,
+      maxPitchDownAngle: this.lvlMaxPitchDownAngle,
+    });
   }
 
   /**
@@ -478,7 +643,10 @@ export class GarminAPConfig implements GarminAPConfigInterface {
    * @returns The autopilot's vertical speed mode director, or `undefined` to omit the director.
    */
   protected createVsDirector(apValues: APValues): PlaneDirector | undefined {
-    return new APVSDirector(apValues);
+    return new APVSDirector(apValues, {
+      maxPitchUpAngle: this.vsMaxPitchUpAngle,
+      maxPitchDownAngle: this.vsMaxPitchDownAngle,
+    });
   }
 
   /**
@@ -487,7 +655,11 @@ export class GarminAPConfig implements GarminAPConfigInterface {
    * @returns The autopilot's flight level change mode director, or `undefined` to omit the director.
    */
   protected createFlcDirector(apValues: APValues): PlaneDirector | undefined {
-    return new APFLCDirector(apValues, { useIndicatedMach: this.useIndicatedMach });
+    return new APFLCDirector(apValues, {
+      maxPitchUpAngle: this.flcMaxPitchUpAngle,
+      maxPitchDownAngle: this.flcMaxPitchDownAngle,
+      useIndicatedMach: this.useIndicatedMach,
+    });
   }
 
   /**
@@ -496,7 +668,10 @@ export class GarminAPConfig implements GarminAPConfigInterface {
    * @returns The autopilot's altitude hold mode director, or `undefined` to omit the director.
    */
   protected createAltHoldDirector(apValues: APValues): PlaneDirector | undefined {
-    return new APAltDirector(apValues);
+    return new APAltDirector(apValues, {
+      maxPitchUpAngle: this.altMaxPitchUpAngle,
+      maxPitchDownAngle: this.altMaxPitchDownAngle,
+    });
   }
 
   /**
@@ -505,7 +680,10 @@ export class GarminAPConfig implements GarminAPConfigInterface {
    * @returns The autopilot's altitude capture mode director, or `undefined` to omit the director.
    */
   protected createAltCapDirector(apValues: APValues): PlaneDirector | undefined {
-    return new APAltCapDirector(apValues);
+    return new APAltCapDirector(apValues, {
+      maxPitchUpAngle: this.altCapMaxPitchUpAngle,
+      maxPitchDownAngle: this.altCapMaxPitchDownAngle,
+    });
   }
 
   /**
@@ -514,7 +692,11 @@ export class GarminAPConfig implements GarminAPConfigInterface {
    * @returns The autopilot's VNAV path mode director, or `undefined` to omit the director.
    */
   protected createVNavPathDirector(apValues: APValues): PlaneDirector | undefined {
-    return new APVNavPathDirector(apValues, { guidance: this.verticalPathGuidance });
+    return new APVNavPathDirector(apValues, {
+      maxPitchUpAngle: this.pathMaxPitchUpAngle,
+      maxPitchDownAngle: this.pathMaxPitchDownAngle,
+      guidance: this.verticalPathGuidance
+    });
   }
 
   /**
@@ -524,6 +706,8 @@ export class GarminAPConfig implements GarminAPConfigInterface {
    */
   protected createGpDirector(apValues: APValues): PlaneDirector | undefined {
     return new APGPDirector(this.bus, apValues, {
+      maxPitchUpAngle: this.gsGpMaxPitchUpAngle,
+      maxPitchDownAngle: this.gsGpMaxPitchDownAngle,
       guidance: this.glidepathGuidance,
       canArm: GarminAPUtils.glidepathCanArm.bind(undefined, apValues),
       canCapture: this.glidepathGuidance
@@ -541,6 +725,8 @@ export class GarminAPConfig implements GarminAPConfigInterface {
    */
   protected createGsDirector(apValues: APValues): PlaneDirector | undefined {
     return new APGSDirector(this.bus, apValues, {
+      maxPitchUpAngle: this.gsGpMaxPitchUpAngle,
+      maxPitchDownAngle: this.gsGpMaxPitchDownAngle,
       canArm: GarminAPUtils.glideslopeCanArm,
       canActivate: GarminAPUtils.glideslopeCanActivate,
       canRemainActive: GarminAPUtils.glideslopeCanRemainActive,

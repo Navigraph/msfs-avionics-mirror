@@ -1,6 +1,6 @@
 import {
-  AirportFacility, AirportPrivateType, FacilityType, FacilityWaypoint, FacilityWaypointUtils, FlightPathWaypoint, ICAO,
-  VNavWaypoint, VorFacility, VorType, Waypoint
+  AirportClass, AirportFacility, AirportPrivateType, FacilityType, FacilityWaypoint, FacilityWaypointUtils,
+  FlightPathWaypoint, ICAO, VNavWaypoint, VorFacility, VorType, Waypoint
 } from '@microsoft/msfs-sdk';
 
 import { WaypointIconImageCache } from './WaypointIconImageCache';
@@ -17,6 +17,7 @@ export enum DefaultWaypointIconImageKey {
   AirportSmallUnserviced = 'AIRPORT_SMALL_NONSERVICED',
   AirportPrivate = 'AIRPORT_PRIVATE',
   AirportUnknown = 'AIRPORT_UNKNOWN',
+  Heliport = 'HELIPORT',
   Vor = 'VOR',
   VorDme = 'VORDME',
   Vortac = 'VORTAC',
@@ -58,7 +59,7 @@ export class DefaultWaypointIconImageCache implements WaypointIconImageCache {
   /** @inheritdoc */
   public getForWaypoint(waypoint: Waypoint): HTMLImageElement | undefined {
     if (FacilityWaypointUtils.isFacilityWaypoint(waypoint)) {
-      switch (ICAO.getFacilityType(waypoint.facility.get().icao)) {
+      switch (ICAO.getFacilityTypeFromValue(waypoint.facility.get().icaoStruct)) {
         case FacilityType.Airport:
           return this.getForAirport(waypoint as FacilityWaypoint<AirportFacility>);
         case FacilityType.VOR:
@@ -76,6 +77,8 @@ export class DefaultWaypointIconImageCache implements WaypointIconImageCache {
       return this.get(DefaultWaypointIconImageKey.FlightPath);
     } else if (waypoint instanceof VNavWaypoint) {
       return this.get(DefaultWaypointIconImageKey.VNav);
+    } else {
+      return undefined;
     }
   }
 
@@ -90,7 +93,9 @@ export class DefaultWaypointIconImageCache implements WaypointIconImageCache {
     // HINT class 1 airports are always assumed serviced
     const serviced = (fac.fuel1 !== '' || fac.fuel2 !== '') || fac.airportClass === 1;
 
-    if (fac.airportPrivateType !== AirportPrivateType.Public) {
+    if (fac.airportClass === AirportClass.HeliportOnly) {
+      return this.get(DefaultWaypointIconImageKey.Heliport);
+    } else if (fac.airportPrivateType !== AirportPrivateType.Public) {
       return this.get(DefaultWaypointIconImageKey.AirportPrivate);
     } else if (serviced && fac.towered) {
       return this.get(DefaultWaypointIconImageKey.AirportToweredServiced);

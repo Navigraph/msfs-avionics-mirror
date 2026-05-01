@@ -1,0 +1,42 @@
+.freq-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 7px 4px 2px;
+  background: #333333;
+  border-top: 2px solid #636363;
+  border-right: 2px solid #212121;
+  border-left: 2px solid #555555;
+  border-bottom: 2px solid #252525;
+  border-radius: 5px;
+  color: white;
+  height: 41px;
+}
+
+.freq-row-selected {
+  border-color: var(--wtdyne-color-cyan);
+}
+
+.freq-title {
+  font-size: 20px;
+  margin-top: -13px;
+}
+
+.freq-title-name {
+  font-family: "Arial Bold", sans-serif;
+}
+
+.freq-title-airport {
+  font-size: 14px;
+}
+
+.freq-number {
+  text-align: right;
+  font-family: "Arial Bold", sans-serif;
+  color: var(--wtdyne-color-light-cyan);
+}
+
+.freq-big-number {
+  font-size: 30px;
+}

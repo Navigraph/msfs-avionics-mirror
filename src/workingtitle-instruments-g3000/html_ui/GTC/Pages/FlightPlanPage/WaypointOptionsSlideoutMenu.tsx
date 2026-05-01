@@ -14,7 +14,7 @@ import { GtcInteractionEvent } from '../../GtcService/GtcInteractionEvent';
 import { GtcViewKeys } from '../../GtcService/GtcViewKeys';
 import { GtcDirectToPage } from '../DirectToPage/GtcDirectToPage';
 import { GtcHoldPage } from '../HoldPage/GtcHoldPage';
-import { GtcAirportInfoPage, GtcIntersectionInfoPage, GtcNdbInfoPage, GtcUserWaypointInfoPage, GtcVorInfoPage } from '../WaypointInfoPages';
+import { GtcAirportInfoPage2, GtcIntersectionInfoPage2, GtcNdbInfoPage2, GtcUserWaypointInfoPage2, GtcVorInfoPage2 } from '../WaypointInfoPages';
 import { HoldController } from '../HoldPage/HoldController';
 import { GtcFlightPlanDialogs } from './GtcFlightPlanDialogs';
 import { GtcFlightPlanPageSlideoutMenu, GtcFlightPlanPageSlideoutMenuProps } from './GtcFlightPlanPageSlideoutMenu';
@@ -394,19 +394,19 @@ export class WaypointOptionsSlideoutMenu extends GtcFlightPlanPageSlideoutMenu<F
 
               switch (type) {
                 case FacilityType.Airport:
-                  this.gtcService.changePageTo<GtcAirportInfoPage>(GtcViewKeys.AirportInfo).ref.initSelection(facility as AirportFacility);
+                  this.gtcService.changePageTo<GtcAirportInfoPage2>(GtcViewKeys.AirportInfo).ref.initSelection(facility as AirportFacility);
                   break;
                 case FacilityType.Intersection:
-                  this.gtcService.changePageTo<GtcIntersectionInfoPage>(GtcViewKeys.IntersectionInfo).ref.initSelection(facility as IntersectionFacility);
+                  this.gtcService.changePageTo<GtcIntersectionInfoPage2>(GtcViewKeys.IntersectionInfo).ref.initSelection(facility as IntersectionFacility);
                   break;
                 case FacilityType.NDB:
-                  this.gtcService.changePageTo<GtcNdbInfoPage>(GtcViewKeys.NdbInfo).ref.initSelection(facility as NdbFacility);
+                  this.gtcService.changePageTo<GtcNdbInfoPage2>(GtcViewKeys.NdbInfo).ref.initSelection(facility as NdbFacility);
                   break;
                 case FacilityType.VOR:
-                  this.gtcService.changePageTo<GtcVorInfoPage>(GtcViewKeys.VorInfo).ref.initSelection(facility as VorFacility);
+                  this.gtcService.changePageTo<GtcVorInfoPage2>(GtcViewKeys.VorInfo).ref.initSelection(facility as VorFacility);
                   break;
                 case FacilityType.USR:
-                  this.gtcService.changePageTo<GtcUserWaypointInfoPage>(GtcViewKeys.UserWaypointInfo).ref.initSelection(facility as UserFacility);
+                  this.gtcService.changePageTo<GtcUserWaypointInfoPage2>(GtcViewKeys.UserWaypointInfo).ref.initSelection(facility as UserFacility);
                   break;
               }
             }}

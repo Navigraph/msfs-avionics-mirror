@@ -5,6 +5,7 @@ import { Vec3Math } from '../../../math/VecMath';
 import { ArrayUtils } from '../../../utils/datastructures/ArrayUtils';
 import { LegDefinition } from '../../FlightPlanning';
 import { FlightPathCalculatorFacilityCache } from '../FlightPathCalculatorFacilityCache';
+import { FlightPathLegCalculationOptions } from '../FlightPathLegCalculator';
 import { FlightPathState } from '../FlightPathState';
 import { CircleInterceptLegCalculator, CircleInterceptLegPathToInterceptInfo } from './CircleInterceptLegCalculator';
 
@@ -28,7 +29,8 @@ export class RadialInterceptLegCalculator extends CircleInterceptLegCalculator {
     legs: LegDefinition[],
     calculateIndex: number,
     activeLegIndex: number,
-    state: FlightPathState
+    state: FlightPathState,
+    options: Readonly<FlightPathLegCalculationOptions>
   ): void {
     const leg = legs[calculateIndex];
 
@@ -36,7 +38,7 @@ export class RadialInterceptLegCalculator extends CircleInterceptLegCalculator {
 
     if (magVar === undefined) {
       let position: LatLonInterface | undefined;
-      if (this.isHeadingLeg && calculateIndex === activeLegIndex && state.planePosition.isValid()) {
+      if (this.isHeadingLeg && !options.disableCalculateFromPpos && calculateIndex === activeLegIndex && state.planePosition.isValid()) {
         position = state.planePosition;
       } else if (!state.isDiscontinuity && state.currentPosition.isValid()) {
         position = state.currentPosition;

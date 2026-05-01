@@ -3,7 +3,6 @@ export * from './AirportUtils';
 export * from './Airspace';
 export * from './AirspaceSearcher';
 export * from './ApproachUtils';
-export * from './AutopilotListener';
 export * from './DefaultFacilityWaypointCache';
 export * from './DefaultLodBoundaryCache';
 export * from './ExistingUserWaypointsArray';

@@ -66,6 +66,7 @@ import { VSpeedBugManager } from './VSpeed/VSpeedBugManager';
 import { WeatherRadarManager } from './WeatherRadar/WeatherRadarManager';
 
 import './WTG3000_MFD.css';
+import { FmsSpeedInitialization } from './FmsSpeed/FmsSpeedInitialization';
 
 /**
  * A G3000/5000 MFD instrument.
@@ -437,6 +438,10 @@ export class WTG3000MfdInstrument extends WTG3000FsInstrument {
 
     if (!this.config.persistentUserSettings.disablePersistentSettings) {
       this.initPersistentSettings(this.config.persistentUserSettings.aircraftKey, pluginPersistentSettings.values());
+
+      if (this.fmsSpeedsSettingManager) {
+        FmsSpeedInitialization.init(this.fmsSpeedsSettingManager);
+      }
     }
 
     this.chartsManager.startReconcilePreferredSource();

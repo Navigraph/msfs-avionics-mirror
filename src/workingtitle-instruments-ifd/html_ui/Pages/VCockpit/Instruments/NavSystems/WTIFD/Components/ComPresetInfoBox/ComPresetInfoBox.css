@@ -1,0 +1,45 @@
+.com-preset-info-box {
+  position: absolute;
+  left: 142px;
+  top: 26px;
+  width: 120px;
+  height: 78px;
+  background: var(--wtdyne-color-black);
+  border-right: var(--wtdyne-border-blue);
+  border-bottom: var(--wtdyne-border-blue);
+  border-radius: 0 0 5px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 3px;
+  z-index: 100; /* necessary due to FREQ page structure */
+}
+
+.com-preset-info-box .com-preset-info-box-label {
+  color: var(--wtdyne-color-mint);
+  font-family: "Arial Bold", sans-serif;
+  font-size: 18px;
+  text-align: center;
+  white-space: pre-wrap;
+}
+
+.com-preset-info-box .com-preset-info-box-number {
+  position: relative;
+  width: 85px;
+  height: 31px;
+  color: var(--wtdyne-color-white);
+  font-family: "Arial Bold", sans-serif;
+  font-size: 26px;
+  text-align: center;
+}
+
+.com-preset-info-box .com-preset-info-box-number .com-preset-info-box-arrow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}

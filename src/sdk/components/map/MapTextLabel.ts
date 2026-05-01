@@ -1,3 +1,4 @@
+import { ReadonlySubEvent, SubEvent } from '../../sub/SubEvent';
 import { GeoPointInterface } from '../../geo/GeoPoint';
 import { ReadonlyFloat64Array, Vec2Math, VecNMath } from '../../math/VecMath';
 import { MappedSubject } from '../../sub/MappedSubject';
@@ -25,6 +26,28 @@ export interface MapTextLabel {
    */
   draw(context: CanvasRenderingContext2D, mapProjection: MapProjection): void;
 }
+
+/**
+ * Data describing a drawing operation for an {@link AbstractMapTextLabel}.
+ *
+ * All properties are `NaN` if the font size was zero last time it was drawn.
+ *
+ * @see {@link AbstractMapTextLabel.onDraw}
+ * @see {@link AbstractMapTextLabel.getLastDrawData}
+ */
+export type AbstractMapTextLabelDrawData = {
+  /** The top-left corner of the drawn label, as `[x, y]` in pixels. Includes any background. */
+  readonly topLeft: ReadonlyFloat64Array;
+
+  /** The size of the drawn label, as `[width, height]` in pixels. Includes any background. */
+  readonly size: ReadonlyFloat64Array;
+
+  /** The top-left corner of the drawn label text, as `[x, y]` in pixels. Excludes any background. */
+  readonly textTopLeft: ReadonlyFloat64Array;
+
+  /** The size of the drawn label text, as `[width, height]` in pixels. Excludes any background. */
+  readonly textSize: ReadonlyFloat64Array;
+};
 
 /**
  * Options for a AbstractMapTextLabel.
@@ -124,6 +147,23 @@ export abstract class AbstractMapTextLabel implements MapTextLabel {
   private fontStr: MappedSubject<[number, string], string>;
 
   /**
+   * An event that notifies subscribers when this label is drawn (when {@link draw | draw()} is called). The sender of
+   * the event is this label. The event data describes the draw operation that triggered the event. When the draw operation
+   * did not draw a visible label, the event is triggered with all `NaN` values.
+   *
+   * The data object passed to event handlers is only guaranteed to be valid at the moment the handler is called. If a
+   * handler needs to retain the data past this moment, then it is recommended that a copy of the data be made.
+   */
+  public readonly onDraw = new SubEvent() as ReadonlySubEvent<this, AbstractMapTextLabelDrawData>;
+
+  protected readonly drawData = {
+    topLeft: Vec2Math.create(NaN, NaN),
+    size: Vec2Math.create(NaN, NaN),
+    textTopLeft: Vec2Math.create(NaN, NaN),
+    textSize: Vec2Math.create(NaN, NaN),
+  } satisfies AbstractMapTextLabelDrawData;
+
+  /**
    * Constructor.
    * @param text The text of this label, or a subscribable which provides it.
    * @param priority The render priority of this label, or a subscribable which provides it.
@@ -153,6 +193,18 @@ export abstract class AbstractMapTextLabel implements MapTextLabel {
     this.bgOutlineColor = SubscribableUtils.toSubscribable(options?.bgOutlineColor ?? 'white', true);
   }
 
+  /**
+   * Gets data describing this label's last executed drawing operation (the last time that {@link draw | draw()} was
+   * called). If the label has not been drawn yet or the last draw operation did not draw a visible label, then
+   * the data will report all `NaN` values.
+   * @returns Data describing this label's last executed drawing operation. The returned data object passed is only
+   * guaranteed to be valid at the moment it is returned. If you need to retain the data past this moment, then it is
+   * recommended that a copy of the data be made.
+   */
+  public getLastDrawData(): AbstractMapTextLabelDrawData {
+    return this.drawData;
+  }
+
   // eslint-disable-next-line jsdoc/require-jsdoc
   public draw(context: CanvasRenderingContext2D, mapProjection: MapProjection): void {
     if (this.fontSize.get() !== 0) {
@@ -160,6 +212,8 @@ export abstract class AbstractMapTextLabel implements MapTextLabel {
 
       const width = context.measureText(this.text.get()).width;
       const height = this.fontSize.get();
+
+      Vec2Math.set(width, height, this.drawData.textSize);
 
       const showBg = this.showBg.get();
       const bgPadding = this.bgPadding.get();
@@ -174,12 +228,24 @@ export abstract class AbstractMapTextLabel implements MapTextLabel {
       const centerX = pos[0] - (anchor[0] - 0.5) * (width + bgExtraWidth);
       const centerY = pos[1] - (anchor[1] - 0.5) * (height + bgExtraHeight);
 
+      Vec2Math.set(centerX - width / 2, centerY - height / 2, this.drawData.textTopLeft);
+
       if (showBg) {
         this.drawBackground(context, centerX, centerY, width, height);
+      } else {
+        Vec2Math.copy(this.drawData.textSize, this.drawData.size);
+        Vec2Math.copy(this.drawData.textTopLeft, this.drawData.topLeft);
       }
 
       this.drawText(context, centerX, centerY);
+    } else {
+      Vec2Math.set(NaN, NaN, this.drawData.textSize);
+      Vec2Math.set(NaN, NaN, this.drawData.textTopLeft);
+      Vec2Math.set(NaN, NaN, this.drawData.size);
+      Vec2Math.set(NaN, NaN, this.drawData.topLeft);
     }
+
+    (this.onDraw as SubEvent<this, AbstractMapTextLabelDrawData>).notify(this, this.drawData);
   }
 
   /**
@@ -242,6 +308,9 @@ export abstract class AbstractMapTextLabel implements MapTextLabel {
     const backgroundTop = centerY - height / 2 - (bgPadding[0] + bgOutlineWidth);
     const backgroundWidth = width + (bgPadding[1] + bgPadding[3] + 2 * bgOutlineWidth);
     const backgroundHeight = height + (bgPadding[0] + bgPadding[2] + 2 * bgOutlineWidth);
+
+    Vec2Math.set(backgroundLeft, backgroundTop, this.drawData.topLeft);
+    Vec2Math.set(backgroundWidth, backgroundHeight, this.drawData.size);
 
     let isRounded = false;
     if (bgBorderRadius > 0) {

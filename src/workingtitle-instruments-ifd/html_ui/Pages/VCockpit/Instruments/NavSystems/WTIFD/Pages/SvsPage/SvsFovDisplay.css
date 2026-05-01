@@ -1,0 +1,24 @@
+.svs-fov-display {
+  position: absolute;
+  top: 72px;
+  left: calc(50% - 176px);
+  width: 352px;
+  height: 352px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.svs-fov-display .svs-fov-line {
+  position: absolute;
+  left: calc(50% - 3px);
+  width: 6px;
+  height: 173px;
+  transform-origin: 50% 100%;
+}
+
+.svs-fov-display .svs-fov-line path {
+  stroke: var(--wtdyne-color-green);
+  stroke-width: 2px;
+  fill: none;
+  stroke-linecap: round;
+}

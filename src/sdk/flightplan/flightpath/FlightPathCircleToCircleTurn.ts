@@ -1193,7 +1193,7 @@ export class FlightPathCircleToCircleTurn {
     const denominator = sinOtherCircleRadius - this.cosD * sinCircleRadius + cosCircleRadius * sinDTimesCos;
 
     if (denominator === 0) {
-      return MathUtils.HALF_PI * numerator >= 0 ? 1 : -1;
+      return numerator >= 0 ? MathUtils.HALF_PI : -MathUtils.HALF_PI;
     } else {
       return Math.atan2(numerator, denominator);
     }

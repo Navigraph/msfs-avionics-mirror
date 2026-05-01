@@ -1,0 +1,58 @@
+.freq-page.ifd-page {
+  display: initial;
+  justify-content: initial;
+  align-items: initial;
+}
+
+.ifd-freq-tab {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ifd-freq-tab .ifd-list {
+  height: 100%;
+  margin-left: 3px;
+}
+
+.freq-page .touch-tab-group {
+  height: 33px;
+  padding-top: 5px;
+  margin-bottom: 5px;
+  overflow: hidden;
+}
+
+.freq-page .touch-tab-group .touch-tab {
+  --touch-tab-outline-color: var(--wtdyne-color-gray-3);
+  --touch-tab-selected-border-thickness: 2px;
+  --touch-tab-width: 100px;
+  height: 25px;
+  margin-top: 1px;
+}
+
+.freq-page .touch-tab-group .touch-tab.touch-tab-selected {
+  --touch-tab-outline-color: var(--wtdyne-color-cyan);
+}
+
+.freq-page .tab-content-container {
+  position: relative;
+}
+
+.freq-page .freq-page-exit {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  height: 30px;
+  width: 70px;
+  text-align: center;
+  padding-top: 2px;
+  background: #500000;
+  border-top: 2px solid #760000;
+  border-right: 2px solid #3e0000;
+  border-left: 2px solid #720000;
+  border-bottom: 2px solid #420000;
+  border-radius: 5px;
+  color: white;
+}

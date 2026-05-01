@@ -1,10 +1,9 @@
 import { ConsumerSubject } from '../data/ConsumerSubject';
 import { EventBus } from '../data/EventBus';
 import { KeyEventManager } from '../data/KeyEventManager';
-import { SimVarValueType } from '../data/SimVars';
+import { RegisteredSimVarUtils, SimVarValueType } from '../data/SimVars';
 import { ThrottleLeverManager } from '../fadec/ThrottleLeverManager';
 import { VirtualThrottleLeverEvents } from '../fadec/VirtualThrottleLeverEvents';
-import { ClockEvents } from '../instruments/Clock';
 import { AeroMath } from '../math/AeroMath';
 import { ExpSmoother } from '../math/ExpSmoother';
 import { MathUtils } from '../math/MathUtils';
@@ -100,6 +99,14 @@ export type AutothrottlePowerCorrectionTransformer = (
   targetIas: number,
   effectiveIas: number
 ) => number;
+
+/**
+ * A function which transforms a power target into a throttle position target.
+ * @param powerTarget The power target.
+ * @returns The normalized throttle position (between -1 and +1, inclusive), to set in order to achieve the
+ * specified power target.
+ */
+export type AutothrottlePowerToThrottlePosFunc = (powerTarget: number) => number;
 
 /**
  * Options for the autothrottle latch function.
@@ -239,35 +246,47 @@ export type AutothrottleOptions = {
 
   /**
    * The smoothing time constant, in seconds, to use to smooth engine power data. A value of zero is equivalent to no
-   * smoothing.
+   * smoothing. Smoothed/lookahead engine power is used in the control loop that adjusts throttle position to target
+   * the desired engine power setting, and it is only used when commanded engine power is not available to the
+   * autothrottle (via {@link AutothrottleThrottle.commandedPower}).
    */
   powerSmoothingConstant: number;
 
   /**
    * The smoothing time constant, in seconds, to use to smooth estimated power velocity while smoothing engine power
-   * data. A value of zero is equivalent to no smoothing. If not defined, estimated power velocity will not be used to
-   * adjust smoothed engine power data.
+   * data. A value of zero is equivalent to no smoothing. Smoothed/lookahead engine power is used in the control loop
+   * that adjusts throttle position to target the desired engine power setting, and it is only used when commanded
+   * engine power is not available to the autothrottle (via {@link AutothrottleThrottle.commandedPower}). If not
+   * defined, then estimated power velocity will not be used to adjust smoothed engine power data.
    */
   powerSmoothingVelocityConstant?: number;
 
   /**
    * The lookahead time, in seconds, to use for engine power data. If less than or equal to zero, the autothrottle will
    * use the current (smoothed) engine power. If greater than zero, the autothrottle will use the (smoothed) engine
-   * power trend projected into the future by amount of time equal to the lookahead.
+   * power trend projected into the future by amount of time equal to the lookahead. Smoothed/lookahead engine power is
+   * used in the control loop that adjusts throttle position to target the desired engine power setting, and it is only
+   * used when commanded engine power is not available to the autothrottle (via
+   * {@link AutothrottleThrottle.commandedPower}).
    */
   powerLookahead: number | Subscribable<number>;
 
   /**
    * The smoothing time constant, in seconds, to use to smooth lookahead engine power data. A value of zero is
-   * equivalent to no smoothing. If not defined, defaults to the value of `powerSmoothingConstant`.
+   * equivalent to no smoothing. Smoothed/lookahead engine power is used in the control loop that adjusts throttle
+   * position to target the desired engine power setting, and it is only used when commanded engine power is not
+   * available to the autothrottle (via {@link AutothrottleThrottle.commandedPower}). If not defined, defaults to the
+   * value of `powerSmoothingConstant`.
    */
   powerLookaheadSmoothingConstant?: number;
 
   /**
    * The smoothing time constant, in seconds, to use to smooth estimated power velocity while smoothing lookahead
    * engine power data. A value of zero is equivalent to no smoothing. If not defined, estimated power velocity will
-   * not be used to adjust smoothed lookahead engine power data. If not defined, defaults to the value of
-   * `powerSmoothingVelocityConstant`.
+   * not be used to adjust smoothed lookahead engine power data. Smoothed/lookahead engine power is used in the control
+   * loop that adjusts throttle position to target the desired engine power setting, and it is only used when commanded
+   * engine power is not available to the autothrottle (via {@link AutothrottleThrottle.commandedPower}). If not
+   * defined, defaults to the value of `powerSmoothingVelocityConstant`.
    */
   powerLookaheadSmoothingVelocityConstant?: number;
 
@@ -281,8 +300,19 @@ export type AutothrottleOptions = {
   /**
    * Parameters for the target power PID controller. The input of the PID is engine power error. The output of the PID
    * is a throttle position adjustment speed, in units of normalized position per second.
+   * If {@link getPowerTargetThrottlePos | `getPowerTargetThrottlePos`} is defined, then this option is ignored.
+   * Either this option or {@link getPowerTargetThrottlePos | `getPowerTargetThrottlePos`} must be defined.
    */
-  powerTargetPid: AutothrottlePidParams;
+  powerTargetPid?: AutothrottlePidParams;
+
+  /**
+   * A function which returns the throttle position required to achieve a given power target.
+   * Usually used with an aircraft's FADEC.
+   * If this option is defined, then the {@link powerTargetPid | `powerTargetPid`} option will be ignored. If this
+   * option is not defined, then the autothrottle will use PID control loops to adjust throttle position while seeking a
+   * power target, and {@link powerTargetPid | `powerTargetPid`} must be defined.
+   */
+  getPowerTargetThrottlePos?: AutothrottlePowerToThrottlePosFunc;
 
   /**
    * The smoothing time constant, in seconds, to use to smooth power targets commanded by the speed controller. A value
@@ -330,6 +360,7 @@ export type AutothrottleOptions = {
   /**
    * Parameters for the overpower protection PID controller. Defaults to the same parameters as the target power PID
    * controller.
+   * If {@link getPowerTargetThrottlePos | `getPowerTargetThrottlePos`} is defined, then this option is ignored.
    */
   overpowerPid?: AutothrottlePidParams;
 
@@ -356,6 +387,7 @@ export type AutothrottleOptions = {
    * unduly influencing the PID output. Defaults to infinity.
    */
   underspeedChangeThreshold?: number;
+
 };
 
 /**
@@ -510,6 +542,7 @@ export abstract class AbstractAutothrottle {
   protected readonly underspeedPowerCorrectionTransformer: AutothrottlePowerCorrectionTransformer;
 
   protected readonly powerLookahead: Subscribable<number>;
+  protected readonly powerTargetToThrottlePosFunc?: AutothrottlePowerToThrottlePosFunc;
 
   protected readonly selectedSpeedPid: PidController;
   protected readonly overspeedPid: PidController;
@@ -541,9 +574,9 @@ export abstract class AbstractAutothrottle {
   protected readonly hysteresis: number;
   protected readonly hysteresisRecord: Record<AutothrottleThrottleIndex, number>;
 
-  private readonly realTime = ConsumerSubject.create(this.bus.getSubscriber<ClockEvents>().on('realTime'), 0);
+  private readonly activeSimDurationSimVar = RegisteredSimVarUtils.create('E:SIMULATION TIME', SimVarValueType.Seconds);
   private updateTimer: NodeJS.Timeout | null = null;
-  private lastUpdateTime = 0;
+  private lastUpdateTime: number | undefined = undefined;
   private readonly updateHandler = this.update.bind(this);
 
   protected readonly speedCommand: SpeedCommand = {
@@ -585,7 +618,7 @@ export abstract class AbstractAutothrottle {
     airspeedIndex: number | Subscribable<number>,
     throttleInfos: readonly Readonly<AutothrottleThrottleInfo>[],
     options: AutothrottleOptions,
-    throttleLeverManager?: ThrottleLeverManager
+    throttleLeverManager?: ThrottleLeverManager,
   ) {
     this.useIndicatedMach = options.useIndicatedMach ?? false;
 
@@ -622,6 +655,20 @@ export abstract class AbstractAutothrottle {
     this.selectedSpeedAccelTargetFunc = options.selectedSpeedAccelTarget;
     this.overspeedAccelTargetFunc = options.overspeedAccelTarget ?? options.selectedSpeedAccelTarget;
     this.underspeedAccelTargetFunc = options.underspeedAccelTarget ?? options.selectedSpeedAccelTarget;
+
+    if (options.powerTargetPid === undefined && options.getPowerTargetThrottlePos === undefined) {
+      throw Error('AbstractAutothrottle: Either powerTargetPid or getPowerTargetThrottlePos must be defined');
+    }
+
+    const powerTargetPid = options.powerTargetPid ?? {
+      kP: 0,
+      kI: 0,
+      kD: 0,
+      maxOut: 0,
+      minOut: 0,
+    };
+
+    this.powerTargetToThrottlePosFunc = options.getPowerTargetThrottlePos;
 
     if (this.shouldTargetAccel) {
       const accelSmoothingConstant = options.accelSmoothingConstant ?? 0;
@@ -673,8 +720,8 @@ export abstract class AbstractAutothrottle {
     this.hysteresisRecord = {} as Record<AutothrottleThrottleIndex, number>;
 
     for (const index of AbstractAutothrottle.ALL_THROTTLE_INDEXES) {
-      this.selectedPowerPids[index] = AbstractAutothrottle.createPidFromParams(options.powerTargetPid);
-      this.overpowerPids[index] = AbstractAutothrottle.createPidFromParams(options.overpowerPid ?? options.powerTargetPid);
+      this.selectedPowerPids[index] = AbstractAutothrottle.createPidFromParams(powerTargetPid);
+      this.overpowerPids[index] = AbstractAutothrottle.createPidFromParams(options.overpowerPid ?? powerTargetPid);
 
       this.throttleSpeedSmoothers[index] = new ExpSmoother(options.throttleSpeedSmoothingConstant ?? 0);
 
@@ -960,20 +1007,13 @@ export abstract class AbstractAutothrottle {
    * Updates this autothrottle.
    */
   protected update(): void {
-    const realTime = Date.now();
+    const activeSimDuration = this.activeSimDurationSimVar.get();
 
-    const dt = (realTime - this.lastUpdateTime) / 1000;
+    const dt = this.lastUpdateTime === undefined ? 0 : activeSimDuration - this.lastUpdateTime;
 
-    this.lastUpdateTime = realTime;
+    this.lastUpdateTime = activeSimDuration;
 
-    // This shouldn't really ever happen, but just in case...
     if (dt <= 0) {
-      return;
-    }
-
-    // Check if the current time has diverged from the event bus value by more than 1 second.
-    // If it has, we are probably paused in the menu and should skip the update.
-    if (realTime - this.realTime.get() >= 1000) {
       return;
     }
 
@@ -1338,7 +1378,7 @@ export abstract class AbstractAutothrottle {
     for (let i = 0; i < this.throttles.length; i++) {
       const throttle = this.throttles[i];
       if (throttle.isServoActive) {
-        throttlePowerSum += throttle.effectivePower;
+        throttlePowerSum += throttle.power;
         throttlePowerCount++;
       }
     }
@@ -1514,20 +1554,8 @@ export abstract class AbstractAutothrottle {
     const overpowerPid = this.overpowerPids[throttle.index];
 
     const power = throttle.power;
-    const effectivePower = throttle.effectivePower;
+    const referencePower = throttle.commandedPower ?? throttle.effectivePower;
 
-    let overpowerProtDelta: number | undefined;
-    let isOverpower = false;
-
-    if (isOverpowerProtActive) {
-      const maxPower = this.maxPower.get();
-      overpowerProtDelta = overpowerPid.getOutput(dt, maxPower - effectivePower);
-      isOverpower = power > maxPower;
-    } else {
-      overpowerPid.reset();
-    }
-
-    let targetDelta: number | undefined;
     let delta: number | undefined;
 
     let isUsingOverspeedProtCommand = false;
@@ -1559,16 +1587,16 @@ export abstract class AbstractAutothrottle {
       if (
         speedCommand.overspeedProtPowerTarget !== undefined
         && speedCommand.isOverspeed
-        && speedCommand.overspeedProtPowerTarget < effectivePower
+        && speedCommand.overspeedProtPowerTarget < referencePower
       ) {
         isUsingOverspeedProtCommand = true;
       } else if (
         speedCommand.underspeedProtPowerTarget !== undefined
         && speedCommand.isUnderspeed
-        && speedCommand.underspeedProtPowerTarget > effectivePower
+        && speedCommand.underspeedProtPowerTarget > referencePower
       ) {
         isUsingUnderspeedProtCommand = true;
-      } else if (selectedThrottlePositionPowerTargetDelta !== undefined) {
+      } else if (isThrottlePosTargetActive) {
         if (speedCommand.overspeedProtPowerTarget !== undefined) {
           isUsingOverspeedProtCommand = true;
         } else if (speedCommand.underspeedProtPowerTarget !== undefined) {
@@ -1595,38 +1623,89 @@ export abstract class AbstractAutothrottle {
       }
     }
 
-    if (powerTarget !== undefined) {
-      // Targeting power
-      targetDelta = targetPid.getOutput(dt, powerTarget - effectivePower);
-    } else {
-      targetPid.reset();
-    }
+    if (this.powerTargetToThrottlePosFunc) {
+      // We can map a given power target directly to a throttle position.
 
-    if (targetDelta === undefined) {
-      // No power target is defined. Engage overpower protection if the airplane is currently in an overpower condition
-      // and the protection is attempting to reduce power OR if a selected throttle position is being targeted.
-      // Selected throttle position will get a chance to "override" the protection further down in this method.
+      if (powerTarget !== undefined) {
+        // If overpower protection is active, ensure that the power target does not exceed the maximum power. Overpower
+        // protection is considered to be engaged if and only if the power target needed to be reduced to the maximum
+        // power.
 
-      if (overpowerProtDelta !== undefined && (isThrottlePosTargetActive || (isOverpower && overpowerProtDelta < 0))) {
-        delta = overpowerProtDelta;
-        isUsingOverpowerProtCommand = true;
-      }
-    } else {
-      // A power target is defined. Engage overpower protection if the protection is targeting a lower power than the
-      // existing power target.
+        if (isOverpowerProtActive) {
+          const maxPower = this.maxPower.get();
+          if (powerTarget > maxPower) {
+            powerTarget = maxPower;
+            isUsingOverpowerProtCommand = true;
+          }
+        }
 
-      if (overpowerProtDelta !== undefined && overpowerProtDelta < targetDelta) {
-        delta = overpowerProtDelta;
-        isUsingOverpowerProtCommand = true;
+        const servoSpeed = throttle.servoSpeed.get();
+        delta = MathUtils.clamp((this.powerTargetToThrottlePosFunc(powerTarget) - throttle.normPosition) / dt, -servoSpeed, servoSpeed);
       } else {
-        delta = targetDelta;
-      }
-    }
+        // No power target is defined. Engage overpower protection if the airplane is currently in an overpower condition
+        // and the protection is attempting to reduce power OR if a selected throttle position is being targeted.
+        // Selected throttle position will get a chance to "override" the protection further down in this method.
 
-    if (delta !== undefined) {
-      delta = this.throttleSpeedSmoothers[throttle.index].next(delta, dt);
+        if (isOverpowerProtActive) {
+          const maxPower = this.maxPower.get();
+          const servoSpeed = throttle.servoSpeed.get();
+          const overpowerProtDelta = MathUtils.clamp((this.powerTargetToThrottlePosFunc(maxPower) - throttle.normPosition) / dt, -servoSpeed, servoSpeed);
+
+          if (isThrottlePosTargetActive || (power > maxPower && overpowerProtDelta < 0)) {
+            delta = overpowerProtDelta;
+            isUsingOverpowerProtCommand = true;
+          }
+        }
+      }
     } else {
-      this.throttleSpeedSmoothers[throttle.index].reset();
+      // We can't map a given power target directly to a throttle position. Therefore, we need to use PID control loops
+      // to seek throttle position given power targets.
+
+      let targetDelta: number | undefined;
+
+      if (powerTarget !== undefined) {
+        targetDelta = targetPid.getOutput(dt, powerTarget - referencePower);
+      } else {
+        targetPid.reset();
+      }
+
+      let overpowerProtDelta: number | undefined;
+      let isOverpower = false;
+
+      if (isOverpowerProtActive) {
+        const maxPower = this.maxPower.get();
+        overpowerProtDelta = overpowerPid.getOutput(dt, maxPower - referencePower);
+        isOverpower = power > maxPower;
+      } else {
+        overpowerPid.reset();
+      }
+
+      if (targetDelta === undefined) {
+        // No power target is defined. Engage overpower protection if the airplane is currently in an overpower condition
+        // and the protection is attempting to reduce power OR if a selected throttle position is being targeted.
+        // Selected throttle position will get a chance to "override" the protection further down in this method.
+
+        if (overpowerProtDelta !== undefined && (isThrottlePosTargetActive || (isOverpower && overpowerProtDelta < 0))) {
+          delta = overpowerProtDelta;
+          isUsingOverpowerProtCommand = true;
+        }
+      } else {
+        // A power target is defined. Engage overpower protection if the protection is targeting a lower power than the
+        // existing power target.
+
+        if (overpowerProtDelta !== undefined && overpowerProtDelta < targetDelta) {
+          delta = overpowerProtDelta;
+          isUsingOverpowerProtCommand = true;
+        } else {
+          delta = targetDelta;
+        }
+      }
+
+      if (delta !== undefined) {
+        delta = this.throttleSpeedSmoothers[throttle.index].next(delta, dt);
+      } else {
+        this.throttleSpeedSmoothers[throttle.index].reset();
+      }
     }
 
     if (selectedThrottlePositionPowerTargetDelta !== undefined) {
@@ -1669,8 +1748,6 @@ export abstract class AbstractAutothrottle {
     this.isAlive = false;
 
     this.stop();
-
-    this.realTime.destroy();
 
     this.throttles.forEach(throttle => { throttle.destroy(); });
   }
@@ -1740,6 +1817,9 @@ export abstract class AutothrottleThrottle {
   public get effectivePower(): number {
     return this._effectivePower;
   }
+
+  /** The power commanded by this throttle, or `undefined` if the commanded power cannot be determined. */
+  public readonly commandedPower: number | undefined = undefined;
 
   private readonly _isServoActive = Subject.create(false);
   // eslint-disable-next-line jsdoc/require-returns
@@ -1851,6 +1931,8 @@ export abstract class AutothrottleThrottle {
     this._position = this.getPosition();
     this._power = this.getPower();
 
+    (this.commandedPower as number | undefined) = this.getCommandedPower();
+
     const lookahead = Math.max(0, this.powerLookahead.get());
     const smoothedPower = this.powerSmoother.next(this._power, dt);
 
@@ -1874,6 +1956,14 @@ export abstract class AutothrottleThrottle {
    * @returns The power delivered by this throttle's engine.
    */
   protected abstract getPower(): number;
+
+  /**
+   * Gets the power commanded by this throttle, or `undefined` if the commanded power cannot be determined.
+   * @returns The power commanded by this throttle, or `undefined` if the commanded power cannot be determined.
+   */
+  protected getCommandedPower(): number | undefined {
+    return undefined;
+  }
 
   /**
    * Drives this throttle toward a target normalized position over a period of time.

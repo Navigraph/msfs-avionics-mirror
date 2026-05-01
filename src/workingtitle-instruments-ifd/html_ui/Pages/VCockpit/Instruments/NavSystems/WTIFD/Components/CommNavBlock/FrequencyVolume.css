@@ -1,0 +1,9 @@
+.wt-ifd-freq-volume-container {
+    position: absolute;
+    bottom: 0;
+    height: 25px;
+    width: 100%;
+    padding-left: 8px;
+    padding-right: 4px;
+    padding-bottom: 1px;
+}

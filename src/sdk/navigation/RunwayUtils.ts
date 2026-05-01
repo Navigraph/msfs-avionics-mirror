@@ -165,7 +165,8 @@ export class RunwayUtils {
       startThresholdLength: 0,
       endThresholdLength: 0,
       surface: RunwaySurfaceType.Concrete,
-      lighting: RunwayLightingType.Unknown
+      lighting: RunwayLightingType.Unknown,
+      closed: undefined,
     };
   }
 
@@ -228,6 +229,8 @@ export class RunwayUtils {
         .set(runway.latitude, runway.longitude)
         .offset(course - 180, UnitType.METER.convertTo(thresholdDistanceFromCenter, UnitType.GA_RADIAN));
 
+      const closed = i === 0 ? runway.primaryClosed : runway.secondaryClosed;
+
       splitRunways.push({
         parentRunwayIndex: index,
         designation,
@@ -245,7 +248,8 @@ export class RunwayUtils {
         startThresholdLength,
         endThresholdLength,
         surface: runway.surface,
-        lighting: runway.lighting
+        lighting: runway.lighting,
+        closed,
       });
     }
     return splitRunways;

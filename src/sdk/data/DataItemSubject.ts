@@ -5,7 +5,6 @@ import { DataItemUtils } from './DataItemUtils';
 
 /**
  * A subscribable subject that provides a {@link DataItem} value.
- * @experimental
  */
 export class DataItemSubject<T> extends AbstractSubscribable<Readonly<DataItem<T>>> implements MutableSubscribable<Readonly<DataItem<T>>> {
   /** @inheritDoc */

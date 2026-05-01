@@ -1,0 +1,213 @@
+.datablock {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: "Arial Bold", sans-serif;
+  font-size: 12px;
+  position: relative;
+  margin-right: 3px;
+  margin-left: 3px;
+}
+
+.datablock.datablock-row {
+  flex-direction: row;
+}
+
+.datablock.datablock-blank {
+  margin-bottom: 3px;
+}
+
+.datablock.datablock-selected {
+  box-shadow: 0 0 0 3px var(--wtdyne-color-white);
+  border-radius: 1px;
+  background: var(--wtdyne-color-dark-blue) !important;
+}
+
+.wt-ifd-5xx-container.svs-fullscreen .datablocks-container-top-bar .datablock {
+  background-color: unset;
+}
+
+.datablock-content-row {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  margin-right: 3px;
+  margin-bottom: -2px;
+}
+
+.datablock-content-row.space-below {
+  margin-bottom: 0;
+}
+
+.datablock-content-row.between {
+  justify-content: space-between;
+}
+
+.datablock-font-narrow {
+  font-family: "Arial Narrow Bold", sans-serif;
+}
+
+.datablock-indent {
+  margin-left: 5px;
+}
+
+.datablock-space-after {
+  margin-right: 2px;
+}
+
+.datablock-font-small {
+  font-size: 17px;
+  padding-top: 7px;
+  letter-spacing: -0.3px;
+  margin-bottom: -5px;
+}
+
+.datablock-topbar .datablock-font-small {
+  padding-top: 0;
+}
+
+.datablock-font-small.title-padding {
+  padding-top: 3px;
+}
+
+.datablock-font-small.no-padding {
+  padding-top: inherit;
+}
+
+.datablock-font-large {
+  font-size: 24px;
+  margin-bottom: -5px;
+  letter-spacing: -0.5px;
+}
+
+.datablock-text-cyan {
+  color: var(--wtdyne-color-light-cyan);
+}
+
+.datablock-text-mint {
+  color: var(--wtdyne-color-mint);
+}
+
+.datablock-text-magenta {
+  color: var(--wtdyne-color-magenta);
+}
+
+.datablock-value-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.datablock .datablock-numberunit .numberunit-num {
+  font-size: 24px;
+  margin-bottom: -5px;
+  color: var(--wtdyne-color-light-cyan);
+}
+
+.datablock .datablock-numberunit .numberunit-unit-small {
+  font-size: 17px;
+  padding-top: 7px;
+  letter-spacing: -0.3px;
+  margin-bottom: -5px;
+  color: var(--wtdyne-color-mint);
+}
+
+.datablocks-container {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  top: -2px;
+}
+
+.datablocks-container-top-bar {
+  position: absolute;
+  top: -4px;
+  left: 144px;
+  right: 144px;
+  height: 27px;
+  padding-top: 3px;
+}
+
+.wt-ifd-5xx-container.svs-fullscreen .datablocks-container-top-bar {
+  /* The top bar is rendered on top of the SVS on the custom 550. The full screen container has z-index 50. */
+  z-index: 55;
+}
+
+.datablocks-container-left-sidebar {
+  width: 137px;
+  height: 100%;
+  display: flex;
+}
+
+.datablocks-container-right-sidebar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.datablocks-container-right-sidebar .ifd-list {
+  width: 100%;
+  height: 100%;
+}
+
+.datablock-slot {
+  position: relative;
+  min-width: 60px;
+  display: flex;
+  align-items: center;
+}
+
+.datablocks-container-right-sidebar .datablock.datablock-row .datablock-font-small,
+.datablocks-container-right-sidebar .datablock.datablock-row .datablock-font-large {
+  position: relative;
+  top: -4px;
+}
+
+.datablocks-container-left-sidebar .datablock-slot:not(.datablock-slot-empty),
+.datablocks-container-right-sidebar .datablock-slot:not(.datablock-slot-empty) {
+  border-bottom: 3px solid var(--wtdyne-color-blue);
+  border-top: 3px solid var(--wtdyne-color-blue);
+}
+
+.datablocks-container-left-sidebar .datablock-slot:not(.datablock-slot-empty)~.datablock-slot:not(.datablock-slot-empty),
+.datablocks-container-right-sidebar .datablock-slot:not(.datablock-slot-empty)~.datablock-slot:not(.datablock-slot-empty) {
+  border-top: none;
+}
+
+.datablock-slot-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.datablock-slot#transponder-thumbnail .datablock-slot-content {
+  align-items: flex-start;
+}
+
+.slots-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+}
+
+.datablocks-container-top-bar .slots-container {
+  justify-content: space-between;
+}
+
+.datablocks-container-left-sidebar .slots-container,
+.datablocks-container-right-sidebar .slots-container {
+  flex-direction: column;
+}
+
+.ifd-list-item-wrapper .datablock-slot {
+  height: 100%;
+}
+
+.ifd-list-item-wrapper .datablock-slot .datablock {
+  height: 100%;
+}
+
+.ifd-list.datablocks-list {
+  --ifd-list-scroll-bar-width: 0px;
+}

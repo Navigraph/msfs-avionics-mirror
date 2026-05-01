@@ -1,0 +1,46 @@
+.data-block-heading-up-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.data-block-heading-up-overlay .range-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.data-block-heading-up-overlay .map-range-numbers {
+  position: absolute;
+}
+
+.data-block-heading-up-overlay .map-range-numbers .range-number-inner {
+  left: 5px;
+  bottom: 35px;
+  font-size: 16px;
+}
+
+.data-block-heading-up-overlay .map-range-numbers .range-number-outer {
+  left: 25px;
+  bottom: 35px;
+  font-size: 16px;
+}
+
+.data-block-heading-up-overlay .map-range-numbers .range-number-inner div,
+.data-block-heading-up-overlay .map-range-numbers .range-number-outer div {
+  display: flex;
+  align-items: center;
+}
+
+.data-block-heading-up-overlay .map-range-numbers .range-number-inner .numberunit-unit-small,
+.data-block-heading-up-overlay .map-range-numbers .range-number-outer .numberunit-unit-small {
+  font-size: 10px;
+  padding-left: 2px;
+}

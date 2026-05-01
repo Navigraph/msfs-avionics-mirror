@@ -1,4 +1,6 @@
-import { APLateralModes, APModeType, APStateManager, APVerticalModes, ControlEvents, KeyEventData, KeyEventManager, NavSourceType, SimVarValueType } from '@microsoft/msfs-sdk';
+import {
+  APLateralModes, APModeType, APStateManager, APVerticalModes, ControlEvents, KeyEventData, KeyEventManager, NavSourceType, SimVarValueType
+} from '@microsoft/msfs-sdk';
 
 /**
  * A WT Line autopilot state manager.
@@ -28,7 +30,6 @@ export class WTLineAPStateManager extends APStateManager {
     manager.interceptKey('AUTOPILOT_DISENGAGE_TOGGLE', true);
 
     //alt modes
-    manager.interceptKey('AP_ALT_HOLD', false);
     manager.interceptKey('AP_ALT_HOLD', false);
     manager.interceptKey('AP_ALT_HOLD_ON', false);
     manager.interceptKey('AP_ALT_HOLD_OFF', false);
@@ -117,9 +118,7 @@ export class WTLineAPStateManager extends APStateManager {
 
   /** @inheritdoc */
   protected handleKeyIntercepted({ key, value0 }: KeyEventData): void {
-    const controlEventPub = this.bus.getPublisher<ControlEvents>();
     switch (key) {
-
       case 'AP_MASTER': {
         // We get the AP master state directly from the simvar instead of the apMasterOn subject because the subject
         // is only updated at the glass cockpit refresh rate, and we want the most up-to-date state possible.
@@ -238,7 +237,6 @@ export class WTLineAPStateManager extends APStateManager {
         }
         this.vsLastPressed = Date.now();
         break;
-
       case 'AP_ALT_HOLD':
       case 'AP_PANEL_ALTITUDE_HOLD':
         this.sendApModeEvent(APModeType.VERTICAL, APVerticalModes.ALT);
@@ -256,7 +254,6 @@ export class WTLineAPStateManager extends APStateManager {
           this.sendApModeEvent(APModeType.VERTICAL, APVerticalModes.ALT, value0 === 1 ? true : false);
         }
         break;
-
       case 'FLIGHT_LEVEL_CHANGE':
         this.sendApModeEvent(APModeType.VERTICAL, APVerticalModes.FLC);
         break;
@@ -267,19 +264,41 @@ export class WTLineAPStateManager extends APStateManager {
         this.sendApModeEvent(APModeType.VERTICAL, APVerticalModes.FLC, false);
         break;
       case 'AP_NAV_SELECT_SET':
-        if (value0 !== undefined && value0 >= 1 && value0 <= 2) {
-          controlEventPub.pub('cdi_src_set', { type: NavSourceType.Nav, index: value0 }, true);
-        }
+        this.onApNavSelectSet(value0);
         break;
       case 'TOGGLE_GPS_DRIVES_NAV1':
-        controlEventPub.pub('cdi_src_gps_toggle', true, true);
+        this.onToggleGpsDrivesNav();
         break;
       case 'BAROMETRIC':
-        controlEventPub.pub('baro_set', true, true);
+        this.onBarometric();
         break;
       case 'AUTO_THROTTLE_TO_GA':
         this.sendApModeEvent(APModeType.VERTICAL, APVerticalModes.TO);
     }
+  }
+
+  /**
+   * Responds to an AP NAV SELECT SET key event
+   * @param value The value to set
+   */
+  protected onApNavSelectSet(value?: number): void {
+    if (value !== undefined && value >= 1 && value <= 2) {
+      this.bus.getPublisher<ControlEvents>().pub('cdi_src_set', { type: NavSourceType.Nav, index: value }, true);
+    }
+  }
+
+  /**
+   * Responds to a TOGGLE GPS DRIVES NAV1 key event
+   */
+  protected onToggleGpsDrivesNav(): void {
+    this.bus.getPublisher<ControlEvents>().pub('cdi_src_gps_toggle', true, true);
+  }
+
+  /**
+   * Responds to a BAROMETRIC key event
+   */
+  protected onBarometric(): void {
+    this.bus.getPublisher<ControlEvents>().pub('baro_set', true, true);
   }
 
   /**

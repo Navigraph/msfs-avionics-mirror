@@ -1,0 +1,8 @@
+.compass-numbers {
+  color: var(--wtdyne-color-light-blue);
+  text-shadow: -1px -1px 0 var(--wtdyne-color-gray-4),
+  0 -1px 0 var(--wtdyne-color-gray-4), 1px -1px 0 var(--wtdyne-color-gray-4),
+  1px 0 0 var(--wtdyne-color-gray-4), 1px 1px 0 var(--wtdyne-color-gray-4),
+  0 1px 0 var(--wtdyne-color-gray-4), -1px 1px 0 var(--wtdyne-color-gray-4),
+  -1px 0 0 var(--wtdyne-color-gray-4);
+}

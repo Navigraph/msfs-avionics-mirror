@@ -1,6 +1,6 @@
 {
   "name": "workingtitle-instruments-epic2",
-  "version": "2.2.8",
+  "version": "2.2.12",
   "description": "Working Title MSFS Epic 2",
   "main": "index.ts",
   "scripts": {
@@ -22,8 +22,8 @@
   "author": "Working Title Simulations, LLC",
   "license": "Modified MIT",
   "devDependencies": {
-    "@microsoft/msfs-epic2-shared": "../shared/dist/microsoft-msfs-epic2-shared-2.2.8.tgz",
-    "@microsoft/msfs-sdk": "2.3.3",
+    "@microsoft/msfs-epic2-shared": "../shared/dist/microsoft-msfs-epic2-shared-2.2.12.tgz",
+    "@microsoft/msfs-sdk": "2.4.3",
     "@microsoft/msfs-ts-transformer": "^1.0.0",
     "@microsoft/msfs-types": "1.14.6",
     "@rollup/plugin-image": "^3.0.2",

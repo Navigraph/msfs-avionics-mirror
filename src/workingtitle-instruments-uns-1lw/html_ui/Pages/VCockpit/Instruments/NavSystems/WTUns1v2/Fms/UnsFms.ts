@@ -25,7 +25,7 @@ import { UnsFmsUtils } from './UnsFmsUtils';
 
 /** A UNS-1 FMS. */
 export class UnsFms {
-  public static version = 'WT2.1.7';
+  public static version = 'WT2.1.11';
 
   /** Set to true by FMC pages when the plan on this FMS instance is in modification and awaiting a cancel or exec. */
   public readonly planInMod = Subject.create<boolean>(false);

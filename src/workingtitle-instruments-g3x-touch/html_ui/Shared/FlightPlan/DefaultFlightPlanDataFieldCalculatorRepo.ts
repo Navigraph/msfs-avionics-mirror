@@ -1,7 +1,7 @@
 import {
-  Accessible, AdcEvents, BasicNavAngleUnit, ClockEvents, ConsumerSubject, ConsumerValue, EngineEvents, EventBus,
-  GNSSEvents, LNavEvents, LNavUtils, MappedSubject, MappedValue, Subscribable, SubscribableUtils, Subscription,
-  UnitType, Value
+  Accessible, AdcEvents, AstroMath, BasicNavAngleUnit, ClockEvents, ConsumerSubject, ConsumerValue, EngineEvents,
+  EventBus, GeoPoint, GNSSEvents, LegDefinition, LNavEvents, LNavUtils, MappedSubject, MappedValue, Subscribable,
+  SubscribableUtils, Subscription, Unit, UnitFamily, UnitType, Value, Vec3Math
 } from '@microsoft/msfs-sdk';
 
 import { FmsPositionMode, FmsPositionSystemEvents, FmsUtils, LNavDataEvents } from '@microsoft/msfs-garminsdk';
@@ -10,12 +10,17 @@ import { FuelTotalizerEvents } from '../Fuel/FuelTotalizerEvents';
 import { FlightPlanDataField, FlightPlanDataFieldType } from './FlightPlanDataField';
 import { FlightPlanDataFieldCalculator } from './FlightPlanDataFieldCalculator';
 import { FlightPlanDataFieldCalculatorRepo } from './FlightPlanDataFieldCalculatorRepo';
-import { FlightPlanDataItem, FlightPlanDataItemType, FlightPlanLegDataItemActiveStatus } from './FlightPlanDataItem';
+import { FlightPlanDataItem, FlightPlanDataItemType, FlightPlanLegDataItem, FlightPlanLegDataItemActiveStatus } from './FlightPlanDataItem';
+import { G3XUnitsFuelType } from '../AvionicsConfig/UnitsConfig';
+import { G3XUnitType } from '../Math/G3XUnitType';
 
 /**
  * Configuration options for {@link DefaultFlightPlanDataFieldCalculatorRepo}.
  */
 export type DefaultFlightPlanDataFieldCalculatorRepoOptions = {
+  /** The type of fuel to use for unit conversions. Defaults to {@link G3XUnitsFuelType.Sim}. */
+  fuelType?: G3XUnitsFuelType;
+
   /** Whether sensed fuel flow can be used by the repository's calculators. Defaults to `false`. */
   supportSensedFuelFlow?: boolean;
 
@@ -29,6 +34,8 @@ export type DefaultFlightPlanDataFieldCalculatorRepoOptions = {
  */
 export class DefaultFlightPlanDataFieldCalculatorRepo implements FlightPlanDataFieldCalculatorRepo {
   private readonly calculators = new Map<FlightPlanDataFieldType, FlightPlanDataFieldCalculator>();
+
+  private readonly fuelUnit: Unit<UnitFamily.Weight>;
 
   private readonly fmsPosIndex: Subscribable<number>;
 
@@ -94,6 +101,8 @@ export class DefaultFlightPlanDataFieldCalculatorRepo implements FlightPlanDataF
   private readonly lnavWptDistance = ConsumerValue.create(null, 0);
   private readonly lnavDtk = ConsumerValue.create(null, 0);
 
+  private sunriseSunsetCalculatorHost?: FlightPlanSunriseSunsetCalculatorHost;
+
   private isAlive = true;
 
   private readonly subscriptions: Subscription[] = [
@@ -127,6 +136,20 @@ export class DefaultFlightPlanDataFieldCalculatorRepo implements FlightPlanDataF
     private readonly planFuelFlow: Subscribable<number>,
     options?: Readonly<DefaultFlightPlanDataFieldCalculatorRepoOptions>
   ) {
+    switch (options?.fuelType) {
+      case G3XUnitsFuelType.Autogas:
+        this.fuelUnit = UnitType.GALLON_AUTOGAS_FUEL;
+        break;
+      case G3XUnitsFuelType.OneHundredLL:
+        this.fuelUnit = UnitType.GALLON_100LL_FUEL;
+        break;
+      case G3XUnitsFuelType.JetA:
+        this.fuelUnit = UnitType.GALLON_JET_A_FUEL;
+        break;
+      default:
+        this.fuelUnit = G3XUnitType.GALLON_SIM_FUEL;
+    }
+
     this.fmsPosIndex = SubscribableUtils.toSubscribable(fmsPosIndex, true);
 
     const sub = bus.getSubscriber<ClockEvents & AdcEvents & GNSSEvents & EngineEvents & FuelTotalizerEvents & FmsPositionSystemEvents>();
@@ -208,11 +231,11 @@ export class DefaultFlightPlanDataFieldCalculatorRepo implements FlightPlanDataF
       case FlightPlanDataFieldType.CumulativeEte:
         return new FlightPlanEteCalculator(true, this.isLNavDataValid, this.lnavWptDistance, this.nominalGroundSpeed);
       case FlightPlanDataFieldType.CumulativeFuel:
-        return new FlightPlanFuelBurnCalculator(true, this.isLNavDataValid, this.lnavWptDistance, this.nominalGroundSpeed, this.nominalFuelFlow);
+        return new FlightPlanFuelBurnCalculator(true, this.isLNavDataValid, this.lnavWptDistance, this.nominalGroundSpeed, this.nominalFuelFlow, this.fuelUnit);
       case FlightPlanDataFieldType.Eta:
         return new FlightPlanEtaCalculator(this.simTime, this.isLNavDataValid, this.lnavWptDistance, this.nominalGroundSpeed);
       case FlightPlanDataFieldType.FuelRemaining:
-        return new FlightPlanFuelRemainingCalculator(this.fuelOnBoard, this.isLNavDataValid, this.lnavWptDistance, this.nominalGroundSpeed, this.nominalFuelFlow);
+        return new FlightPlanFuelRemainingCalculator(this.fuelOnBoard, this.isLNavDataValid, this.lnavWptDistance, this.nominalGroundSpeed, this.nominalFuelFlow, this.fuelUnit);
       case FlightPlanDataFieldType.Dtk:
         return new FlightPlanDtkCalculator(this.isLNavDataValid, this.lnavDtk, this.magVar);
       case FlightPlanDataFieldType.LegDistance:
@@ -220,11 +243,10 @@ export class DefaultFlightPlanDataFieldCalculatorRepo implements FlightPlanDataF
       case FlightPlanDataFieldType.LegEte:
         return new FlightPlanEteCalculator(false, this.isLNavDataValid, this.lnavWptDistance, this.nominalGroundSpeed);
       case FlightPlanDataFieldType.LegFuel:
-        return new FlightPlanFuelBurnCalculator(false, this.isLNavDataValid, this.lnavWptDistance, this.nominalGroundSpeed, this.nominalFuelFlow);
+        return new FlightPlanFuelBurnCalculator(false, this.isLNavDataValid, this.lnavWptDistance, this.nominalGroundSpeed, this.nominalFuelFlow, this.fuelUnit);
       case FlightPlanDataFieldType.Sunrise:
-        return new FlightPlanNullCalculator();
       case FlightPlanDataFieldType.Sunset:
-        return new FlightPlanNullCalculator();
+        return (this.sunriseSunsetCalculatorHost ??= new FlightPlanSunriseSunsetCalculatorHost(this.simTime)).getCalculator(type);
       default:
         throw new FlightPlanNullCalculator();
     }
@@ -388,13 +410,16 @@ class FlightPlanFuelBurnCalculator implements FlightPlanDataFieldCalculator {
    * @param lnavWptDistance The LNAV-calculated distance to the active waypoint, in nautical miles.
    * @param groundSpeed The ground speed, in knots, to use for calculations.
    * @param fuelFlow The fuel flow, in gallons per hour, to use for calculations.
+   * @param fuelUnit The unit with which to interpret fuel values. The unit should should define the weight equivalent
+   * of one U.S. gallon of fuel.
    */
   public constructor(
     private readonly isCumulative: boolean,
     private readonly isLNavDataValid: Accessible<boolean>,
     private readonly lnavWptDistance: Accessible<number>,
     private readonly groundSpeed: Accessible<number>,
-    private readonly fuelFlow: Accessible<number>
+    private readonly fuelFlow: Accessible<number>,
+    private readonly fuelUnit: Unit<UnitFamily.Weight>
   ) {
   }
 
@@ -420,13 +445,13 @@ class FlightPlanFuelBurnCalculator implements FlightPlanDataFieldCalculator {
           case FlightPlanLegDataItemActiveStatus.To: {
             const legFuelBurn = this.lnavWptDistance.get() / gs * ff;
             cumulativeFuelBurn = legFuelBurn;
-            field?.value.set(this.isCumulative ? cumulativeFuelBurn : legFuelBurn, UnitType.GALLON_FUEL);
+            field?.value.set(this.isCumulative ? cumulativeFuelBurn : legFuelBurn, this.fuelUnit);
             break;
           }
           case FlightPlanLegDataItemActiveStatus.Future: {
             const legFuelBurn = UnitType.METER.convertTo(item.leg.calculated?.distanceWithTransitions ?? NaN, UnitType.NMILE) / gs * ff;
             cumulativeFuelBurn += legFuelBurn;
-            field?.value.set(this.isCumulative ? cumulativeFuelBurn : legFuelBurn, UnitType.GALLON_FUEL);
+            field?.value.set(this.isCumulative ? cumulativeFuelBurn : legFuelBurn, this.fuelUnit);
             break;
           }
           default:
@@ -438,7 +463,7 @@ class FlightPlanFuelBurnCalculator implements FlightPlanDataFieldCalculator {
     }
 
     (cumulativeDataField as FlightPlanDataField<FlightPlanDataFieldType.CumulativeFuel | FlightPlanDataFieldType.LegFuel> | null)
-      ?.value.set(isLNavDataValid ? cumulativeFuelBurn : NaN, UnitType.GALLON_FUEL);
+      ?.value.set(isLNavDataValid ? cumulativeFuelBurn : NaN, this.fuelUnit);
   }
 }
 
@@ -453,13 +478,16 @@ class FlightPlanFuelRemainingCalculator implements FlightPlanDataFieldCalculator
    * @param lnavWptDistance The LNAV-calculated distance to the active waypoint, in nautical miles.
    * @param groundSpeed The ground speed, in knots, to use for calculations.
    * @param fuelFlow The fuel flow, in gallons per hour, to use for calculations.
+   * @param fuelUnit The unit with which to interpret fuel values. The unit should should define the weight equivalent
+   * of one U.S. gallon of fuel.
    */
   public constructor(
     private readonly fuelOnBoard: Accessible<number>,
     private readonly isLNavDataValid: Accessible<boolean>,
     private readonly lnavWptDistance: Accessible<number>,
     private readonly groundSpeed: Accessible<number>,
-    private readonly fuelFlow: Accessible<number>
+    private readonly fuelFlow: Accessible<number>,
+    private readonly fuelUnit: Unit<UnitFamily.Weight>
   ) {
   }
 
@@ -485,12 +513,12 @@ class FlightPlanFuelRemainingCalculator implements FlightPlanDataFieldCalculator
         switch (item.activeStatus.get()) {
           case FlightPlanLegDataItemActiveStatus.To: {
             cumulativeFuelBurn = this.lnavWptDistance.get() / gs * ff;
-            field?.value.set(fob - cumulativeFuelBurn, UnitType.GALLON_FUEL);
+            field?.value.set(fob - cumulativeFuelBurn, this.fuelUnit);
             break;
           }
           case FlightPlanLegDataItemActiveStatus.Future: {
             cumulativeFuelBurn += UnitType.METER.convertTo(item.leg.calculated?.distanceWithTransitions ?? NaN, UnitType.NMILE) / gs * ff;
-            field?.value.set(fob - cumulativeFuelBurn, UnitType.GALLON_FUEL);
+            field?.value.set(fob - cumulativeFuelBurn, this.fuelUnit);
             break;
           }
           default:
@@ -502,7 +530,7 @@ class FlightPlanFuelRemainingCalculator implements FlightPlanDataFieldCalculator
     }
 
     (cumulativeDataField as FlightPlanDataField<FlightPlanDataFieldType.FuelRemaining> | null)
-      ?.value.set(isLNavDataValid ? fob - cumulativeFuelBurn : NaN, UnitType.GALLON_FUEL);
+      ?.value.set(isLNavDataValid ? fob - cumulativeFuelBurn : NaN, this.fuelUnit);
   }
 }
 
@@ -618,6 +646,139 @@ class FlightPlanDtkCalculator implements FlightPlanDataFieldCalculator {
     }
 
     (cumulativeDataField as FlightPlanDataField<FlightPlanDataFieldType.Dtk> | null)
+      ?.value.set(NaN);
+  }
+}
+
+/**
+ * A host of calculators that calculate flight plan leg sunrise and sunset times. The calculators provided by the host
+ * share a common pool of cached data that is used to reduce the amount of redundant calculations that are performed.
+ */
+class FlightPlanSunriseSunsetCalculatorHost {
+  private static readonly EXPIRE_TIME = 60000; // ms
+  private static readonly EXPIRE_DISTANCE = 2.908882086657216e-4; // 1 arc-minute (~1 nautical mile)
+
+  private readonly location = new GeoPoint(0, 0);
+
+  private readonly cachedResults = new WeakMap<LegDefinition, {
+    /** The simulation time used to calculate the cached result, as a Javascript timestamp. */
+    time: number;
+
+    /** The latitude used to calculate the cached result, in degrees. */
+    lat: number;
+
+    /** The longitude used to calculate the cached result, in degrees. */
+    lon: number;
+
+    /** The cached result, as `[transit, sunrise, sunset]`. */
+    result: Float64Array;
+  }>();
+
+  private readonly sunriseCalculator = new FlightPlanSunriseSunsetCalculator(this.getSunriseSunsetTime.bind(this, 1));
+  private readonly sunsetCalculator = new FlightPlanSunriseSunsetCalculator(this.getSunriseSunsetTime.bind(this, 2));
+
+  /**
+   * Creates a new instance of FlightPlanSunriseSunsetCalculator.
+   * @param simTime The current simulation time, as a Javascript timestamp.
+   */
+  public constructor(private readonly simTime: Accessible<number>) {
+  }
+
+  /**
+   * Gets a calculator from this host.
+   * @param type The type of data field for which to get a calculator.
+   * @returns A calculator from this host for the specified data field type.
+   */
+  public getCalculator(type: FlightPlanDataFieldType.Sunrise | FlightPlanDataFieldType.Sunset): FlightPlanDataFieldCalculator {
+    return type === FlightPlanDataFieldType.Sunrise ? this.sunriseCalculator : this.sunsetCalculator;
+  }
+
+  /**
+   * Gets a sunrise or sunset time, as a Javascript timestamp, for a flight plan leg data item.
+   * @param resultIndex `1` to get the sunrise time or `2` to get the sunset time.
+   * @param dataItem The data item for which to get the sunrise or sunset time.
+   * @returns The sunrise or sunset time, as a Javascript timestamp, for the specified flight plan leg data item.
+   */
+  private getSunriseSunsetTime(resultIndex: 1 | 2, dataItem: FlightPlanLegDataItem): number {
+    const simTime = this.simTime.get();
+
+    const location = dataItem.leg.calculated && dataItem.leg.calculated.endLat !== undefined && dataItem.leg.calculated.endLon !== undefined
+      ? this.location.set(dataItem.leg.calculated.endLat, dataItem.leg.calculated.endLon)
+      : this.location.set(NaN, NaN);
+
+    let cached = this.cachedResults.get(dataItem.leg);
+
+    if (cached) {
+      if (
+        Math.abs(simTime - cached.time) < FlightPlanSunriseSunsetCalculatorHost.EXPIRE_TIME
+        && isFinite(cached.lat)
+        && isFinite(cached.lon)
+        && location.isValid()
+        && location.distance(cached) < FlightPlanSunriseSunsetCalculatorHost.EXPIRE_DISTANCE
+      ) {
+        return cached.result[resultIndex];
+      }
+    } else {
+      cached = {
+        time: NaN,
+        lat: NaN,
+        lon: NaN,
+        result: Vec3Math.create(),
+      };
+      this.cachedResults.set(dataItem.leg, cached);
+    }
+
+    cached.time = simTime;
+    cached.lat = location.lat;
+    cached.lon = location.lon;
+
+    if (this.location.isValid()) {
+      AstroMath.getSunriseAndSunsetTimes(location, simTime, cached.result);
+    } else {
+      Vec3Math.set(NaN, NaN, NaN, cached.result);
+    }
+
+    return cached.result[resultIndex];
+  }
+}
+
+/**
+ * A calculator that calculates flight plan leg sunrise or sunset times.
+ */
+class FlightPlanSunriseSunsetCalculator implements FlightPlanDataFieldCalculator {
+  /**
+   * Creates a new instance of FlightPlanSunriseSunsetCalculator.
+   * @param getTime A function that gets the sunrise or sunset time for this calculator.
+   */
+  public constructor(private readonly getTime: (dataItem: FlightPlanLegDataItem) => number) {
+  }
+
+  /** @inheritDoc */
+  public calculate(dataFieldIndex: number, dataItems: readonly FlightPlanDataItem[], cumulativeDataField: FlightPlanDataField | null): void {
+    for (let i = 0; i < dataItems.length; i++) {
+      const item = dataItems[i];
+
+      if (item.type !== FlightPlanDataItemType.Leg) {
+        continue;
+      }
+
+      const field = item.dataFields[dataFieldIndex].get() as FlightPlanDataField<FlightPlanDataFieldType.Sunrise | FlightPlanDataFieldType.Sunset> | null;
+
+      if (!field) {
+        continue;
+      }
+
+      switch (item.activeStatus.get()) {
+        case FlightPlanLegDataItemActiveStatus.To:
+        case FlightPlanLegDataItemActiveStatus.Future:
+          field.value.set(this.getTime(item));
+          break;
+        default:
+          field.value.set(NaN);
+      }
+    }
+
+    (cumulativeDataField as FlightPlanDataField<FlightPlanDataFieldType.Sunrise | FlightPlanDataFieldType.Sunset> | null)
       ?.value.set(NaN);
   }
 }

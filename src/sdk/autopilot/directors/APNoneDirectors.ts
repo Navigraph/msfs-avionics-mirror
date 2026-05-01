@@ -1,4 +1,4 @@
-import { MSFSAPStates } from '../../navigation';
+import { MSFSAPStates } from '../MSFSAPStates';
 import { DirectorState, PlaneDirector } from './PlaneDirector';
 
 /**
@@ -19,7 +19,7 @@ export class APNoneVerticalDirector implements PlaneDirector {
   public onDeactivate?: (() => void) | undefined;
 
   /** @inheritdoc */
-  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean) => void;
+  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number, maxNoseDownPitch?: number, maxNoseUpPitch?: number) => void;
 
   /** @inheritdoc */
   public activate(): void {

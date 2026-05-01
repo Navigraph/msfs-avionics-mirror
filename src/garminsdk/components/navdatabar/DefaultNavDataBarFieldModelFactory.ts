@@ -1,4 +1,4 @@
-import { EventBus, Subscribable } from '@microsoft/msfs-sdk';
+import { CompoundableUnit, EventBus, Subscribable, UnitFamily, UnitType } from '@microsoft/msfs-sdk';
 
 import { Fms } from '../../flightplan/Fms';
 import { NavDataFieldGpsValidity } from '../navdatafield/NavDataFieldModel';
@@ -22,10 +22,38 @@ export type DefaultNavDataBarFieldModelFactoryOptions = {
 
   /** The index of the VNAV from which to source data. Defaults to `0`. */
   vnavIndex?: number | Subscribable<number>;
+
+  /**
+   * The unit with which to interpret fuel values retrieved from the event bus. The unit should should define the
+   * weight equivalent of one U.S. gallon of fuel. Defaults to {@link UnitType.GALLON_FUEL}.
+   */
+  fuelUnit?: CompoundableUnit<UnitFamily.Weight>;
 };
 
 /**
- * A default implementation of NavDataBarFieldModelFactory.
+ * A default implementation of NavDataBarFieldModelFactory which sources data primarily from the event bus.
+ * 
+ * This factory supports the following data field {@link NavDataFieldType | types}:
+ * - `BearingToWaypoint`
+ * - `Destination`
+ * - `DistanceToWaypoint`
+ * - `DistanceToDestination`
+ * - `DesiredTrack`
+ * - `Endurance`
+ * - `TimeToDestination`
+ * - `TimeOfWaypointArrival`
+ * - `TimeToWaypoint`
+ * - `FuelOnBoard`
+ * - `FuelOverDestination`
+ * - `GroundSpeed`
+ * - `ISA`
+ * - `TimeOfDestinationArrival`
+ * - `TrueAirspeed`
+ * - `TrackAngleError`
+ * - `GroundTrack`
+ * - `VerticalSpeedRequired`
+ * - `Waypoint`
+ * - `CrossTrack`
  */
 export class DefaultNavDataBarFieldModelFactory implements NavDataBarFieldModelFactory {
   protected readonly factory: GenericNavDataBarFieldModelFactory;
@@ -78,6 +106,7 @@ export class DefaultNavDataBarFieldModelFactory implements NavDataBarFieldModelF
 
     const lnavIndex = options?.lnavIndex ?? 0;
     const vnavIndex = options?.vnavIndex ?? 0;
+    const fuelUnit = options?.fuelUnit ?? UnitType.GALLON_FUEL;
 
     this.factory.register(NavDataFieldType.BearingToWaypoint, new NavDataBarFieldBrgModelFactory(bus, lnavIndex));
     this.factory.register(NavDataFieldType.Destination, new NavDataBarFieldDestModelFactory(bus, lnavIndex));
@@ -88,8 +117,8 @@ export class DefaultNavDataBarFieldModelFactory implements NavDataBarFieldModelF
     this.factory.register(NavDataFieldType.TimeToDestination, new NavDataBarFieldEnrModelFactory(bus, lnavIndex));
     this.factory.register(NavDataFieldType.TimeOfWaypointArrival, new NavDataBarFieldEtaModelFactory(bus, lnavIndex));
     this.factory.register(NavDataFieldType.TimeToWaypoint, new NavDataBarFieldEteModelFactory(bus, lnavIndex));
-    this.factory.register(NavDataFieldType.FuelOnBoard, new NavDataBarFieldFobModelFactory(bus));
-    this.factory.register(NavDataFieldType.FuelOverDestination, new NavDataBarFieldFodModelFactory(bus, lnavIndex));
+    this.factory.register(NavDataFieldType.FuelOnBoard, new NavDataBarFieldFobModelFactory(bus, fuelUnit));
+    this.factory.register(NavDataFieldType.FuelOverDestination, new NavDataBarFieldFodModelFactory(bus, lnavIndex, fuelUnit));
     this.factory.register(NavDataFieldType.GroundSpeed, new NavDataBarFieldGsModelFactory(bus));
     this.factory.register(NavDataFieldType.ISA, new NavDataBarFieldIsaModelFactory(bus));
     this.factory.register(NavDataFieldType.TimeOfDestinationArrival, new NavDataBarFieldLdgModelFactory(bus, lnavIndex));

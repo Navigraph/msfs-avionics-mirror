@@ -1,9 +1,10 @@
 import {
-  AdcEvents, AirportFacility, APEvents, APVerticalModes, BitFlags, ClockEvents, ConsumerSubject, ControlSurfacesEvents,
-  EventBus, ExpSmoother, FacilityLoader, FacilityType, FlightPlan, FlightPlanner, FlightPlanSegment,
-  FlightPlanSegmentType, GeoPoint, ICAO, KeyEventManager, KeyEvents, LegDefinitionFlags, LNavEvents, MathUtils,
-  OriginDestChangeType, SpeedConstraint, SpeedRestrictionType, SpeedUnit, Subscribable, SubscribableMapFunctions,
-  SubscribableUtils, Subscription, UnitType, UserSetting, VerticalFlightPhase, VNavEvents, VNavState
+  AdcEvents, AirportFacility, AirportFacilityDataFlags, APEvents, APVerticalModes, BitFlags, ClockEvents,
+  ConsumerSubject, ControlSurfacesEvents, EventBus, ExpSmoother, FacilityLoader, FacilityType, FlightPlan,
+  FlightPlanner, FlightPlanSegment, FlightPlanSegmentType, GeoPoint, ICAO, IcaoValue, KeyEventManager, KeyEvents,
+  LegDefinitionFlags, LNavEvents, MathUtils, OriginDestChangeType, SpeedConstraint, SpeedRestrictionType, SpeedUnit,
+  Subscribable, SubscribableMapFunctions, SubscribableUtils, Subscription, UnitType, UserSetting, VerticalFlightPhase,
+  VNavEvents, VNavState
 } from '@microsoft/msfs-sdk';
 
 import {
@@ -141,14 +142,14 @@ export class FmsSpeedManager {
   private readonly departureIasLimit = this.settingManager.getSetting('fmsSpeedDepartureLimit');
   private readonly departureAgl = this.settingManager.getSetting('fmsSpeedDepartureCeiling');
   private readonly departureRadius = this.settingManager.getSetting('fmsSpeedDepartureRadius');
-  private departureIcao = '';
+  private departureIcao = ICAO.emptyValue();
   private departureFacility: AirportFacility | null = null;
   private departureElevation = 0;
 
   private readonly arrivalIasLimit = this.settingManager.getSetting('fmsSpeedArrivalLimit');
   private readonly arrivalAgl = this.settingManager.getSetting('fmsSpeedArrivalCeiling');
   private readonly arrivalRadius = this.settingManager.getSetting('fmsSpeedArrivalRadius');
-  private arrivalIcao = '';
+  private arrivalIcao = ICAO.emptyValue();
   private arrivalFacility: AirportFacility | null = null;
   private arrivalElevation = 0;
 
@@ -384,25 +385,24 @@ export class FmsSpeedManager {
 
       switch (e.type) {
         case OriginDestChangeType.OriginAdded:
-          this.fetchDepartureFacility(e.airport ?? '');
+          this.fetchDepartureFacility(e.airportIcao ?? ICAO.emptyValue());
           break;
         case OriginDestChangeType.OriginRemoved:
-          this.fetchDepartureFacility('');
+          this.fetchDepartureFacility(ICAO.emptyValue());
           break;
         case OriginDestChangeType.DestinationAdded:
-          this.fetchArrivalFacility(e.airport ?? '');
+          this.fetchArrivalFacility(e.airportIcao ?? ICAO.emptyValue());
           break;
-        // eslint-disable-next-line no-fallthrough
         case OriginDestChangeType.DestinationRemoved:
-          this.fetchArrivalFacility('');
+          this.fetchArrivalFacility(ICAO.emptyValue());
           break;
       }
     }));
 
     const updateFacilitiesFromPlan = (): void => {
       const plan = this.flightPlanner.getFlightPlan(Fms.PRIMARY_PLAN_INDEX);
-      this.fetchDepartureFacility(plan.originAirport ?? '');
-      this.fetchArrivalFacility(plan.destinationAirport ?? '');
+      this.fetchDepartureFacility(plan.originAirportIcao ?? ICAO.emptyValue());
+      this.fetchArrivalFacility(plan.destinationAirportIcao ?? ICAO.emptyValue());
     };
 
     this.fplSubs.push(this.flightPlanner.onEvent('fplCopied').handle(e => {
@@ -482,23 +482,23 @@ export class FmsSpeedManager {
    * Fetches and sets this manager's departure facility from a given ICAO string.
    * @param icao The ICAO of the departure facility to fetch.
    */
-  private async fetchDepartureFacility(icao: string): Promise<void> {
-    if (this.departureIcao === icao) {
+  private async fetchDepartureFacility(icao: IcaoValue): Promise<void> {
+    if (ICAO.valueEquals(this.departureIcao, icao)) {
       return;
     }
 
     this.departureIcao = icao;
 
-    if (!ICAO.isFacility(icao, FacilityType.Airport)) {
+    if (!ICAO.isValueFacility(icao, FacilityType.Airport)) {
       this.departureFacility = null;
       this.departureElevation = 0;
       return;
     }
 
     try {
-      const facility = await this.facLoader.getFacility(FacilityType.Airport, icao);
+      const facility = await this.facLoader.getFacility(FacilityType.Airport, icao, AirportFacilityDataFlags.Minimal);
 
-      if (this.departureIcao !== icao) {
+      if (!ICAO.valueEquals(this.departureIcao, icao)) {
         return;
       }
 
@@ -506,7 +506,7 @@ export class FmsSpeedManager {
       this.departureElevation = UnitType.METER.convertTo(facility.altitude, UnitType.FOOT);
     } catch (e) {
       console.warn(`FmsSpeedManager: could not retrieve airport for icao ${icao}`);
-      this.departureIcao = '';
+      this.departureIcao = ICAO.emptyValue();
       this.departureFacility = null;
       this.departureElevation = 0;
     }
@@ -516,23 +516,23 @@ export class FmsSpeedManager {
    * Fetches and sets this manager's arrival facility from a given ICAO string.
    * @param icao The ICAO of the arrival facility to fetch.
    */
-  private async fetchArrivalFacility(icao: string): Promise<void> {
-    if (this.arrivalIcao === icao) {
+  private async fetchArrivalFacility(icao: IcaoValue): Promise<void> {
+    if (ICAO.valueEquals(this.arrivalIcao, icao)) {
       return;
     }
 
     this.arrivalIcao = icao;
 
-    if (!ICAO.isFacility(icao, FacilityType.Airport)) {
+    if (!ICAO.isValueFacility(icao, FacilityType.Airport)) {
       this.arrivalFacility = null;
       this.arrivalElevation = 0;
       return;
     }
 
     try {
-      const facility = await this.facLoader.getFacility(FacilityType.Airport, icao);
+      const facility = await this.facLoader.getFacility(FacilityType.Airport, icao, AirportFacilityDataFlags.Minimal);
 
-      if (this.arrivalIcao !== icao) {
+      if (!ICAO.valueEquals(this.arrivalIcao, icao)) {
         return;
       }
 
@@ -540,7 +540,7 @@ export class FmsSpeedManager {
       this.arrivalElevation = UnitType.METER.convertTo(facility.altitude, UnitType.FOOT);
     } catch (e) {
       console.warn(`FmsSpeedManager: could not retrieve airport for icao ${icao}`);
-      this.arrivalIcao = '';
+      this.arrivalIcao = ICAO.emptyValue();
       this.arrivalFacility = null;
       this.arrivalElevation = 0;
     }
@@ -1338,9 +1338,9 @@ export class FmsSpeedManager {
       // In this case we do not allow user speed overrides and just set the active target speeds to -1 to signal they
       // are undefined. We also reset the user speed overrides.
 
-      this.userTargetIas.value = -1;
-      this.userTargetMach.value = -1;
-      this.userTargetIsMach.value = false;
+      this.userTargetIas.set(-1);
+      this.userTargetMach.set(-1);
+      this.userTargetIsMach.set(false);
 
       this.activeIas = -1;
       this.activeMach = -1;

@@ -4,10 +4,10 @@ import { Subscribable } from '../../../sub/Subscribable';
 import { ArrayUtils } from '../../../utils/datastructures/ArrayUtils';
 import { MapLayerProps } from '../MapLayer';
 import { MapProjection } from '../MapProjection';
-import { MapSyncedCanvasLayer } from './MapSyncedCanvasLayer';
+import { MapSyncedCanvasLayer, MapSyncedCanvasLayerProps } from './MapSyncedCanvasLayer';
 
 /**
- * Component props for MapLineLayer.
+ * Component props for {@link MapLineLayer}.
  */
 export interface MapLineLayerProps extends MapLayerProps<any> {
   /**
@@ -64,7 +64,20 @@ export class MapLineLayer extends MapSyncedCanvasLayer<MapLineLayerProps> {
 
   private isUpdateScheduled = false;
 
-  /** @inheritdoc */
+  /**
+   * Creates a new instance of MapLineLayer.
+   * @param props The properties of the component.
+   */
+  public constructor(props: MapLineLayerProps) {
+    const propsToUse: MapLineLayerProps & MapSyncedCanvasLayerProps<any> = {
+      ...props,
+      collapseOnSleep: true,
+    };
+
+    super(propsToUse);
+  }
+
+  /** @inheritDoc */
   public onAttached(): void {
     super.onAttached();
 
@@ -74,9 +87,19 @@ export class MapLineLayer extends MapSyncedCanvasLayer<MapLineLayerProps> {
     this.scheduleUpdate();
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
+  public onWake(): void {
+    super.onWake();
+
+    // We need to schedule an update after waking up because the canvas is cleared when the map goes to sleep (as a
+    // result of being collapsed).
+    this.scheduleUpdate();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     super.onMapProjectionChanged(mapProjection, changeFlags);
+
     this.scheduleUpdate();
   }
 
@@ -87,7 +110,7 @@ export class MapLineLayer extends MapSyncedCanvasLayer<MapLineLayerProps> {
     this.isUpdateScheduled = true;
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
     super.onUpdated(time, elapsed);
 

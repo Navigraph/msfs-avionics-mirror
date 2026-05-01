@@ -6,7 +6,7 @@ import { GtcViewKeys } from '../../GtcService/GtcViewKeys';
 import { GtcDialogs } from '../../Dialog/GtcDialogs';
 import { GtcApproachPage } from '../Procedures/GtcApproachPage';
 import { GtcArrivalPage } from '../Procedures/GtcArrivalPage';
-import { GtcAirportInfoPage } from '../WaypointInfoPages';
+import { GtcAirportInfoPage2 } from '../WaypointInfoPages';
 import { GtcFlightPlanPageSlideoutMenu, GtcFlightPlanPageSlideoutMenuProps } from './GtcFlightPlanPageSlideoutMenu';
 import { GtcFlightPlanDialogs } from './GtcFlightPlanDialogs';
 
@@ -75,7 +75,7 @@ export class DestinationOptionsSlideoutMenu extends GtcFlightPlanPageSlideoutMen
               // Close menu before opening new page
               this.closeMenu();
 
-              this.gtcService.changePageTo<GtcAirportInfoPage>(GtcViewKeys.AirportInfo).ref.initSelection(facility as AirportFacility);
+              this.gtcService.changePageTo<GtcAirportInfoPage2>(GtcViewKeys.AirportInfo).ref.initSelection(facility as AirportFacility);
             }}
           />
         </div>

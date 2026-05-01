@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
 import { BitFlags } from '../../../math/BitFlags';
 import { ComponentProps, DisplayComponent, FSComponent, VNode } from '../../FSComponent';
-import { MapLayer } from '../MapLayer';
+import { MapLayer, MapLayerProps } from '../MapLayer';
 import { MapModel } from '../MapModel';
 import { MapProjection, MapProjectionChangeType } from '../MapProjection';
-import { MapCanvasLayerCanvasInstance, MapCanvasLayerProps } from './MapCanvasLayer';
+import { MapCanvasLayerCanvasInstance } from './MapCanvasLayer';
 import { MapSyncedCanvasLayer } from './MapSyncedCanvasLayer';
 
 /**
@@ -23,14 +21,28 @@ export interface MapSharedCanvasInstance {
 }
 
 /**
+ * Component props for {@link MapSharedCanvasLayer}.
+ */
+export interface MapSharedCanvasLayerProps<M> extends MapLayerProps<M> {
+  /**
+   * Whether the layer should automatically collapse its shared canvas element to zero size (0px by 0px) when the map
+   * is asleep. Collapsing the canvas element will free memory used by the canvas texture. It will also clear
+   * everything drawn to the canvas, reset its context state, and invalidate it. Defaults to `false`.
+   */
+  collapseOnSleep?: boolean;
+}
+
+/**
  * A map layer containing a single canvas synced to the map's projected size that can be shared amongst multiple
  * sublayers for rendering.
  *
  * All of the layer's children are rendered on top of the shared canvas element. All children that extend
  * {@link MapSharedCanvasSubLayer} are treated as sublayers and can render to the shared canvas element.
  */
-export class MapSharedCanvasLayer extends MapLayer<MapCanvasLayerProps<any>> {
+export class MapSharedCanvasLayer extends MapLayer<MapSharedCanvasLayerProps<any>> {
   private thisNode?: VNode;
+
+  private readonly collapseOnSleep = !!this.props.collapseOnSleep;
 
   private readonly canvasLayerRef = FSComponent.createRef<MapSyncedCanvasLayer>();
 
@@ -40,7 +52,7 @@ export class MapSharedCanvasLayer extends MapLayer<MapCanvasLayerProps<any>> {
 
   private isInit = false;
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onVisibilityChanged(isVisible: boolean): void {
     if (!this.isInit) {
       return;
@@ -53,7 +65,7 @@ export class MapSharedCanvasLayer extends MapLayer<MapCanvasLayerProps<any>> {
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAfterRender(thisNode: VNode): void {
     this.thisNode = thisNode;
 
@@ -71,7 +83,7 @@ export class MapSharedCanvasLayer extends MapLayer<MapCanvasLayerProps<any>> {
     });
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onAttached(): void {
     super.onAttached();
 
@@ -90,21 +102,29 @@ export class MapSharedCanvasLayer extends MapLayer<MapCanvasLayerProps<any>> {
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onWake(): void {
+    this.canvasLayerRef.instance.onWake();
+
+    if (this.collapseOnSleep) {
+      this.sharedCanvasInstance!.invalidate();
+    }
+
     for (let i = 0; i < this.sublayers.length; i++) {
       this.sublayers[i].onWake();
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onSleep(): void {
+    this.canvasLayerRef.instance.onSleep();
+
     for (let i = 0; i < this.sublayers.length; i++) {
       this.sublayers[i].onSleep();
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onMapProjectionChanged(projection: MapProjection, changeFlags: number): void {
     this.canvasLayerRef.instance.onMapProjectionChanged(projection, changeFlags);
 
@@ -117,9 +137,9 @@ export class MapSharedCanvasLayer extends MapLayer<MapCanvasLayerProps<any>> {
     }
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public onUpdated(time: number, elapsed: number): void {
-    let invalidate = false;
+    let invalidate = this.sharedCanvasInstance!.isInvalidated;
     for (let i = 0; !invalidate && i < this.sublayers.length; i++) {
       invalidate = this.sublayers[i].shouldInvalidate(time, elapsed);
     }
@@ -135,7 +155,7 @@ export class MapSharedCanvasLayer extends MapLayer<MapCanvasLayerProps<any>> {
     this.sharedCanvasInstance!.revalidate();
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode {
     return (
       <>
@@ -143,6 +163,7 @@ export class MapSharedCanvasLayer extends MapLayer<MapCanvasLayerProps<any>> {
           ref={this.canvasLayerRef}
           model={this.props.model}
           mapProjection={this.props.mapProjection}
+          collapseOnSleep={this.collapseOnSleep}
           class={this.props.class}
         />
         {this.props.children}
@@ -150,7 +171,7 @@ export class MapSharedCanvasLayer extends MapLayer<MapCanvasLayerProps<any>> {
     );
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public destroy(): void {
     this.thisNode && FSComponent.shallowDestroy(this.thisNode);
 
@@ -312,7 +333,7 @@ export class MapSharedCanvasSubLayer<P extends MapSharedCanvasSubLayerProps<any>
     // noop
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public render(): VNode | null {
     return null;
   }
@@ -323,18 +344,14 @@ export class MapSharedCanvasSubLayer<P extends MapSharedCanvasSubLayerProps<any>
  * {@link MapCanvasLayerCanvasInstance}.
  */
 class MapSharedCanvasInstanceClass implements MapSharedCanvasInstance {
-  /** @inheritdoc */
+  /** @inheritDoc */
   public readonly canvas = this.instance.canvas;
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   readonly context = this.instance.context;
 
-  private _isInvalidated = false;
-  // eslint-disable-next-line jsdoc/require-returns
   /** Whether this canvas has been invalidated. */
-  public get isInvalidated(): boolean {
-    return this._isInvalidated;
-  }
+  public readonly isInvalidated = false;
 
   /**
    * Creates a new instance of MapSharedCanvasInstanceClass.
@@ -347,12 +364,12 @@ class MapSharedCanvasInstanceClass implements MapSharedCanvasInstance {
    * Invalidates and clears this canvas.
    */
   public invalidate(): void {
-    this._isInvalidated = true;
+    (this.isInvalidated as boolean) = true;
     this.instance.clear();
   }
 
-  /** @inheritdoc */
+  /** @inheritDoc */
   public revalidate(): void {
-    this._isInvalidated = false;
+    (this.isInvalidated as boolean) = false;
   }
 }

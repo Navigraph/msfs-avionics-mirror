@@ -8,7 +8,7 @@ import { WTLineFlightPlanRouteUtils } from './WTLineFlightPlanRouteUtils';
 import { FlightPlanIndexTypes } from './WTLineFmsTypes';
 
 /**
- * A manager for syncing WT21 flight plan routes to and from the sim. The manager supports automatically replying to
+ * A manager for syncing WTLine flight plan routes to and from the sim. The manager supports automatically replying to
  * avionics route requests and can be used to manually or automatically load synced flight plan routes.
  */
 export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<number, number>> {
@@ -32,7 +32,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
   private avionicsRouteSyncSub?: Subscription;
 
   /**
-   * Creates a new instance of WT21FlightPlanRouteSyncManager. The manager is created in an uninitialized state and
+   * Creates a new instance of WTLineFlightPlanRouteSyncManager. The manager is created in an uninitialized state and
    * must be initialized before it can perform any functions.
    * @param fms The FMS containing the primary flight plan used by the manager.
    */
@@ -77,7 +77,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
    */
   public init(manager: FlightPlanRouteManager, loader: WTLineFlightPlanRouteLoader<T>): void {
     if (!this.isAlive) {
-      throw new Error('WT21FlightPlanRouteSyncManager: cannot initialize a dead manager');
+      throw new Error('WTLineFlightPlanRouteSyncManager: cannot initialize a dead manager');
     }
 
     if (this.routeManager) {
@@ -117,7 +117,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
    */
   public startAutoReply(): void {
     if (!this.isAlive) {
-      throw new Error('WT21FlightPlanRouteSyncManager: cannot manipulate a dead manager');
+      throw new Error('WTLineFlightPlanRouteSyncManager: cannot manipulate a dead manager');
     }
 
     if (!this.routeManager || this._isAutoReplying) {
@@ -136,7 +136,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
    */
   public stopAutoReply(): void {
     if (!this.isAlive) {
-      throw new Error('WT21FlightPlanRouteSyncManager: cannot manipulate a dead manager');
+      throw new Error('WTLineFlightPlanRouteSyncManager: cannot manipulate a dead manager');
     }
 
     if (!this.routeManager || !this._isAutoReplying) {
@@ -156,7 +156,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
    */
   public startAutoSync(): void {
     if (!this.isAlive) {
-      throw new Error('WT21FlightPlanRouteSyncManager: cannot manipulate a dead manager');
+      throw new Error('WTLineFlightPlanRouteSyncManager: cannot manipulate a dead manager');
     }
 
     if (!this.routeManager || this._isAutoSyncing) {
@@ -175,7 +175,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
    */
   public stopAutoSync(): void {
     if (!this.isAlive) {
-      throw new Error('WT21FlightPlanRouteSyncManager: cannot manipulate a dead manager');
+      throw new Error('WTLineFlightPlanRouteSyncManager: cannot manipulate a dead manager');
     }
 
     if (!this.routeManager || !this._isAutoSyncing) {
@@ -195,7 +195,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
    */
   public replyToAllPendingRequests(): void {
     if (!this.isAlive) {
-      throw new Error('WT21FlightPlanRouteSyncManager: cannot manipulate a dead manager');
+      throw new Error('WTLineFlightPlanRouteSyncManager: cannot manipulate a dead manager');
     }
 
     if (!this.routeManager) {
@@ -214,7 +214,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
    */
   public replyToRequest(requestId: number): void {
     if (!this.isAlive) {
-      throw new Error('WT21FlightPlanRouteSyncManager: cannot manipulate a dead manager');
+      throw new Error('WTLineFlightPlanRouteSyncManager: cannot manipulate a dead manager');
     }
 
     if (!this.routeManager) {
@@ -234,7 +234,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
    */
   public async cancelReply(): Promise<void> {
     if (!this.isAlive) {
-      throw new Error('WT21FlightPlanRouteSyncManager: cannot manipulate a dead manager');
+      throw new Error('WTLineFlightPlanRouteSyncManager: cannot manipulate a dead manager');
     }
 
     if (!this.routeManager) {
@@ -260,7 +260,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
    */
   public loadFromSyncedRoute(exec: boolean): Promise<boolean> {
     if (!this.isAlive) {
-      throw new Error('WT21FlightPlanRouteSyncManager: cannot manipulate a dead manager');
+      throw new Error('WTLineFlightPlanRouteSyncManager: cannot manipulate a dead manager');
     }
 
     if (!this.routeManager) {
@@ -287,7 +287,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
    */
   public loadRoute(route: ReadonlyFlightPlanRoute, exec: boolean): Promise<boolean> {
     if (!this.isAlive) {
-      throw new Error('WT21FlightPlanRouteSyncManager: cannot manipulate a dead manager');
+      throw new Error('WTLineFlightPlanRouteSyncManager: cannot manipulate a dead manager');
     }
 
     if (!this.routeLoader) {
@@ -307,7 +307,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
    */
   public async cancelLoad(): Promise<void> {
     if (!this.isAlive) {
-      throw new Error('WT21FlightPlanRouteSyncManager: cannot manipulate a dead manager');
+      throw new Error('WTLineFlightPlanRouteSyncManager: cannot manipulate a dead manager');
     }
 
     if (!this.routeLoader) {
@@ -436,7 +436,7 @@ export class WTLineFlightPlanRouteSyncManager<T extends FlightPlanIndexTypes<num
   public destroy(): void {
     this.isAlive = false;
 
-    this.initPromiseReject('GarminFlightPlanRouteSyncManager: manager was destroyed before initialization');
+    this.initPromiseReject('WTLineFlightPlanRouteSyncManager: manager was destroyed before initialization');
 
     this.avionicsRouteRequestSub?.destroy();
     this.avionicsRouteSyncSub?.destroy();

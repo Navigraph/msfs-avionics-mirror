@@ -1,0 +1,28 @@
+.wt-ifd-total-velocity-vector-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 494px;
+    height: 450px;
+}
+
+svg.total-velocity-vector {
+    z-index: 2; /*it stays on top of the aircraft reference symbol and the pitch ladder*/
+    width: 60px;
+    height: 60px;
+    --flight-path-marker-stroke: var(--wtdyne-color-green);
+    --flight-path-marker-stroke-width: 3;
+    --flight-path-marker-outline-stroke: var(--wtdyne-color-black);
+    --flight-path-marker-outline-stroke-width: 5;
+}
+
+.heading-digital-readout-placeholder,
+.lateral-deviation-indicator-placeholder,
+.vertical-deviation-indicator-placeholder {
+    position: absolute;
+    border: none;
+    border-radius: 4px;
+    /*background: var(--wtdyne-color-black);*/
+    background: none;
+    opacity: 0.3;
+}

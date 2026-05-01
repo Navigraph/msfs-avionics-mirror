@@ -99,13 +99,7 @@ export class WaypointAlertComputer {
   private readonly nextDtkVector = ConsumerValue.create(null, { globalLegIndex: -1, vectorIndex: -1 });
   private readonly nextIsSteerHeading = ConsumerValue.create(null, false);
 
-  private readonly lnavTrackingState = ConsumerSubject.create(null, {
-    isTracking: false,
-    globalLegIndex: 0,
-    transitionMode: LNavTransitionMode.None,
-    vectorIndex: 0,
-    isSuspended: false
-  }, LNavUtils.lnavTrackingStateEquals);
+  private readonly lnavTrackingState = ConsumerSubject.create(null, LNavUtils.createEmptyLNavTrackingState(), LNavUtils.lnavTrackingStateEquals);
 
   private readonly _state = Subject.create<Readonly<WaypointAlertStateEvent>>({
     previousState: WaypointAlertingState.None,

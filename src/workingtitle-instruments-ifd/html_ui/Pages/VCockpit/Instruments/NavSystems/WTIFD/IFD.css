@@ -1,0 +1,259 @@
+@font-face {
+  font-family: "Arial";
+  src: url("/Fonts/arial.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Arial Bold";
+  src: url("/Fonts/arialbd.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Arial Bold Italic";
+  src: url("/Fonts/arialbi.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Arial Italic";
+  src: url("/Fonts/ariali.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Arial Narrow";
+  src: url("/Fonts/arialn.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Arial Narrow Bold";
+  src: url("/Fonts/arialnb.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Arial Narrow Bold Italic";
+  src: url("/Fonts/arialnbi.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Arial Narrow Italic";
+  src: url("/Fonts/arialni.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  --wtdyne-color-blue: rgb(0, 0, 210);
+  --wtdyne-color-blue1: #0168c3;
+  --wtdyne-color-blue2: #054f91;
+  --wtdyne-color-dark-blue: rgb(6, 0, 151);
+  --wtdyne-color-cyan: rgb(0, 194, 219);
+  --wtdyne-color-mint: rgb(158, 255, 204);
+  --wtdyne-color-green: rgb(0, 245, 2);
+  --wtdyne-color-pale-green: #1DA959;
+  --wtdyne-color-light-cyan: #ccffff;
+  --wtdyne-color-light-blue: #99ccff;
+
+  --wtdyne-color-lime: rgb(60, 185, 59);
+  --wtdyne-color-yellow: rgb(253, 237, 1);
+  --wtdyne-color-yellow-light: rgb(255, 249, 181);
+  --wtdyne-color-orange: rgb(255, 199, 0);
+  --wtdyne-color-red: rgb(252, 3, 4);
+  --wtdyne-color-red1: #ff3030;
+  --wtdyne-color-red2: #df2525;
+  --wtdyne-color-magenta: hsl(302, 95%, 51%);
+  --wtdyne-color-dark-magenta: hsl(294, 94%, 30%);
+  --wtdyne-color-dark-magenta1: #860595FF;
+  --wtdyne-color-dark-magenta2: #5b0465;
+
+  --wtdyne-color-white: rgb(252, 253, 250);
+
+  /* Altitude leg terminations on map */
+  --wtdyne-color-gray-1: rgb(188, 188, 190);
+  /* Control border lighter part */
+  --wtdyne-color-gray-2: rgb(114, 114, 114);
+  /* Control background part */
+  --wtdyne-color-gray-3: rgb(95, 95, 95);
+  /* Control border darker part */
+  --wtdyne-color-gray-4: rgb(68, 68, 68);
+  --wtdyne-color-gray-5: rgb(53, 53, 53);
+
+  --wtdyne-color-black: rgb(0, 0, 0);
+
+  --wtdyne-color-brown: rgb(106, 73, 62);
+
+  /* Display format headers, FMS and TCAS/WXR boxes on map */
+  /*--wtdyne-color-navy: rgb(24, 24, 55);*/
+  --wtdyne-color-navy: hsl(240, 60%, 22%);
+
+  /* Active control background */
+  --wtdyne-color-turquoise: rgb(25, 54, 71);
+
+  --wtdyne-color-map-water: rgb(5, 20, 57);
+  --wtdyne-color-vsd-terr: rgb(136, 94, 19);
+
+  --wtdyne-border-blue: 2px solid var(--wtdyne-color-blue);
+  --wtdyne-border-blue-dashed: 2px dashed var(--wtdyne-color-blue);
+  --wtdyne-border-cyan: 2px solid var(--wtdyne-color-cyan);
+  --wtdyne-border-cyan-dashed: 2px dashed var(--wtdyne-color-cyan);
+  --wtdyne-border-yellow: 2px solid var(--wtdyne-color-yellow);
+  --wtdyne-border-yellow-dashed: 2px dashed var(--wtdyne-color-yellow);
+  --wtdyne-border-gray-1: 2px solid var(--wtdyne-color-gray-1);
+  --wtdyne-border-gray-2: 2px solid var(--wtdyne-color-gray-2);
+
+  --wtdyne-outer-outline-shadow: 0 0 0 1px rgba(0, 0, 0, 1);
+  --wtdyne-inner-outline-shadow: inset 0 0 0 1px rgba(0, 0, 0, 1);
+
+  --wtdyne-font-size-1: 24px;
+  --wtdyne-font-size-2: 30px;
+
+  --leg-block-blue-1: #6699cc;
+  --leg-block-blue-2: #006298;
+  --leg-block-blue-3: #003466;
+  --leg-block-blue-4: #010167;
+
+  --leg-block-light-gray: #666666;
+  --leg-block-gray: #333333;
+  --leg-block-light-magenta: #990099;
+  --leg-block-magenta: #660066;
+}
+
+html body {
+  background-color: var(--wtdyne-color-black);
+  font-size: var(--wtdyne-font-size-1);
+}
+
+#Mainframe,
+#Electricity,
+#InstrumentsContainer {
+  width: 100%;
+  height: 100%;
+}
+
+.wtdyne-border-box-blue {
+  box-shadow: 0 0 0 10px var(--wtdyne-color-blue);
+  border-radius: 10px;
+}
+
+.wtdyne-border-box-yellow {
+  border: var(--wtdyne-border-yellow);
+  box-shadow: var(--wtdyne-inner-outline-shadow),
+    var(--wtdyne-outer-outline-shadow);
+}
+
+.wtdyne-border-box-gray-1 {
+  border: var(--wtdyne-border-gray-1);
+  box-shadow: var(--wtdyne-inner-outline-shadow),
+    var(--wtdyne-outer-outline-shadow);
+}
+
+.wtdyne-border-box-gray-2 {
+  border: var(--wtdyne-border-gray-2);
+  box-shadow: var(--wtdyne-inner-outline-shadow),
+    var(--wtdyne-outer-outline-shadow);
+}
+
+.wtdyne-component-interactive:hover {
+  border: var(--wtdyne-border-cyan);
+}
+
+.wtdyne-component-active {
+  border: var(--wtdyne-border-cyan-dashed) !important;
+}
+
+.wtdyne-component-active {
+  color: var(--wtdyne-color-cyan);
+}
+
+.wtdyne-border-box.wtdyne-component-invalid {
+  border: var(--wtdyne-border-yellow-dashed) !important;
+}
+
+.wtdyne-shaded-border-box {
+  border-top: 2px solid var(--wtdyne-color-gray-2);
+  border-right: 2px solid var(--wtdyne-color-gray-4);
+  border-bottom: 2px solid var(--wtdyne-color-gray-4);
+  border-left: 2px solid var(--wtdyne-color-gray-2);
+
+  box-shadow: var(--wtdyne-inner-outline-shadow),
+    var(--wtdyne-outer-outline-shadow);
+}
+
+.wtdyne-component-invalid {
+  color: var(--wtdyne-color-yellow);
+}
+
+.wtdyne-shaded-box-gray {
+  background-image: url("/Pages/VCockpit/Instruments/NavSystems/WTIFD/Assets/Images/bg_shade.png");
+}
+
+.wtdyne-shaded-box-blue {
+  background-image: url("/Pages/VCockpit/Instruments/NavSystems/WTIFD/Assets/Images/bg_shade_blue.png");
+}
+
+.wtdyne-text {
+  paint-order: stroke fill;
+  -webkit-text-stroke: 2px black;
+
+  transform-origin: left center;
+  letter-spacing: -0px;
+
+  height: 0.8em;
+  display: inline-block;
+}
+
+.wtdyne-font-1 {
+  font-size: var(--wtdyne-font-size-1);
+}
+
+.wtdyne-font-2 {
+  font-size: var(--wtdyne-font-size-2);
+}
+
+.wtdyne-text-white {
+  color: var(--wtdyne-color-white);
+}
+
+.wtdyne-text-gray-1 {
+  color: var(--wtdyne-color-gray-1);
+}
+
+.wtdyne-text-gray-2 {
+  color: var(--wtdyne-color-gray-2);
+}
+
+.wtdyne-text-cyan {
+  color: var(--wtdyne-color-cyan);
+}
+
+.wtdyne-text-green {
+  color: var(--wtdyne-color-lime);
+}
+
+.wtdyne-text-yellow {
+  color: var(--wtdyne-color-yellow);
+}
+
+.wtdyne-text-red {
+  color: var(--wtdyne-color-red);
+}
+
+.wtdyne-text-magenta {
+  color: var(--wtdyne-color-magenta);
+}
+
+.ifd-narrow-page {
+  width: 353px !important;
+}

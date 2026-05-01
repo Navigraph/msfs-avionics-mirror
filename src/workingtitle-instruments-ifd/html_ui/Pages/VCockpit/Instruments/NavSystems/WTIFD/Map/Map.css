@@ -1,0 +1,29 @@
+.map-container {
+  width: 100%;
+  height: 100%;
+
+  --map-path-stroke-width: 2px;
+  --map-path-stroke-width-outline: 3px;
+}
+
+.map-system {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 495px;
+  height: 450px;
+}
+
+.map-compass-overlay svg {
+  stroke: var(--wtdyne-color-light-blue);
+  stroke-width: var(--map-path-stroke-width);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.map-compass-overlay .map-path-shadow {
+  stroke: var(--wtdyne-color-black) !important;
+  stroke-width: var(--map-path-stroke-width-outline);
+}
+

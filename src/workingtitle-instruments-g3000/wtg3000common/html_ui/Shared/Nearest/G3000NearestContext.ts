@@ -1,6 +1,6 @@
 import {
-  AdaptiveNearestContext, AdaptiveNearestSubscription, AirportFacility, AirportFacilityDataFlags, BitFlags,
-  ConsumerSubject, EventBus, FacilityFrequencyType, FacilityLoader, FacilityType, FacilityTypeMap, GeoPoint,
+  AdaptiveNearestContext, AdaptiveNearestSubscription, AirportClass, AirportFacility, AirportFacilityDataFlags,
+  BitFlags, ConsumerSubject, EventBus, FacilityFrequencyType, FacilityLoader, FacilityType, FacilityTypeMap, GeoPoint,
   GeoPointSubject, IntersectionFacility, IntersectionType, MappedSubject, NdbFacility, NearestAirportSubscription,
   NearestSubscription, RadioUtils, ReadonlySubEvent, RunwayUtils, SubEvent, Subscribable, SubscribableUtils,
   Subscription, UnitType, UserFacility, VorClass, VorFacility, VorType
@@ -150,19 +150,37 @@ export class G3000NearestContext {
     );
 
     this.nearestAirportFilterState.sub(([runwayLength, runwaySurfaceCategories]) => {
+      // Add a bit of buffer to the minimum runway length when converting to meters. Otherwise, floating point error
+      // might cause the nearest search to exclude runways that shouldn't be excluded.
       const minLengthMeters = UnitType.FOOT.convertTo(runwayLength - 0.1, UnitType.METER);
 
-      this.context.airports.innerSubscription.setExtendedFilters(~0, ~0, ~0, minLengthMeters);
-      this.context.airports.innerSubscription.setFilterCb(facility => {
-        for (let i = 0; i < facility.runways.length; i++) {
-          const runway = facility.runways[i];
-          if (BitFlags.isAny(RunwayUtils.getSurfaceCategory(runway), runwaySurfaceCategories) && runway.length >= minLengthMeters) {
-            return true;
-          }
-        }
+      // Allow no runways if the minimum runway length is not more than zero and "all" runway surface categories are
+      // allowed.
+      const allowNoRunways = runwayLength <= 0 && runwaySurfaceCategories === ~0;
 
-        return false;
-      });
+      // If we allow no runways, then allow heliports. Otherwise, do not allow heliports.
+      if (allowNoRunways) {
+        this.context.airports.innerSubscription.setFilter(false, ~0);
+      } else {
+        this.context.airports.innerSubscription.setFilter(false, ~0 ^ BitFlags.createFlag(AirportClass.HeliportOnly));
+      }
+
+      this.context.airports.innerSubscription.setExtendedFilters(~0, ~0, ~0, minLengthMeters);
+
+      if (allowNoRunways) {
+        this.context.airports.innerSubscription.setFilterCb(undefined);
+      } else {
+        this.context.airports.innerSubscription.setFilterCb(facility => {
+          for (let i = 0; i < facility.runways.length; i++) {
+            const runway = facility.runways[i];
+            if (BitFlags.isAny(RunwayUtils.getSurfaceCategory(runway), runwaySurfaceCategories) && runway.length >= minLengthMeters) {
+              return true;
+            }
+          }
+
+          return false;
+        });
+      }
     }, true);
 
     this.comRadioSettingManager.getSetting('comRadioSpacing').sub(mode => {

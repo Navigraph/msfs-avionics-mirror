@@ -1,11 +1,14 @@
 import {
-  APLateralModes, APModeType, APStateManager, APVerticalModes, HEvent, KeyEventData, KeyEventManager, SimVarValueType
+  APLateralModes, APModeType, APStateManager, APVerticalModes, BitFlags, HEvent, KeyEventData, KeyEventManager,
+  MSFSAPStates, SimVarValueType
 } from '@microsoft/msfs-sdk';
 
 /**
  * A Garmin autopilot state manager.
  */
 export class GarminAPStateManager extends APStateManager {
+  private simModeFlagsToInit = 0;
+
   private vsLastPressed = 0;
 
   /** @inheritDoc */
@@ -23,7 +26,6 @@ export class GarminAPStateManager extends APStateManager {
   /** @inheritDoc */
   protected setupKeyIntercepts(manager: KeyEventManager): void {
     //alt modes
-    manager.interceptKey('AP_ALT_HOLD', false);
     manager.interceptKey('AP_ALT_HOLD', false);
     manager.interceptKey('AP_ALT_HOLD_ON', false);
     manager.interceptKey('AP_ALT_HOLD_OFF', false);
@@ -245,8 +247,94 @@ export class GarminAPStateManager extends APStateManager {
   }
 
   /** @inheritDoc */
+  protected onInitialAutopilotModes(modeFlags: number): void {
+    // Deactivate all unwanted modes.
+
+    const modesToDeactivate = [
+      MSFSAPStates.FLC,
+      MSFSAPStates.Alt,
+      MSFSAPStates.AltArm,
+      MSFSAPStates.GS,
+      MSFSAPStates.GSArm,
+      MSFSAPStates.VS,
+      MSFSAPStates.Heading,
+      MSFSAPStates.Nav,
+      MSFSAPStates.NavArm,
+      MSFSAPStates.WingLevel,
+      MSFSAPStates.Attitude,
+      MSFSAPStates.Autoland,
+      MSFSAPStates.TOGAPitch,
+    ];
+
+    for (const mode of modesToDeactivate) {
+      if (BitFlags.isAll(modeFlags, mode)) {
+        // Save the deactivated mode so that we can later attempt to initialize the autopilot's modes to match (as
+        // closely as possible) what the sim's initial modes were. Note that we can't manipulate the autopilot's modes
+        // in this method because we have to wait until the autopilot has finished initializing.
+        this.simModeFlagsToInit |= mode;
+
+        Coherent.call('apSetAutopilotMode', mode, 0);
+      }
+    }
+  }
+
+  /** @inheritDoc */
   protected initFlightDirector(): void {
     // We want to initialize the flight director state to the sim's internal flight director state, so we will do
     // nothing here.
+  }
+
+  /** @inheritDoc */
+  public onBeforeUpdate(): void {
+    super.onBeforeUpdate();
+
+    // Check whether we need to reconcile the initial flight director mode state with some initial native sim modes.
+    // We do this here because onBeforeUpdate() is guaranteed to not be called until after the autopilot is
+    // initialized, at which point it is possible to manipulate the autopilot's flight director modes.
+    if (this.simModeFlagsToInit !== 0) {
+      this.reconcileFromSimModes(this.simModeFlagsToInit);
+      this.simModeFlagsToInit = 0;
+    }
+  }
+
+  /**
+   * Reconciles the flight director mode state of this manager's parent autopilot with native sim autopilot modes.
+   * @param modeFlags Bitflags representing the state of native sim autopilot modes with which to reconcile the
+   * flight director mode state.
+   */
+  protected reconcileFromSimModes(modeFlags: number): void {
+    if (!this.isFlightDirectorOn.get()) {
+      return;
+    }
+
+    // Combined modes.
+    if (BitFlags.isAny(modeFlags, MSFSAPStates.TOGAPitch)) {
+      // We only need to send the vertical event. The autopilot will automatically activate the lateral TO/GA mode.
+      this.sendApModeEvent(APModeType.VERTICAL, APVerticalModes.TO, true);
+      return;
+    } else if (BitFlags.isAny(modeFlags, MSFSAPStates.WingLevel)) {
+      this.sendApModeEvent(APModeType.LATERAL, APLateralModes.LEVEL, true);
+      this.sendApModeEvent(APModeType.VERTICAL, APVerticalModes.LEVEL, true);
+      return;
+    } else if (BitFlags.isAny(modeFlags, MSFSAPStates.GS | MSFSAPStates.GSArm)) {
+      this.sendApModeEvent(APModeType.APPROACH, undefined, true);
+      return;
+    }
+
+    // Lateral mode.
+    if (BitFlags.isAny(modeFlags, MSFSAPStates.Nav | MSFSAPStates.NavArm)) {
+      this.sendApModeEvent(APModeType.LATERAL, APLateralModes.NAV, true);
+    } else if (BitFlags.isAny(modeFlags, MSFSAPStates.Heading)) {
+      this.sendApModeEvent(APModeType.LATERAL, APLateralModes.HEADING, true);
+    }
+
+    // Vertical mode.
+    if (BitFlags.isAny(modeFlags, MSFSAPStates.Alt | MSFSAPStates.AltArm)) {
+      this.sendApModeEvent(APModeType.VERTICAL, APVerticalModes.ALT, true);
+    } else if (BitFlags.isAny(modeFlags, MSFSAPStates.VS)) {
+      this.sendApModeEvent(APModeType.VERTICAL, APVerticalModes.VS, true);
+    } else if (BitFlags.isAny(modeFlags, MSFSAPStates.FLC)) {
+      this.sendApModeEvent(APModeType.VERTICAL, APVerticalModes.FLC, true);
+    }
   }
 }

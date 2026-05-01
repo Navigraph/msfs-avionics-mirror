@@ -1,0 +1,28 @@
+.touch-button.touch-background {
+  display: block;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: unset;
+  overflow: hidden;
+}
+
+.touch-button.touch-background.touch-button-primed {
+  background: transparent;
+  box-shadow: none;
+}
+
+.touch-button.touch-background.touch-button-disabled {
+  background: transparent;
+  box-shadow: none;
+}
+
+.touch-background.touch-button-disabled>* {
+  filter: none;
+}

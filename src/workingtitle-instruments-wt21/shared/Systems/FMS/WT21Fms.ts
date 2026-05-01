@@ -1,13 +1,12 @@
 import {
   AirportFacility, EventBus, FacilityLoader, FacilityType, FlightPlan, FlightPlanCopiedEvent, FlightPlanIndicationEvent,
-  FlightPlanLeg, FlightPlanner, FlightPlannerEvents, FlightPlanSegmentType, IcaoValue, LegType, SmoothingPathCalculator,
-  Subject, UserFacility, VerticalFlightPlan,
+  FlightPlanLeg, FlightPlanner, FlightPlannerEvents, FlightPlanSegmentType, GNSSEvents, IcaoValue, LegType,
+  OneWayRunway, SmoothingPathCalculator, Subject, UserFacility, VerticalFlightPlan,
 } from '@microsoft/msfs-sdk';
 
 import {
   BasePerformanceDataManager, FlightPlanIndexType, PerformancePlan, PerformancePlanProxy, PerformancePlanRepository,
-  WTLineFixInfoManager,
-  WTLineFms, WTLineFmsUtils, WTLineLegacyDefaultFlightPlanRepository, WTLineLegacyFlightPlanIndexTypes,
+  WTLineFixInfoManager, WTLineFms, WTLineFmsUtils, WTLineLegacyDefaultFlightPlanRepository, WTLineLegacyFlightPlanIndexTypes,
   WTLineLegacyFlightPlans,
 } from '@microsoft/msfs-wtlinesdk';
 
@@ -140,6 +139,9 @@ export class WT21Fms extends WTLineFms<WTLineLegacyFlightPlanIndexTypes> {
   ) {
     super(bus, facLoader, flightPlanner, verticalPathCalculator, fixInfo, new WTLineLegacyDefaultFlightPlanRepository(flightPlanner));
 
+    // Update PPOS from GPS while we have no real FMS position
+    this.bus.getSubscriber<GNSSEvents>().on('gps-position').atFrequency(1).handle(pos => this.ppos.set(pos.lat, pos.long));
+
     this.performancePlanProxy.switchToPlan(this.activePerformancePlan, true);
 
     this.planInMod.sub(() => {
@@ -229,12 +231,15 @@ export class WT21Fms extends WTLineFms<WTLineLegacyFlightPlanIndexTypes> {
     WTLineFmsUtils.setFlightPlanProcedureIdents(
       this.flightPlanner.getFlightPlan(WTLineLegacyFlightPlans.Active),
       {
-        departureIdent: null,
-        departureEnrouteTransitionIdent: null,
+        originDepartureIdent: null,
+        originDepartureEnrouteTransitionIdent: null,
         arrivalIdent: null,
         arrivalEnrouteTransitionIdent: null,
         approachIdent: null,
+        paddedApproachIdent: null,
         approachTransitionIdent: null,
+        destinationDepartureIdent: null,
+        destinationDepartureEnrouteTransitionIdent: null,
       },
     );
 
@@ -242,12 +247,15 @@ export class WT21Fms extends WTLineFms<WTLineLegacyFlightPlanIndexTypes> {
     WTLineFmsUtils.setFlightPlanProcedureIdents(
       this.flightPlanner.getFlightPlan(WTLineLegacyFlightPlans.Mod),
       {
-        departureIdent: null,
-        departureEnrouteTransitionIdent: null,
+        originDepartureIdent: null,
+        originDepartureEnrouteTransitionIdent: null,
         arrivalIdent: null,
         arrivalEnrouteTransitionIdent: null,
         approachIdent: null,
+        paddedApproachIdent: null,
         approachTransitionIdent: null,
+        destinationDepartureIdent: null,
+        destinationDepartureEnrouteTransitionIdent: null,
       },
     );
 
@@ -276,6 +284,80 @@ export class WT21Fms extends WTLineFms<WTLineLegacyFlightPlanIndexTypes> {
     const plan = this.getPlanToEdit(WTLineLegacyFlightPlans.Active);
 
     WTLineFmsUtils.emptyFlightPlan(plan, notify);
+  }
+
+  /**
+   * Method to add a new origin airport and runway to the flight plan.
+   * @param airport is the facility of the origin airport.
+   * @param runway is the new runway
+   * @param planIndex is the index of the plan to target the edit to
+   * @deprecated use {@link setOriginAirport} and {@link loadDeparture} instead
+   */
+  public setOrigin(airport: AirportFacility | undefined, runway?: OneWayRunway, planIndex: WTLineLegacyFlightPlans = WTLineLegacyFlightPlans.Active): void {
+    const plan = this.getPlanToEdit(planIndex);
+
+    this.setOriginAirport(plan.planIndex, airport?.icaoStruct);
+    plan.setOriginRunway(runway);
+
+    this.removeDeparture(plan.planIndex, true);
+
+    this.facilityInfo.originFacility = airport;
+
+    plan.calculate(0);
+  }
+
+  /**
+   * Method to add a new destination airport and runway to the flight plan.
+   * @param airport is the facility of the destination airport.
+   * @param runway is the selected runway at the destination facility.
+   * @param planIndex is the plan index to target the edit to
+   * @deprecated use {@link setDestinationAirport} and {@link insertApproach} instead
+   */
+  public setDestination(airport: AirportFacility | undefined, runway?: OneWayRunway, planIndex: WTLineLegacyFlightPlans = WTLineLegacyFlightPlans.Active): void {
+    const plan = this.getPlanToEdit(planIndex);
+
+    this.setDestinationAirport(planIndex, airport?.icaoStruct);
+    plan.setDestinationRunway(runway);
+
+    this.removeApproach(plan.planIndex);
+    this.removeArrival(plan.planIndex);
+
+    this.facilityInfo.destinationFacility = airport;
+
+    plan.calculate(0);
+  }
+
+  /**
+   * Loads a departure procedure into a flight plan.
+   * @param facility The procedure's parent airport facility.
+   * @param departureIndex The index of the procedure in the parent airport facility's departure array.
+   * @param runwayTransitionIndex The index of the procedure's runway transition, or `-1` if the procedure does not
+   * include a runway transition.
+   * @param enrouteTransitionIndex The index of the procedure's enroute transition, or `-1` if the procedure does not
+   * include an enroute transition.
+   * @param oneWayRunway The runway associated with the procedure, or `undefined` if there is no associated runway.
+   * @param planIndex The index of the plan to target the edit to.
+   * @returns A Promise which fulfills with whether the specified departure procedure was successfully loaded.
+   *
+   * @deprecated use {@link loadOriginDeparture} or {@link loadDestinationDeparture} instead
+   */
+  public async loadDeparture(
+    facility: AirportFacility,
+    departureIndex: number,
+    runwayTransitionIndex: number,
+    enrouteTransitionIndex: number,
+    oneWayRunway?: OneWayRunway | undefined,
+    planIndex: WTLineLegacyFlightPlans = WTLineLegacyFlightPlans.Active,
+  ): Promise<boolean> {
+    return this.loadDepartureImpl(
+      planIndex,
+      true,
+      facility,
+      departureIndex,
+      runwayTransitionIndex,
+      enrouteTransitionIndex,
+      oneWayRunway,
+    );
   }
 
   /**

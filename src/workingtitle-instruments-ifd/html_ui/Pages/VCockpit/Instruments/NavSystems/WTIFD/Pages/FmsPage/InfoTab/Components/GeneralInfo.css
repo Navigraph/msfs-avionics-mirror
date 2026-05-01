@@ -1,0 +1,52 @@
+.general-info-section {
+  display: flex;
+  padding: 2px;
+  width: 100%;
+  flex-direction: row;
+}
+
+.general-info-section .column {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  flex-basis: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.general-info-section .column.map {
+  pointer-events: none;
+  width: 230px;
+  height: 215px;
+}
+
+.general-info-section .column.map .map-compass-overlay {
+  display: none;
+}
+
+.density-calc {
+  position: relative;
+}
+
+.density-calc-button {
+  height: 20px;
+  width: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  border-radius: 3px;
+}
+
+.density-calc-button img {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%
+}
+
+.general-info-section .info-item.selected .density-calc-button {
+  background-color: var(--wtdyne-color-black);
+  border: solid 2px var(--wtdyne-color-cyan);
+}

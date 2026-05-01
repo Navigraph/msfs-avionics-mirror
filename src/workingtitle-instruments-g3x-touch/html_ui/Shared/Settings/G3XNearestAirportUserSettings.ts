@@ -6,6 +6,9 @@ import { NearestAirportUserSettingTypes } from '@microsoft/msfs-garminsdk';
  * Aliased G3X Touch nearest airport user settings.
  */
 export type G3XNearestAirportUserSettingTypes = NearestAirportUserSettingTypes & {
+  /** Whether to include heliports in the nearest airports search. */
+  nearestAptIncludeHeliports: boolean;
+
   /** Whether to show city names for nearest airports instead of facility names. */
   nearestAptShowCity: boolean;
 };
@@ -44,6 +47,7 @@ export class G3XNearestAirportUserSettings {
     return {
       ['nearestAptRunwayLength']: 0,
       ['nearestAptRunwaySurfaceTypes']: ~0,
+      ['nearestAptIncludeHeliports']: true,
       ['nearestAptShowCity']: true,
     };
   }

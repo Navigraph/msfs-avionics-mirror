@@ -28,6 +28,33 @@ export class LNavUtils {
   }
 
   /**
+   * Creates a new empty, default LNAV tracking state object.
+   * 
+   * The new object's properties are initialized to the following:
+   * ```
+   * {
+      isTracking: false,
+      globalLegIndex: 0,
+      transitionMode: LNavTransitionMode.None,
+      vectorIndex: 0,
+      isSuspended: false,
+      isVectorSequencingLocked: false,
+    }
+   * ```
+   * @returns A new empty, default LNAV tracking state object.
+   */
+  public static createEmptyLNavTrackingState(): LNavTrackingState {
+    return {
+      isTracking: false,
+      globalLegIndex: 0,
+      transitionMode: LNavTransitionMode.None,
+      vectorIndex: 0,
+      isSuspended: false,
+      isVectorSequencingLocked: false,
+    };
+  }
+
+  /**
    * Checks whether two LNAV tracking states are equal.
    * @param a The first state.
    * @param b The second state.
@@ -38,7 +65,8 @@ export class LNavUtils {
       && a.globalLegIndex === b.globalLegIndex
       && a.transitionMode === b.transitionMode
       && a.vectorIndex === b.vectorIndex
-      && a.isSuspended === b.isSuspended;
+      && a.isSuspended === b.isSuspended
+      && a.isVectorSequencingLocked === b.isVectorSequencingLocked;
   }
 
   /**

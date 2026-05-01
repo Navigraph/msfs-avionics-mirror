@@ -50,9 +50,6 @@ html {
 
 /* These vars are intended to be overridden by avionics plugins on a per-plane basis as needed */
 :root {
-  --wt21-horizon-blue: hsl(217, 100%, 50%);
-  --wt21-ground-brown: hsl(30, 63%, 37%);
-
   --wt21-colors-translucent-background: rgba(0, 0, 0, 0.35);
 
   --wt21-bearing-pointer-1: var(--wt21-colors-cyan);

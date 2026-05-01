@@ -20,10 +20,14 @@ export class InstrumentConfig {
 
   /** @inheritdoc */
   constructor(instrument: BaseInstrument) {
+    if (!instrument.instrumentXmlConfig) {
+      console.error(`[InstrumentConfig] The Instrument configuration cannot be found. Ensure there is an <Instrument> config object with a child "<Name>${instrument.instrumentIdentifier}</Name>" in panel.xml`);
+    }
+
     this.instrumentType = this.getInstrumentType(instrument.instrumentIdentifier);
     this.instrumentIndex = instrument.instrumentIndex;
 
-    const displayUnitConfigElement = instrument.instrumentXmlConfig.querySelector(':scope>DisplayUnitConfig');
+    const displayUnitConfigElement = instrument.instrumentXmlConfig?.querySelector(':scope>DisplayUnitConfig');
     this.displayUnitConfig = displayUnitConfigElement ? new DisplayUnitConfig(displayUnitConfigElement) : DisplayUnitConfig.DEFAULT;
   }
 

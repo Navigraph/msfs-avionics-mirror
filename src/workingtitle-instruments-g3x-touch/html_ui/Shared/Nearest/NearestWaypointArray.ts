@@ -1,5 +1,5 @@
 import {
-  ArraySubject, DebounceTimer, EventBus, FacilityTypeMap, NearestSubscription, Subscribable, SubscribableArray,
+  ArraySubject, DebounceTimer, EventBus, FacilityTypeMap, ICAO, NearestSubscription, Subscribable, SubscribableArray,
   SubscribableArrayEventType, SubscribableArrayHandler, Subscription
 } from '@microsoft/msfs-sdk';
 
@@ -186,7 +186,7 @@ export class NearestFacilityWaypointArray<
    * @param facility The facility for which to insert an entry.
    */
   private insertEntryForFacility(facility: FacilityTypeMap[T]): void {
-    const index = this.array.getArray().findIndex(entry => entry.waypoint.facility.get().icao === facility.icao);
+    const index = this.findIndexOfFacility(facility);
     if (index < 0) {
       this.array.insert(this.waypointEntryFactory(this.facWaypointCache.get(facility) as NearestFacilityWaypointTypeMap[T]));
     }
@@ -198,7 +198,7 @@ export class NearestFacilityWaypointArray<
    * @returns The entry that was removed, or `undefined` if the specified facility is not represented in this array.
    */
   private removeEntryForFacility(facility: FacilityTypeMap[T]): EntryType | undefined {
-    const index = this.array.getArray().findIndex(entry => entry.waypoint.facility.get().icao === facility.icao);
+    const index = this.findIndexOfFacility(facility);
     if (index < 0) {
       return undefined;
     }
@@ -210,21 +210,37 @@ export class NearestFacilityWaypointArray<
   }
 
   /**
+   * Finds the index of a facility in this array.
+   * @param facility The facility for which to search.
+   * @returns The index of the specified facility in this array, or `-1` if the facility is not in this array.
+   */
+  private findIndexOfFacility(facility: FacilityTypeMap[T]): number {
+    const array = this.array.getArray();
+    for (let i = 0; i < array.length; i++) {
+      if (ICAO.valueEquals(facility.icaoStruct, array[i].waypoint.facility.get().icaoStruct)) {
+        return i;
+      }
+    }
+
+    return -1;
+  }
+
+  /**
    * Reconciles this array with the array provided by its nearest facilities subscription.
    * @param facilityArray The array provided by this arrya's nearest facilities subscription.
    */
   private reconcileArray(facilityArray: readonly FacilityTypeMap[T][]): void {
     const toInclude = new Map<string, FacilityTypeMap[T]>();
     for (let i = 0; i < facilityArray.length; i++) {
-      toInclude.set(facilityArray[i].icao, facilityArray[i]);
+      toInclude.set(ICAO.getUid(facilityArray[i].icaoStruct), facilityArray[i]);
     }
 
-    for (let i = 0; i < this.array.length; i++) {
+    for (let i = this.array.length - 1; i >= 0; i--) {
       const entry = this.array.get(i);
-      const icao = entry.waypoint.facility.get().icao;
+      const icaoUid = ICAO.getUid(entry.waypoint.facility.get().icaoStruct);
 
-      if (toInclude.has(entry.waypoint.facility.get().icao)) {
-        toInclude.delete(icao);
+      if (toInclude.has(icaoUid)) {
+        toInclude.delete(icaoUid);
       } else {
         this.array.removeAt(i);
       }

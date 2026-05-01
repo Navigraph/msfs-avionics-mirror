@@ -274,11 +274,7 @@ export interface VNavConstraint {
   /** The target altitude of this constraint in meters. */
   targetAltitude: number;
 
-  /**
-   * Whether or not this constraint is a target that will be held at
-   * during a level-off or whether it will instead be passed through
-   * with no level off.
-   */
+  /** Whether this constraint is designated as a target constraint. */
   isTarget: boolean;
 
   /** Whether or not this constraint is the last constraint prior to a MANSEQ or other VNAV ineligible leg type. */

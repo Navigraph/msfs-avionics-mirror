@@ -4,6 +4,7 @@ import { GarminFacilityWaypointCache } from '@microsoft/msfs-garminsdk';
 
 import { MfdFplPageDataFieldRenderer } from '../../../../../../MFD/MainView/Pages/MfdFplPage/DataField/MfdFplPageDataFieldRenderer';
 import { FmsFlightPlanningConfig } from '../../../../../../Shared/AvionicsConfig/FmsConfig';
+import { UnitsConfig } from '../../../../../../Shared/AvionicsConfig/UnitsConfig';
 import { UiFlightPlanList } from '../../../../../../Shared/Components/FlightPlan/UiFlightPlanList';
 import { ActiveFlightPlanDataArray } from '../../../../../../Shared/FlightPlan/ActiveFlightPlanDataArray';
 import { DefaultFlightPlanDataFieldCalculatorRepo } from '../../../../../../Shared/FlightPlan/DefaultFlightPlanDataFieldCalculatorRepo';
@@ -35,6 +36,9 @@ export interface PfdFlightPlanInsetProps extends PfdInsetProps {
 
   /** A configuration object defining options for flight planning. */
   flightPlanningConfig: FmsFlightPlanningConfig;
+
+  /** A configuration object defining options for measurement units. */
+  unitsConfig: UnitsConfig;
 }
 
 /**
@@ -56,6 +60,7 @@ export class PfdFlightPlanInset extends AbstractPfdInset<PfdFlightPlanInsetProps
     this.fplCalculationSettingManager.getSetting('fplSpeed'),
     this.fplCalculationSettingManager.getSetting('fplFuelFlow'),
     {
+      fuelType: this.props.unitsConfig.fuelType,
       supportSensedFuelFlow: this.props.flightPlanningConfig.supportSensedFuelFlow,
       fuelOnBoardType: this.props.flightPlanningConfig.fuelOnBoardType
     }

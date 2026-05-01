@@ -1,0 +1,11 @@
+.datablock-fuel {
+  display: flex;
+  flex-direction: column;
+}
+
+.datablock-fuel-display .fuel-value-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  margin-right: 2px;
+}

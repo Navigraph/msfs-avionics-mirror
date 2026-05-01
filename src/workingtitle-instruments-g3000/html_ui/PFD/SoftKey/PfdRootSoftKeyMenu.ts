@@ -1,9 +1,18 @@
-import { ComputedSubject, ControlEvents, MappedSubject, MappedSubscribable, Subscribable, Subscription, UserSettingManager } from '@microsoft/msfs-sdk';
-import { ObsSuspDataProvider, ObsSuspModes, SoftKeyMenu, SoftKeyMenuSystem } from '@microsoft/msfs-garminsdk';
 import {
-  DisplayPaneControlEvents, DisplayPaneIndex, FmsConfig, G3000NavIndicator, NavSourceFormatter, PfdIndex, PfdMapLayoutSettingMode, PfdMapLayoutUserSettingTypes,
-  RadiosConfig
+  AnnunciationType, CasEvents, CasStateEvents, ComputedSubject, ConsumerSubject, ControlEvents, MappedSubject,
+  MappedSubscribable, Subscribable, SubscribableMapFunctions, Subscription, UserSettingManager
+} from '@microsoft/msfs-sdk';
+
+import { ObsSuspDataProvider, ObsSuspModes, SoftKeyMenu, SoftKeyMenuSystem } from '@microsoft/msfs-garminsdk';
+
+import {
+  AvionicsConfig, CASControlEvents, DisplayPaneControlEvents, DisplayPaneIndex, G3000NavIndicator, NavSourceFormatter,
+  PfdIndex, PfdMapLayoutSettingMode, PfdMapLayoutUserSettingTypes,
 } from '@microsoft/msfs-wtg3000-common';
+
+import { PfdConfig } from '../Config/PfdConfig';
+
+import './PfdRootSoftKeyMenu.css';
 
 /**
  * The root PFD softkey menu.
@@ -22,6 +31,11 @@ export class PfdRootSoftKeyMenu extends SoftKeyMenu {
 
   private readonly activeNavValue: MappedSubscribable<string | undefined>;
 
+  private readonly isCasScrollUpEnabled?: ConsumerSubject<boolean>;
+  private readonly isCasScrollDownEnabled?: ConsumerSubject<boolean>;
+  private readonly isCasMasterCautionActive?: ConsumerSubject<boolean>;
+  private readonly isCasMasterWarningActive?: ConsumerSubject<boolean>;
+
   private readonly subs: Subscription[] = [];
 
   /**
@@ -31,25 +45,26 @@ export class PfdRootSoftKeyMenu extends SoftKeyMenu {
    * @param activeNavIndicator The active nav indicator of this menu's PFD.
    * @param obsSuspDataProvider A provider of OBS/SUSP data.
    * @param mapLayoutSettingManager A manager for map layout settings for this menu's PFD.
-   * @param radiosConfig The radios configuration object.
-   * @param fmsConfig The FMS configuration object.
+   * @param avionicsConfig The avionics configuration object.
+   * @param pfdConfig The PFD configuration object.
    * @param declutter Whether this menu's parent PFD is decluttered.
    * @param isSplit Whether the menu is a split-mode menu.
    */
-  constructor(
+  public constructor(
     menuSystem: SoftKeyMenuSystem,
     private readonly pfdIndex: PfdIndex,
     activeNavIndicator: G3000NavIndicator,
     obsSuspDataProvider: ObsSuspDataProvider,
     mapLayoutSettingManager: UserSettingManager<PfdMapLayoutUserSettingTypes>,
-    radiosConfig: RadiosConfig,
-    fmsConfig: FmsConfig,
+    avionicsConfig: AvionicsConfig,
+    pfdConfig: PfdConfig,
     declutter: Subscribable<boolean>,
     isSplit: boolean
   ) {
     super(menuSystem);
 
-    let obsSoftKeyIndex, activeNavSoftkeyIndex;
+    let obsSoftKeyIndex: number;
+    let activeNavSoftkeyIndex: number;
     const declutterDisableIndexes: number[] = [];
 
     if (isSplit) {
@@ -158,10 +173,10 @@ export class PfdRootSoftKeyMenu extends SoftKeyMenu {
 
     this.activeNavValue = MappedSubject.create(
       NavSourceFormatter.createForIndicator(
-        fmsConfig.navSourceLabelText,
+        avionicsConfig.fms.navSourceLabelText,
         false,
-        radiosConfig.dmeCount > 1,
-        radiosConfig.adfCount > 1,
+        avionicsConfig.radios.dmeCount > 1,
+        avionicsConfig.radios.adfCount > 1,
         true
       ).bind(undefined, activeNavIndicator),
       activeNavIndicator.source,
@@ -177,6 +192,68 @@ export class PfdRootSoftKeyMenu extends SoftKeyMenu {
         this.getItem(declutterDisableIndexes[i])?.disabled.set(isDecluttered);
       }
     }, true));
+
+    // ---- CAS ----
+
+    if (pfdConfig.softkey.includeCasControls) {
+
+      const casControlSub = menuSystem.bus.getSubscriber<CASControlEvents>();
+
+      this.isCasScrollUpEnabled = ConsumerSubject.create(casControlSub.on(`cas_scroll_up_enable_${this.pfdIndex}`), false);
+      this.isCasScrollDownEnabled = ConsumerSubject.create(casControlSub.on(`cas_scroll_down_enable_${this.pfdIndex}`), false);
+
+      const casItem = this.addItem(isSplit ? 5 : 10, 'CAS', () => { menuSystem.pushMenu(isSplit ? 'cas-split' : 'cas'); }, undefined, true);
+      MappedSubject.create(
+        SubscribableMapFunctions.nor(),
+        this.isCasScrollUpEnabled,
+        this.isCasScrollDownEnabled
+      ).pipe(casItem.disabled);
+
+      const casSub = menuSystem.bus.getSubscriber<CasStateEvents>();
+
+      this.isCasMasterCautionActive = ConsumerSubject.create(casSub.on('cas_master_caution_active'), false);
+      this.isCasMasterWarningActive = ConsumerSubject.create(casSub.on('cas_master_warning_active'), false);
+
+      const casMasterState = MappedSubject.create(
+        ([isCautionActive, isWarningActive]) => isWarningActive ? 'Warning' : isCautionActive ? 'Caution' : '',
+        this.isCasMasterCautionActive,
+        this.isCasMasterWarningActive
+      );
+
+      const casPub = menuSystem.bus.getPublisher<CasEvents>();
+
+      const casMasterItem = this.addItem(
+        isSplit ? 6 : 11,
+        '',
+        () => {
+          switch (casMasterState.get()) {
+            case 'Caution':
+              casPub.pub('cas_master_acknowledge', AnnunciationType.Caution, true, false);
+              break;
+            case 'Warning':
+              casPub.pub('cas_master_acknowledge', AnnunciationType.Warning, true, false);
+              break;
+          }
+        },
+        undefined,
+        true
+      );
+
+      casMasterState.sub(state => {
+        casMasterItem.label.set(state);
+        casMasterItem.disabled.set(state === '');
+
+        casMasterItem.cssClass.toggle('softkey-cas-caution', state === 'Caution');
+        casMasterItem.cssClass.toggle('softkey-cas-warning', state === 'Warning');
+      });
+
+      this.subs.push(
+        this.isCasScrollUpEnabled,
+        this.isCasScrollDownEnabled,
+        this.isCasMasterCautionActive,
+        this.isCasMasterWarningActive
+      );
+    }
   }
 
   /** @inheritdoc */
@@ -184,7 +261,9 @@ export class PfdRootSoftKeyMenu extends SoftKeyMenu {
     this.isObsButtonDisabled.destroy();
     this.activeNavValue.destroy();
 
-    this.subs.forEach(sub => { sub.destroy(); });
+    for (const sub of this.subs) {
+      sub.destroy();
+    }
 
     super.destroy();
   }

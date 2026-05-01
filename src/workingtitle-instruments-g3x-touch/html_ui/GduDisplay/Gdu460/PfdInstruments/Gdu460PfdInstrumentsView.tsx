@@ -7,7 +7,7 @@ import {
 import {
   AhrsSystemEvents, AltitudeAlerter, DefaultAirspeedIndicatorDataProvider, DefaultAltimeterDataProvider,
   DefaultAoaDataProvider, DefaultMarkerBeaconDataProvider, DefaultVsiDataProvider, MinimumsAlerter,
-  MinimumsDataProvider, PfdDeclutterManager, VNavDataProvider, VSpeedBugDefinition, WindDataProvider
+  MinimumsDataProvider, ObsSuspModes, PfdDeclutterManager, VNavDataProvider, VSpeedBugDefinition, WindDataProvider
 } from '@microsoft/msfs-garminsdk';
 
 import { AfcsStatusBox } from '../../../PFD/Components/AfcsStatusBox/AfcsStatusBox';
@@ -17,7 +17,7 @@ import { G3XAltimeter } from '../../../PFD/Components/Altimeter/G3XAltimeter';
 import { BaroMinimumDisplay } from '../../../PFD/Components/BaroMinimumDisplay/BaroMinimumDisplay';
 import { BearingInformationDisplay } from '../../../PFD/Components/BearingInformationDisplay/BearingInformationDisplay';
 import { Hsi } from '../../../PFD/Components/HSI/Hsi';
-import { DefaultHsiDataProvider } from '../../../PFD/Components/HSI/HsiDataProvider';
+import { DefaultHsiDataProvider, HsiDataProvider } from '../../../PFD/Components/HSI/HsiDataProvider';
 import { MarkerBeaconDisplay } from '../../../PFD/Components/MarkerBeaconDisplay/MarkerBeaconDisplay';
 import { DefaultSlipSkidDataProvider, SlipSkidIndicator } from '../../../PFD/Components/SlipSkidIndicator';
 import { TrafficAnnunciations } from '../../../PFD/Components/TrafficAnnunciations/TrafficAnnunciations';
@@ -33,9 +33,11 @@ import { AvionicsConfig } from '../../../Shared/AvionicsConfig/AvionicsConfig';
 import { EisLayouts, EisSizes } from '../../../Shared/CommonTypes';
 import { G3XCASDisplay } from '../../../Shared/Components/CAS/G3XCASDisplay';
 import { G3XFplSourceDataProvider } from '../../../Shared/FlightPlan/G3XFplSourceDataProvider';
+import { G3XFplSource } from '../../../Shared/FlightPlan/G3XFplSourceTypes';
 import { G3XTouchPlugin, G3XTouchPluginBinder } from '../../../Shared/G3XTouchPlugin';
 import { InstrumentConfig } from '../../../Shared/InstrumentConfig/InstrumentConfig';
-import { G3XTouchNavIndicator, G3XTouchNavIndicators } from '../../../Shared/NavReference/G3XTouchNavReference';
+import { G3XObsController } from '../../../Shared/Navigation/G3XObsController';
+import { G3XTouchNavIndicators, G3XTouchNavSources } from '../../../Shared/NavReference/G3XTouchNavReference';
 import { G3XUnitsUserSettings } from '../../../Shared/Settings/G3XUnitsUserSettings';
 import { GduUserSettingTypes } from '../../../Shared/Settings/GduUserSettings';
 import { PfdKnobActionSettingMode, PfdKnobUserSettingTypes, PfdUserSettingTypes } from '../../../Shared/Settings/PfdUserSettings';
@@ -89,6 +91,9 @@ export interface Gdu460PfdInstrumentsViewProps extends UiViewProps {
 
   /** A manager for aliased GDU user settings. */
   gduAliasedSettingManager: UserSettingManager<GduUserSettingTypes>;
+
+  /** A collection of all navigation sources. */
+  navSources: G3XTouchNavSources;
 
   /** A collection of all navigation indicators. */
   navIndicators: G3XTouchNavIndicators;
@@ -197,6 +202,7 @@ export class Gdu460PfdInstrumentsView extends AbstractUiView<Gdu460PfdInstrument
     this.props.uiService.bus,
     this.props.gduAliasedSettingManager.getSetting('gduAhrsIndex'),
     this.props.uiService.gduIndex,
+    this.props.navSources,
     this.props.navIndicators.get('activeSource'),
     this.props.navIndicators.get('bearingPointer1'),
     this.props.navIndicators.get('bearingPointer2'),
@@ -210,7 +216,7 @@ export class Gdu460PfdInstrumentsView extends AbstractUiView<Gdu460PfdInstrument
   private readonly leftKnobActionHandler = new PfdKnobActionHandler(
     UiKnobGroup.Left,
     this.props.uiService,
-    this.props.navIndicators.get('activeSource'),
+    this.hsiDataProvider,
     this.props.gduAliasedSettingManager,
     this.props.pfdSettingManager,
     this.props.config
@@ -218,7 +224,7 @@ export class Gdu460PfdInstrumentsView extends AbstractUiView<Gdu460PfdInstrument
   private readonly rightKnobActionHandler = new PfdKnobActionHandler(
     UiKnobGroup.Right,
     this.props.uiService,
-    this.props.navIndicators.get('activeSource'),
+    this.hsiDataProvider,
     this.props.gduAliasedSettingManager,
     this.props.pfdSettingManager,
     this.props.config
@@ -667,15 +673,27 @@ class PfdKnobActionHandler implements UiInteractionHandler {
   );
 
   private readonly allowCourseAction = MappedSubject.create(
-    ([activeNavSource]) => {
-      // TODO: handle OBS
+    ([activeNavSource, obsSuspMode]) => {
       return activeNavSource !== null && (
-        activeNavSource.getType() === NavSourceType.Nav && activeNavSource.index <= this.config.radios.navCount
+        (activeNavSource.getType() === NavSourceType.Nav && activeNavSource.index <= this.config.radios.navCount)
+        || (activeNavSource.name === 'GPSInt' && obsSuspMode === ObsSuspModes.OBS)
       );
     },
-    this.activeNavIndicator.source
+    this.hsiDataProvider.activeNavIndicator.source,
+    this.hsiDataProvider.obsSuspMode
   );
   private readonly allowCourseActionSub: Subscription;
+
+  private readonly internalObsController = new G3XObsController(
+    this.uiService.bus,
+    {
+      internalSourceDef: this.hsiDataProvider.internalSourceDef,
+      externalSourceDefs: this.hsiDataProvider.externalSourceDefs,
+      externalSourceCount: this.hsiDataProvider.externalFplSourceCount,
+    },
+    this.hsiDataProvider.navSources,
+    G3XFplSource.Internal
+  );
 
   private readonly outerKnobId: UiOuterKnobId;
   private readonly innerKnobId: UiInnerKnobId;
@@ -695,7 +713,7 @@ class PfdKnobActionHandler implements UiInteractionHandler {
    * Creates a new instance of PfdKnobActionHandler.
    * @param knobGroup The knob group for which this handler is responsible.
    * @param uiService The UI service.
-   * @param activeNavIndicator The nav indicator for the active nav source.
+   * @param hsiDataProvider A provider of HSI data.
    * @param gduSettingManager A manager for GDU user settings.
    * @param pfdKnobSettingManager A manager for PFD knob user settings.
    * @param config The global avionics configuration object.
@@ -703,7 +721,7 @@ class PfdKnobActionHandler implements UiInteractionHandler {
   public constructor(
     private readonly knobGroup: UiKnobGroup.Left | UiKnobGroup.Right,
     private readonly uiService: UiService,
-    private readonly activeNavIndicator: G3XTouchNavIndicator,
+    private readonly hsiDataProvider: HsiDataProvider,
     gduSettingManager: UserSettingManager<GduUserSettingTypes>,
     private readonly pfdKnobSettingManager: UserSettingManager<PfdKnobUserSettingTypes>,
     private readonly config: AvionicsConfig
@@ -825,14 +843,22 @@ class PfdKnobActionHandler implements UiInteractionHandler {
     switch (this.action.get()) {
       case PfdKnobAction.CourseBaro:
         if (this.allowCourseAction.get()) {
-          // TODO: Handle OBS.
-          const activeNavSource = this.activeNavIndicator.source.get();
+          const activeNavSource = this.hsiDataProvider.activeNavIndicator.source.get();
           if (activeNavSource) {
             switch (activeNavSource.getType()) {
               case NavSourceType.Nav: {
                 const simRadioIndex = this.config.radios.navDefinitions[activeNavSource.index]?.simIndex;
                 if (simRadioIndex !== undefined) {
                   this.keyManager?.triggerKey(direction === 1 ? `VOR${simRadioIndex}_OBI_INC` : `VOR${simRadioIndex}_OBI_DEC`, false);
+                }
+                break;
+              }
+
+              case NavSourceType.Gps: {
+                if (direction === 1) {
+                  this.internalObsController.incObsCourse();
+                } else {
+                  this.internalObsController.decObsCourse();
                 }
                 break;
               }
@@ -863,8 +889,7 @@ class PfdKnobActionHandler implements UiInteractionHandler {
     switch (this.action.get()) {
       case PfdKnobAction.CourseBaro:
         if (this.allowCourseAction.get()) {
-          // TODO: Handle OBS.
-          const activeNavSource = this.activeNavIndicator.source.get();
+          const activeNavSource = this.hsiDataProvider.activeNavIndicator.source.get();
           if (activeNavSource && (activeNavSource.signalStrength.get() ?? 0) > 0) {
             switch (activeNavSource.getType()) {
               case NavSourceType.Nav: {
@@ -884,6 +909,11 @@ class PfdKnobActionHandler implements UiInteractionHandler {
                     }
                   }
                 }
+                break;
+              }
+
+              case NavSourceType.Gps: {
+                this.internalObsController.syncObsCourse();
                 break;
               }
             }
@@ -942,6 +972,7 @@ class PfdKnobActionHandler implements UiInteractionHandler {
     this.toggleTimer.clear();
     this.defaultAction.destroy();
     this.allowCourseAction.destroy();
+    this.internalObsController.destroy();
     this.isHeadingDataValid.destroy();
     this.heading.destroy();
 

@@ -1,0 +1,28 @@
+.datablock.datablock-single-standby {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.datablock.datablock-single-standby .wt-ifd-single-frequency-container {
+  width: 132px;
+  height: 50px;
+}
+
+.datablock.datablock-single-standby .datablock-single-standby-freq {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 137px;
+  height: 49px;
+  border: 3px solid var(--wtdyne-color-blue);
+  border-radius: 5px;
+}
+
+.datablock.datablock-single-standby .wt-ifd-freq-focus-cyan-outline {
+  top: 0;
+  bottom: 4px;
+}
+
+.datablock.datablock-single-standby .wt-ifd-frequency-facility-container {
+  top: 28px;
+}

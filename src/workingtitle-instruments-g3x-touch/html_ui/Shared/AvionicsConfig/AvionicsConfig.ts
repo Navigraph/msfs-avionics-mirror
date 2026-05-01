@@ -1,5 +1,6 @@
 import { Annunciation, XMLAnnunciationFactory } from '@microsoft/msfs-sdk';
 
+import { AutopilotConfig } from '../Autopilot/AutopilotConfig';
 import { G3XChartsConfig } from '../Charts/G3XChartsConfig';
 import { MapConfig } from '../Components/Map/MapConfig';
 import { DefaultConfigFactory } from '../Config/DefaultConfigFactory';
@@ -7,7 +8,6 @@ import { TrafficConfig } from '../Traffic/TrafficConfig';
 import { TransponderConfig } from '../Transponder/TransponderConfig';
 import { AudioConfig } from './AudioConfig';
 import { AuralAlertsConfig } from './AuralAlertsConfig';
-import { AutopilotConfig } from './AutopilotConfig';
 import { EngineConfig } from './EngineConfig';
 import { FmsConfig } from './FmsConfig';
 import { GduDefsConfig } from './GduDefsConfig';

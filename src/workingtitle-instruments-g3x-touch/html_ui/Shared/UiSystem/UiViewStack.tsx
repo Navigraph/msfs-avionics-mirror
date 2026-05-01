@@ -1212,10 +1212,20 @@ export class UiViewStack implements UiInteractionHandler {
         entry.ref.onOcclusionChange(occlusion);
       }
 
-      if (entry.popupBackgroundOcclusion.get() === 'hide') {
-        occlusion = 'hide';
-      } else if (entry.popupBackgroundOcclusion.get() === 'darken' && occlusion !== 'hide') {
-        occlusion = 'darken';
+      switch (entry.popupBackgroundOcclusion.get()) {
+        case 'hide':
+          occlusion = 'hide';
+          break;
+        case 'darken':
+          if (occlusion !== 'hide') {
+            occlusion = 'darken';
+          }
+          break;
+        case 'transparent':
+          if (occlusion !== 'hide' && occlusion !== 'darken') {
+            occlusion = 'transparent';
+          }
+          break;
       }
     }
 
@@ -1230,10 +1240,20 @@ export class UiViewStack implements UiInteractionHandler {
         entry.ref.onOcclusionChange(occlusion);
       }
 
-      if (entry.popupBackgroundOcclusion.get() === 'hide') {
-        occlusion = 'hide';
-      } else if (entry.popupBackgroundOcclusion.get() === 'darken' && occlusion !== 'hide') {
-        occlusion = 'darken';
+      switch (entry.popupBackgroundOcclusion.get()) {
+        case 'hide':
+          occlusion = 'hide';
+          break;
+        case 'darken':
+          if (occlusion !== 'hide') {
+            occlusion = 'darken';
+          }
+          break;
+        case 'transparent':
+          if (occlusion !== 'hide' && occlusion !== 'darken') {
+            occlusion = 'transparent';
+          }
+          break;
       }
     }
   }
@@ -1467,6 +1487,7 @@ class StandardUiViewWrapper extends DisplayComponent<StandardUiViewWrapperProps>
     'ui-popup-no-background-occlusion',
     'ui-view-occlude-darken',
     'ui-view-occlude-hidden',
+    'ui-view-occlude-transparent',
     'hidden'
   ];
 
@@ -1537,6 +1558,7 @@ class StandardUiViewWrapper extends DisplayComponent<StandardUiViewWrapperProps>
     this.subs.push(this.props.occlusion.sub(occlusion => {
       this.classList.toggle('ui-view-occlude-darken', occlusion === 'darken');
       this.classList.toggle('ui-view-occlude-hidden', occlusion === 'hide');
+      this.classList.toggle('ui-view-occlude-transparent', occlusion === 'transparent');
     }, true));
 
     this.resetAnimationSub = this.props.resetAnimation.on(this.resetAnimationClass.bind(this));

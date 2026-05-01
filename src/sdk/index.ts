@@ -1,4 +1,5 @@
 export * from './alerts';
+export * from './astro';
 export * from './autopilot';
 export * from './autothrottle';
 export * from './cas';

@@ -2096,6 +2096,8 @@ export class Epic2Fms {
       }
     }
 
+    const vfrVerticalPathAngle = description.vfrVerticalPathAngle ?? 3;
+
     let approach: ApproachProcedure;
     if (visualRunway) {
       approach = Epic2FmsUtils.buildVisualApproach(
@@ -2103,7 +2105,7 @@ export class Epic2Fms {
         description.facility,
         visualRunway,
         description.visualRunwayOffset ?? 5,
-        description.vfrVerticalPathAngle,
+        vfrVerticalPathAngle,
       );
     } else {
       approach = description.facility.approaches[description.approachIndex];
@@ -2114,7 +2116,7 @@ export class Epic2Fms {
 
     if (visualRunway) {
       this.setFlightPlanVisualApproach(plan.planIndex, visualRunway.designation);
-      this.setFlightPlanVisualApproachVfrVpa(plan.planIndex, description.vfrVerticalPathAngle);
+      this.setFlightPlanVisualApproachVfrVpa(plan.planIndex, vfrVerticalPathAngle);
     } else if (this.getFlightPlanVisualApproach(plan.planIndex) !== undefined) {
       this.setFlightPlanVisualApproach(plan.planIndex, undefined);
       this.setFlightPlanVisualApproachVfrVpa(plan.planIndex, undefined);

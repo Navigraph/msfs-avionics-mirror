@@ -1,0 +1,79 @@
+.svs-turn-rate-indicator-container {
+  position: absolute;
+  width: 100%;
+  height: 43px;
+  top: 45px;
+  left: 0;
+}
+
+.svs-turn-rate-range {
+  position: absolute;
+  width: 220px;
+  height: 43px;
+  top: 0;
+  left: calc(50% - 110px);
+}
+
+.svs-turn-rate-range .svs-turn-rate-range-shadow {
+  stroke: var(--wtdyne-color-black);
+  stroke-width: 2px;
+  fill: none;
+}
+
+.svs-turn-rate-range .svs-turn-rate-range-line {
+  stroke: var(--wtdyne-color-white);
+  stroke-width: 2px;
+  fill: none;
+}
+
+.svs-turn-rate {
+  position: absolute;
+  top: 0;
+  width: 115px;
+  height: 43px;
+  overflow: hidden;
+}
+
+.svs-turn-rate.left {
+  right: 50%;
+}
+
+.svs-turn-rate.right {
+  left: 50%;
+  transform: scaleX(-1);
+}
+
+.svs-turn-rate-indicator {
+  width: 115px;
+  height: 43px;
+  transform-origin: 115px 210px;
+}
+
+.svs-turn-rate-indicator .svs-turn-rate-outline {
+  stroke: var(--wtdyne-color-black);
+  stroke-width: 6px;
+  fill: none;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+
+.svs-turn-rate-indicator .svs-turn-rate-line {
+  stroke: var(--wtdyne-color-cyan);
+  stroke-width: 5px;
+  fill: none;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+
+.svs-turn-rate-indicator .svs-turn-rate-arrow {
+  stroke: none;
+  stroke-width: 0.5px;
+  fill: none;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+
+.svs-turn-rate-indicator.full .svs-turn-rate-arrow {
+  stroke: var(--wtdyne-color-black);
+  fill: var(--wtdyne-color-cyan);
+}

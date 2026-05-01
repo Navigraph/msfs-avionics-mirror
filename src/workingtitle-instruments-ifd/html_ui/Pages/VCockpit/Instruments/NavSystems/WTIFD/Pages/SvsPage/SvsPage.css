@@ -1,0 +1,82 @@
+.wt-ifd-svs-pfd-left-container {
+    position: absolute;
+    top: 40px;
+    left: 8px;
+}
+
+.wt-ifd-altitude-container {
+    display: flex;
+    position: absolute;
+    align-items: center;
+    right: 8px;
+    bottom: 48px;
+    height: 350px;
+    z-index: 2;
+    width: auto;
+    box-shadow: inset 0 0 10px 3px rgba(255, 255, 255, 0.3);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.wt-ifd-altitude-inner-container {
+    position: relative;
+    overflow: hidden;
+    height: 320px;
+}
+
+.wt-ifd-airspeed-container {
+    position: relative;
+    display: flex;
+    z-index: 2;
+    height: 365px;
+    width: 125px;
+    box-shadow: inset 0 0 10px 3px rgba(255, 255, 255, 0.3);
+    border-radius: 10px 10px 12px 12px;
+    overflow: hidden;
+}
+
+.wt-ifd-airspeed-inner-container {
+    position: relative;
+    overflow: hidden;
+    height: 340px;
+    right: 5px;
+}
+
+.wt-ifd-svs-compass-container {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 135px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  transform: scaleX(1.5) scaleY(0.75);
+
+  --svg-compass-stroke-width: 1.5px;
+}
+
+.wt-ifd-svs-compass-container svg {
+  stroke: var(--wtdyne-color-white);
+  stroke-width: var(--svg-compass-stroke-width);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.wt-ifd-svs-compass-container .heading-bug {
+  transform: scaleY(1.5);
+}
+
+.wt-ifd-svs-compass-container .compass-numbers {
+  color: var(--wtdyne-color-white);
+}
+
+.svs-heading-flags-container {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

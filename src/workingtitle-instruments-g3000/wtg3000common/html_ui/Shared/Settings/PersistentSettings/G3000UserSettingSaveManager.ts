@@ -63,6 +63,13 @@ export class G3000UserSettingSaveManager extends UserSettingSaveManager {
   ];
 
   private static readonly FMS_SPEED_EXCLUDE_SETTINGS: (keyof FmsSpeedUserSettingTypes)[] = [
+    'fmsSpeedClimbIas',
+    'fmsSpeedClimbMach',
+    'fmsSpeedCruiseIas',
+    'fmsSpeedCruiseMach',
+    'fmsSpeedDescentIas',
+    'fmsSpeedDescentMach',
+    'fmsSpeedDescentFpa',
     'fmsSpeedUserTargetIas',
     'fmsSpeedUserTargetMach',
     'fmsSpeedUserTargetIsMach'

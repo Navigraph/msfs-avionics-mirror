@@ -1,0 +1,13 @@
+.datablock.datablock-sat {
+  width: 100%;
+  flex-direction: row;
+}
+
+.datablock-sat .datablock-sat-value {
+  flex-grow: 1;
+  text-align: right;
+}
+
+.datablock-sat .datablock-sat-unit {
+  padding-right: 30px;
+}

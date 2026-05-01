@@ -5,7 +5,7 @@ import { MapWaypointHighlightModule } from '../modules/MapWaypointHighlightModul
 import { WaypointMapSelectionModule } from '../modules/WaypointMapSelectionModule';
 
 /**
- * Modules required for WaypointMapHighlightController.
+ * Modules required for {@link WaypointMapHighlightController}.
  */
 export interface WaypointMapHighlightControllerModules {
   /** Waypoint info module. */

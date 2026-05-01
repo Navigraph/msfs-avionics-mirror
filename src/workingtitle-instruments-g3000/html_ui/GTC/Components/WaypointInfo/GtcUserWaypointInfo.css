@@ -1,0 +1,259 @@
+.user-info {
+  position: relative;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: center;
+}
+
+.gtc-horizontal .user-info {
+  --user-info-header-margin-bottom: 5px;
+
+  --user-info-tab-container-width: 860px;
+  --user-info-tab-container-height: 560px;
+
+  --user-info-tab-content-left: 12px;
+  --user-info-tab-content-top: 10px;
+  --user-info-tab-content-width: 480px;
+  --user-info-tab-content-height: 530px;
+
+  --user-info-bearing-arrow-margin-left: 5px;
+
+  /* ---- Info tab ---- */
+
+  --user-info-info-font-size: 32px;
+  --user-info-info-field-title-margin-bottom: 5px;
+
+  --user-info-info-type-margin-bottom: 15px;
+
+  --user-info-info-params-pos-height: 185px;
+  --user-info-info-params-pos-padding-left: 15px;
+
+  --user-info-info-params-height: 185px;
+  --user-info-info-params-padding: 28px 0px 0px 20px;
+
+  --user-info-info-params-dis-margin-right: 15px;
+
+  --user-info-info-pos-height: 110px;
+  --user-info-info-pos-column-gap: 30px;
+
+  --user-info-info-coords-height: 100px;
+
+  /* ---- Waypoint list tab ---- */
+
+  --user-info-list-list-left: 1px;
+  --user-info-list-list-top: 1px;
+  --user-info-list-list-width: 474px;
+  --user-info-list-list-item-height: 130px;
+  --user-info-list-list-item-spacing: 1px;
+}
+
+.gtc-vertical .user-info {
+  --user-info-header-margin-bottom: 3px;
+
+  --user-info-tab-container-width: 465px;
+  --user-info-tab-container-height: 300px;
+  --gtc-tabbed-container-vert-tab-width: 92px;
+
+  --user-info-tab-content-left: 5px;
+  --user-info-tab-content-top: 3px;
+  --user-info-tab-content-width: 262px;
+  --user-info-tab-content-height: 285px;
+
+  --user-info-bearing-arrow-margin-left: 2px;
+
+  /* ---- Info tab ---- */
+
+  --user-info-info-font-size: 18px;
+  --user-info-info-field-title-margin-bottom: 2px;
+
+  --user-info-info-type-margin-bottom: 7px;
+
+  --user-info-info-params-pos-height: 100px;
+  --user-info-info-params-pos-padding-left: 5px;
+
+  --user-info-info-params-height: 100px;
+  --user-info-info-params-padding: 15px 0px 0px 10px;
+
+  --user-info-info-params-dis-margin-right: 7px;
+
+  --user-info-info-pos-height: 60px;
+  --user-info-info-pos-column-gap: 15px;
+
+  --user-info-info-coords-height: 55px;
+
+  /* ---- Waypoint list tab  ---- */
+
+  --user-info-list-list-left: 0px;
+  --user-info-list-list-top: 0px;
+  --user-info-list-list-width: 256px;
+  --user-info-list-list-item-height: 69px;
+  --user-info-list-list-item-spacing: 1px;
+}
+
+.user-info .wpt-info-header {
+  margin-bottom: var(--user-info-header-margin-bottom);
+}
+
+.user-info-tab-container {
+  width: var(--user-info-tab-container-width);
+  height: var(--user-info-tab-container-height);
+}
+
+.user-info-tab-container .wpt-info-no-wpt {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--gtc-tabbed-container-content-border-radius);
+}
+
+.user-info-tab {
+  position: absolute;
+  box-sizing: border-box;
+  left: var(--user-info-tab-content-left);
+  top: var(--user-info-tab-content-top);
+  width: var(--user-info-tab-content-width);
+  height: var(--user-info-tab-content-height);
+  overflow: hidden;
+}
+
+.user-info-bearing {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.user-info .bearing-arrow {
+  margin-left: var(--user-info-bearing-arrow-margin-left);
+}
+
+/* ---- Info tab ---- */
+
+.user-info-info {
+  font-size: var(--user-info-info-font-size);
+  white-space: pre;
+}
+
+.user-info-info-section {
+  width: 100%;
+}
+
+.user-info-info-section-bottom-separator {
+  border-bottom: solid 2px #808080;
+}
+
+.user-info-info-params-pos {
+  height: var(--user-info-info-params-pos-height);
+  padding-left: var(--user-info-info-params-pos-padding-left);
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.user-info-info-params-pos-type {
+  margin-bottom: var(--user-info-info-type-margin-bottom);
+}
+
+.user-info-info-params-pos-values {
+  align-self: stretch;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto;
+  grid-template-columns: 1.1fr 1fr;
+  align-items: center;
+}
+
+.user-info-info-params-pos-field {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: baseline;
+}
+
+.user-info-info-params-pos .user-info-bearing {
+  position: relative;
+  justify-content: flex-start;
+  align-items: baseline;
+}
+
+.user-info .user-info-info-params-pos .bearing-arrow {
+  position: absolute;
+  left: calc(100% + var(--user-info-bearing-arrow-margin-left));
+  bottom: 0px;
+}
+
+.user-info-info-params {
+  height: var(--user-info-info-params-height);
+  padding: var(--user-info-info-params-padding);
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.user-info-info-params-type {
+  margin-bottom: var(--user-info-info-type-margin-bottom);
+}
+
+.user-info-info-params-row {
+  align-self: stretch;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto;
+  grid-template-columns: 3.8fr 2fr 3.2fr;
+}
+
+.user-info-info-params-dis {
+  justify-self: end;
+  margin-right: var(--user-info-info-params-dis-margin-right);
+}
+
+.user-info-info-pos {
+  height: var(--user-info-info-pos-height);
+  display: grid;
+  grid-template-rows: 100%;
+  grid-template-columns: 1fr 1fr;
+  grid-column-gap: var(--user-info-info-pos-column-gap);
+}
+
+.user-info-info-field {
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: center;
+  color: var(--wpt-info-gps-color);
+}
+
+.user-info-info-field-title {
+  margin-bottom: var(--user-info-info-field-title-margin-bottom);
+  font-size: 0.75em;
+  color: var(--g3000-color-white);
+}
+
+.user-info-info-coords {
+  height: var(--user-info-info-coords-height);
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: center;
+}
+
+/* ---- Waypoint list tab ---- */
+
+.user-info-list {
+  border: 2px solid #828c96;
+  border-radius: 4px;
+}
+
+.user-info-list-list {
+  position: absolute;
+  left: var(--user-info-list-list-left);
+  top: var(--user-info-list-list-top);
+  width: var(--user-info-list-list-width);
+  height: calc(var(--user-info-list-list-item-height) * 4 + var(--user-info-list-list-item-spacing) * 3);
+}
+
+.user-info-list-wpt-button {
+  flex-grow: 1;
+}

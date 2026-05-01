@@ -1,0 +1,35 @@
+.timer-block .timer-state .custom-timer-state {
+  height: 70%;
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  justify-content: space-evenly;
+}
+
+.timer-block .timer-state .custom-timer-state .small {
+  font-size: 0.8em;
+}
+
+.timer-block .timer-state .custom-timer-overdue-button {
+  position: absolute;
+  top: 65px;
+  right: 6px;
+  width: 172px;
+  height: 33px;
+
+  background: var(--wtdyne-color-yellow);
+  color: var(--wtdyne-color-black);
+}
+
+.timer-block .timer-state .custom-timer-overdue-button.selected {
+  border: 3px solid var(--wtdyne-color-cyan);
+  border-radius: 5px;
+}
+
+.timer-block .timer-state .custom-timer-overdue-button.touch-button-primed {
+  background: linear-gradient(var(--wtdyne-color-black), var(--wtdyne-color-yellow), var(--wtdyne-color-black));
+}
+
+.timer-block .timer-name .touch-button {
+  width: 130px;
+  height: 42px
+}

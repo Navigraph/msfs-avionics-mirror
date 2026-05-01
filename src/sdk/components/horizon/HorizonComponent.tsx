@@ -1,10 +1,9 @@
 import { BitFlags } from '../../math/BitFlags';
 import { ReadonlyFloat64Array } from '../../math/VecMath';
 import { Subscribable } from '../../sub/Subscribable';
-import { SubscribableSet } from '../../sub/SubscribableSet';
 import { SubscribableUtils } from '../../sub/SubscribableUtils';
 import { Subscription } from '../../sub/Subscription';
-import { ComponentProps, DisplayComponent, FSComponent, VNode } from '../FSComponent';
+import { ClassProp, ComponentProps, DisplayComponent, FSComponent, VNode } from '../FSComponent';
 import { HorizonLayer } from './HorizonLayer';
 import { HorizonProjection, HorizonProjectionChangeType } from './HorizonProjection';
 
@@ -31,7 +30,7 @@ export interface HorizonComponentProps extends ComponentProps {
   projection?: HorizonProjection;
 
   /** CSS class(es) to apply to the root of the horizon component. */
-  class?: string | SubscribableSet<string>
+  class?: ClassProp;
 }
 
 /**
@@ -60,6 +59,7 @@ export class HorizonComponent<P extends HorizonComponentProps = HorizonComponent
   private fovSub?: Subscription;
   private fovEndpointsSub?: Subscription;
   private projectedOffsetSub?: Subscription;
+  private classNameSub?: Subscription;
 
   /** @inheritdoc */
   constructor(props: P) {
@@ -296,7 +296,7 @@ export class HorizonComponent<P extends HorizonComponentProps = HorizonComponent
   /** @inheritdoc */
   public render(): VNode {
     return (
-      <div class={this.props.class ?? ''}>
+      <div class={this.classNameSub = FSComponent.mergeCssClasses(this.props.class)}>
         {this.props.children}
       </div>
     );
@@ -310,6 +310,7 @@ export class HorizonComponent<P extends HorizonComponentProps = HorizonComponent
     this.fovSub?.destroy();
     this.fovEndpointsSub?.destroy();
     this.projectedOffsetSub?.destroy();
+    this.classNameSub?.destroy();
 
     const len = this.layerEntries.length;
     for (let i = 0; i < len; i++) {

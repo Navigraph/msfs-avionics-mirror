@@ -1,0 +1,10 @@
+.wt-ifd-frequency-facility-container {
+    display: flex;
+    font-family: "Arial Narrow", sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.6px;
+}
+
+.wt-ifd-frequency-facility-container .wt-ifd-remote-tuning-facility-container {
+    color: var(--wtdyne-color-yellow);
+}

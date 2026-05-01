@@ -3,7 +3,7 @@ import { ConsumerSubject } from '../data/ConsumerSubject';
 import { EventBus } from '../data/EventBus';
 import { PublishPacer } from '../data/EventBusPacer';
 import { EventSubscriber } from '../data/EventSubscriber';
-import { SimVarValueType } from '../data/SimVars';
+import { RegisteredSimVarUtils, SimVarValueType } from '../data/SimVars';
 import { Instrument } from './Backplane';
 import { SimVarPublisher, SimVarPublisherEntry } from './BasePublishers';
 import { ClockEvents } from './Clock';
@@ -285,6 +285,13 @@ export type FlightTimerInstrumentOptions = {
 
   /** The number of supported timers. */
   count: number;
+
+  /**
+   * Whether to use the sim duration for the timers rather than sim time.
+   * Using sim duration means the timers will not be affected by changing the sim time of day.
+   * Defaults to false for backwards compatibility.
+   */
+  useSimDuration?: boolean;
 };
 
 /**
@@ -298,7 +305,7 @@ export class FlightTimerInstrument implements Instrument {
   private readonly timerCount: number;
   private readonly timers: Record<number, FlightTimer<string>> = {};
 
-  private readonly simTime = ConsumerSubject.create(this.bus.getSubscriber<ClockEvents>().on('simTime'), 0).pause();
+  private readonly simTime = ConsumerSubject.create(null, 0).pause();
   private lastUpdateSimTime = this.simTime.get();
 
   /**
@@ -315,13 +322,19 @@ export class FlightTimerInstrument implements Instrument {
   public constructor(bus: EventBus, timerCount: number);
   // eslint-disable-next-line jsdoc/require-jsdoc
   public constructor(private readonly bus: EventBus, arg2: Readonly<FlightTimerInstrumentOptions> | number) {
+    let timeTopic: 'simTime' | 'activeSimDuration';
+
     if (typeof arg2 === 'number') {
       this.id = '';
       this.timerCount = Math.max(arg2, 0);
+      timeTopic = 'simTime';
     } else {
       this.id = arg2.id ?? '';
       this.timerCount = Math.max(arg2.count, 0);
+      timeTopic = arg2.useSimDuration ? 'activeSimDuration' : 'simTime';
     }
+
+    this.simTime.setConsumer(this.bus.getSubscriber<ClockEvents>().on(timeTopic));
 
     for (let i = 1; i <= this.timerCount; i++) {
       this.timers[i] = new FlightTimer(bus, this.id, i);
@@ -357,12 +370,12 @@ class FlightTimer<ID extends string> {
   private readonly idSuffix = FlightTimerUtils.getIdSuffix(this.id);
 
   private readonly simVars = {
-    mode: `L:WTFltTimer_Mode${this.idSuffix}:${this.index}`,
-    isRunning: `L:WTFltTimer_Running${this.idSuffix}:${this.index}`,
-    referenceTime: `L:WTFltTimer_Reference_Time${this.idSuffix}:${this.index}`,
-    referenceValue: `L:WTFltTimer_Reference_Value${this.idSuffix}:${this.index}`,
-    initialValue: `L:WTFltTimer_Initial_Value${this.idSuffix}:${this.index}`,
-    currentValue: `L:WTFltTimer_Value${this.idSuffix}:${this.index}`
+    mode: RegisteredSimVarUtils.create(`L:WTFltTimer_Mode${this.idSuffix}:${this.index}`, SimVarValueType.Number),
+    isRunning: RegisteredSimVarUtils.createBoolean(`L:WTFltTimer_Running${this.idSuffix}:${this.index}`),
+    referenceTime: RegisteredSimVarUtils.create(`L:WTFltTimer_Reference_Time${this.idSuffix}:${this.index}`, SimVarValueType.Number),
+    referenceValue: RegisteredSimVarUtils.create(`L:WTFltTimer_Reference_Value${this.idSuffix}:${this.index}`, SimVarValueType.Number),
+    initialValue: RegisteredSimVarUtils.create(`L:WTFltTimer_Initial_Value${this.idSuffix}:${this.index}`, SimVarValueType.Number),
+    currentValue: RegisteredSimVarUtils.create(`L:WTFltTimer_Value${this.idSuffix}:${this.index}`, SimVarValueType.Number),
   } as const;
 
   private simTime = 0;
@@ -389,18 +402,18 @@ class FlightTimer<ID extends string> {
 
   /**
    * Initializes this timer. Once this timer is initialized, it will respond to timer control events.
-   * @param time The current sim time, as a UNIX timestamp in milliseconds.
+   * @param time The current timestamp in milliseconds.
    */
   public init(time: number): void {
     this.simTime = time;
 
     // Initialize state from SimVars
-    this.mode = SimVar.GetSimVarValue(this.simVars.mode, SimVarValueType.Number);
-    this.isRunning = !!SimVar.GetSimVarValue(this.simVars.isRunning, SimVarValueType.Bool);
-    this.referenceTime = SimVar.GetSimVarValue(this.simVars.referenceTime, SimVarValueType.Number);
-    this.referenceValue = SimVar.GetSimVarValue(this.simVars.referenceValue, SimVarValueType.Number);
-    this.initialValue = SimVar.GetSimVarValue(this.simVars.initialValue, SimVarValueType.Number);
-    this.currentValue = SimVar.GetSimVarValue(this.simVars.currentValue, SimVarValueType.Number);
+    this.mode = this.simVars.mode.get();
+    this.isRunning = this.simVars.isRunning.get();
+    this.referenceTime = this.simVars.referenceTime.get();
+    this.referenceValue = this.simVars.referenceValue.get();
+    this.initialValue = this.simVars.initialValue.get();
+    this.currentValue = this.simVars.currentValue.get();
 
     // Subscribe to control events
 
@@ -411,15 +424,15 @@ class FlightTimer<ID extends string> {
       this.referenceTime = this.simTime;
       this.referenceValue = this.currentValue;
 
-      SimVar.SetSimVarValue(this.simVars.mode, SimVarValueType.Number, mode);
-      SimVar.SetSimVarValue(this.simVars.referenceTime, SimVarValueType.Number, this.referenceTime);
-      SimVar.SetSimVarValue(this.simVars.referenceValue, SimVarValueType.Number, this.referenceValue);
+      this.simVars.mode.set(mode);
+      this.simVars.referenceTime.set(this.referenceTime);
+      this.simVars.referenceValue.set(this.referenceValue);
     });
 
     sub.on(`timer_set_initial_value${this.idSuffix}_${this.index}`).handle(value => {
       this.initialValue = value;
 
-      SimVar.SetSimVarValue(this.simVars.initialValue, SimVarValueType.Number, this.initialValue);
+      this.simVars.initialValue.set(this.initialValue);
     });
 
     sub.on(`timer_set_value${this.idSuffix}_${this.index}`).handle(value => {
@@ -427,8 +440,8 @@ class FlightTimer<ID extends string> {
       this.referenceValue = value;
       this.currentValue = value;
 
-      SimVar.SetSimVarValue(this.simVars.referenceTime, SimVarValueType.Number, this.referenceTime);
-      SimVar.SetSimVarValue(this.simVars.referenceValue, SimVarValueType.Number, this.referenceValue);
+      this.simVars.referenceTime.set(this.referenceTime);
+      this.simVars.referenceValue.set(this.referenceValue);
     });
 
     sub.on(`timer_start${this.idSuffix}_${this.index}`).handle(() => {
@@ -440,9 +453,9 @@ class FlightTimer<ID extends string> {
       this.referenceTime = this.simTime;
       this.referenceValue = this.currentValue;
 
-      SimVar.SetSimVarValue(this.simVars.referenceTime, SimVarValueType.Number, this.referenceTime);
-      SimVar.SetSimVarValue(this.simVars.referenceValue, SimVarValueType.Number, this.referenceValue);
-      SimVar.SetSimVarValue(this.simVars.isRunning, SimVarValueType.Bool, 1);
+      this.simVars.referenceTime.set(this.referenceTime);
+      this.simVars.referenceValue.set(this.referenceValue);
+      this.simVars.isRunning.set(true);
     });
 
     sub.on(`timer_stop${this.idSuffix}_${this.index}`).handle(() => {
@@ -452,7 +465,7 @@ class FlightTimer<ID extends string> {
 
       this.isRunning = false;
 
-      SimVar.SetSimVarValue(this.simVars.isRunning, SimVarValueType.Bool, 0);
+      this.simVars.isRunning.set(false);
     });
 
     sub.on(`timer_reset${this.idSuffix}_${this.index}`).handle(() => {
@@ -460,15 +473,15 @@ class FlightTimer<ID extends string> {
       this.referenceValue = this.initialValue;
       this.currentValue = this.initialValue;
 
-      SimVar.SetSimVarValue(this.simVars.referenceTime, SimVarValueType.Number, this.referenceTime);
-      SimVar.SetSimVarValue(this.simVars.referenceValue, SimVarValueType.Number, this.referenceValue);
-      SimVar.SetSimVarValue(this.simVars.currentValue, SimVarValueType.Number, this.currentValue);
+      this.simVars.referenceTime.set(this.referenceTime);
+      this.simVars.referenceValue.set(this.referenceValue);
+      this.simVars.currentValue.set(this.currentValue);
     });
   }
 
   /**
    * Updates this timer's current value.
-   * @param time The current sim time, as a UNIX timestamp in milliseconds.
+   * @param time The current timestamp in milliseconds.
    */
   public update(time: number): void {
     this.simTime = time;
@@ -481,6 +494,6 @@ class FlightTimer<ID extends string> {
 
     const value = this.referenceValue + (time - this.referenceTime) * modeSign;
     this.currentValue = value;
-    SimVar.SetSimVarValue(this.simVars.currentValue, SimVarValueType.Number, value);
+    this.simVars.currentValue.set(value);
   }
 }

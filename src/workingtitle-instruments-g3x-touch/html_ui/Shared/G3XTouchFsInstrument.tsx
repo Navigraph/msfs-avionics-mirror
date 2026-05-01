@@ -26,7 +26,7 @@ import { PfdInsetRegistrar } from '../GduDisplay/Gdu460/PfdInstruments/Inset/Pfd
 import { PfdMapView } from '../GduDisplay/Gdu460/PfdMapView/PfdMapView';
 import { RadioVolumeShortcutPopup } from '../GduDisplay/Gdu460/RadioVolumeShortcutPopup/RadioVolumeShortcutPopup';
 import { GduDisplay } from '../GduDisplay/GduDisplay';
-import { BaroPressureDialog, UiListDialog, UiMessageDialog } from '../MFD/Dialogs';
+import { BaroPressureDialog, UiListDialog } from '../MFD/Dialogs';
 import { AirportFrequencyDialog } from '../MFD/Dialogs/AirportFrequencyDialog';
 import { CourseDialog } from '../MFD/Dialogs/CourseDialog';
 import { UiGenericNumberUnitDialog } from '../MFD/Dialogs/UiGenericNumberUnitDialog';
@@ -76,6 +76,7 @@ import { G3XNavDataBarFieldModelFactory } from './Components/CnsDataBar/CnsDataB
 import { G3XNavDataBarFieldRenderer } from './Components/CnsDataBar/CnsDataBarFields/G3XNavDataBarFieldRenderer';
 import { G3XMapTerrainWxSettingCompatManager } from './Components/Map/G3XMapTerrainWxSettingCompatManager';
 import { DefaultRadioSavedFrequenciesDataProvider } from './DataProviders/RadioSavedFrequenciesDataProvider';
+import { UiMessageDialog } from './Dialogs';
 import { ActiveFlightPlanStore } from './FlightPlan/ActiveFlightPlanStore';
 import { DefaultG3XFplSourceDataProvider } from './FlightPlan/DefaultG3XFplSourceDataProvider';
 import { G3XFms, G3XFmsExternalFplSourceOptions } from './FlightPlan/G3XFms';
@@ -322,10 +323,12 @@ export abstract class G3XTouchFsInstrument implements FsInstrument {
 
   protected readonly navDataBarFieldModelFactory = new G3XNavDataBarFieldModelFactory(
     this.bus,
+    this.facLoader,
     this.navDataFieldGpsValidity,
     {
       lnavIndex: this.fplSourceDataProvider.lnavIndex,
-      vnavIndex: this.fplSourceDataProvider.vnavIndex
+      vnavIndex: this.fplSourceDataProvider.vnavIndex,
+      fuelType: this.config.units.fuelType,
     }
   );
   protected readonly navDataBarFieldRenderer = new G3XNavDataBarFieldRenderer(
@@ -655,6 +658,7 @@ export abstract class G3XTouchFsInstrument implements FsInstrument {
       flightPathCalculator: this.flightPathCalculator,
       fms: this.fms,
       uiService: this.uiService,
+      navSources: this.navSources,
       navIndicators: this.navIndicators,
       casSystem: this.casSystem,
       radiosDataProvider: this.radiosDataProvider,
@@ -869,6 +873,12 @@ export abstract class G3XTouchFsInstrument implements FsInstrument {
         );
       });
     }
+
+    this.uiService.registerPfdView(UiViewStackLayer.Overlay, UiViewLifecyclePolicy.Transient, UiViewKeys.MessageDialog1, (uiService, containerRef) => {
+      return (
+        <UiMessageDialog uiService={uiService} containerRef={containerRef} />
+      );
+    });
 
     // ---- MFD Main Layer Views ----
 
@@ -1381,6 +1391,7 @@ export abstract class G3XTouchFsInstrument implements FsInstrument {
             uiService={uiService} containerRef={containerRef}
             fms={this.fms}
             trafficSystem={context.trafficSystem}
+            navSources={this.navSources}
             fplSourceDataProvider={this.fplSourceDataProvider}
             flightPlanStore={this.activeFlightPlanStore}
             gduSettingManager={this.gduAliasedSettingManager}
@@ -1561,6 +1572,7 @@ export abstract class G3XTouchFsInstrument implements FsInstrument {
             config={this.config}
             instrumentConfig={this.instrumentConfig}
             pluginSystem={this.pluginSystem}
+            navSources={this.navSources}
             navIndicators={this.navIndicators}
             insetRegistrar={this.pfdInsetRegistrar}
             fplSourceDataProvider={this.fplSourceDataProvider}
@@ -1644,6 +1656,7 @@ export abstract class G3XTouchFsInstrument implements FsInstrument {
             fms={this.fms}
             fplSourceDataProvider={this.fplSourceDataProvider}
             flightPlanningConfig={this.config.fms.flightPlanning}
+            unitsConfig={this.config.units}
           />
         );
       }

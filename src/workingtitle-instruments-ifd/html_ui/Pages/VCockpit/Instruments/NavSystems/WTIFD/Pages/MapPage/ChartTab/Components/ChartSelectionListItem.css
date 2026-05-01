@@ -1,0 +1,20 @@
+.chart-list-item {
+  height: 30px;
+  overflow: hidden;
+  padding-left: 3px;
+
+  color: var(--wtdyne-color-light-cyan);
+  font-size: 20px;
+  font-family: "Arial Bold";
+
+  border-left: 4px solid rgba(0, 0, 0, 0);
+  border-right: 4px solid rgba(0, 0, 0, 0);
+  border-top: 3px solid rgba(0, 0, 0, 0);
+  border-bottom: 3px solid rgba(0, 0, 0, 0);
+  border-radius: 7px;
+}
+
+.chart-list-item.chart-selected {
+  color: var(--wtdyne-color-white);
+  border-color: var(--wtdyne-color-cyan);
+}

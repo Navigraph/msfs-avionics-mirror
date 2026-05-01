@@ -510,8 +510,8 @@ export class FacilityLoader implements FacilityClient {
       });
 
       const coherentCallPromise = isAirport
-        ? Coherent.call(FacilityLoader.coherentLoadFacilityCalls[type], icao, airportDataFlags ?? AirportFacilityDataFlags.All)
-        : Coherent.call(FacilityLoader.coherentLoadFacilityCalls[type], icao);
+        ? Coherent.call(FacilityLoader.coherentLoadFacilityCalls[type]!, icao, airportDataFlags ?? AirportFacilityDataFlags.All)
+        : Coherent.call(FacilityLoader.coherentLoadFacilityCalls[type]!, icao);
 
       coherentCallPromise.then((isValid: boolean) => {
         if (isValid) {

@@ -17,6 +17,7 @@ export * from './MapTerrainModule';
 export * from './MapTrackVectorModule';
 export * from './MapUnitsModule';
 export * from './MapWaypointHighlightModule';
+export * from './MapWaypointHoverModule';
 export * from './MapWaypointsModule';
 export * from './MapWindVectorModule';
 export * from './WaypointMapSelectionModule';

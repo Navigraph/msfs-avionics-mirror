@@ -36,6 +36,20 @@ export type APVNavPathDirectorGuidance = {
  */
 export type APVNavPathDirectorOptions = {
   /**
+   * The maximum absolute pitch up angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `null`.
+   */
+  maxPitchUpAngle?: number | null | (() => number | null);
+
+  /**
+   * The maximum absolute pitch down angle, in degrees, supported by the director, or a function which returns it. A
+   * value of `null` will cause the director will use the maximum pitch up angle defined by its parent autopilot (via
+   * `apValues`). Defaults to `null`.
+   */
+  maxPitchDownAngle?: number | null | (() => number | null);
+
+  /**
    * The guidance for the director to use. If not defined, then the director will source guidance data from VNAV
    * SimVars at the index defined by `vnavIndex`.
    */
@@ -50,7 +64,7 @@ export type APVNavPathDirectorOptions = {
 
 /**
  * An autopilot director that generates flight director pitch commands to track a VNAV path.
- * 
+ *
  * If the director is created with access to an {@link APValues} object, then the director requires valid pitch data to
  * arm or activate.
  */
@@ -68,7 +82,7 @@ export class APVNavPathDirector implements PlaneDirector {
   public onDeactivate?: () => void;
 
   /** @inheritDoc */
-  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean) => void;
+  public drivePitch?: (pitch: number, adjustForAoa?: boolean, adjustForVerticalWind?: boolean, rate?: number, maxNoseDownPitch?: number, maxNoseUpPitch?: number) => void;
 
   protected verticalWindAverage = new SimpleMovingAverage(10);
 
@@ -78,6 +92,9 @@ export class APVNavPathDirector implements PlaneDirector {
 
   protected deviationSimVar: string = VNavVars.VerticalDeviation;
   protected fpaSimVar: string = VNavVars.FPA;
+
+  private readonly maxPitchUpAngleFunc: () => number | undefined;
+  private readonly maxPitchDownAngleFunc: () => number | undefined;
 
   protected readonly isGuidanceValidFunc: () => boolean;
   protected readonly getFpaFunc: () => number;
@@ -102,6 +119,9 @@ export class APVNavPathDirector implements PlaneDirector {
   public constructor(bus: EventBus, options?: Readonly<APVNavPathDirectorOptions>);
   // eslint-disable-next-line jsdoc/require-jsdoc
   public constructor(arg1: APValues | EventBus, options?: Readonly<APVNavPathDirectorOptions>) {
+    this.maxPitchUpAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchUpAngle);
+    this.maxPitchDownAngleFunc = this.createMaxPitchAngleFunc(options?.maxPitchDownAngle);
+
     if (options?.guidance) {
       this.guidance = options.guidance;
 
@@ -133,6 +153,22 @@ export class APVNavPathDirector implements PlaneDirector {
     }
 
     this.state = DirectorState.Inactive;
+  }
+
+  /**
+   * Creates a function that returns the maximum pitch angle limit defined by an option.
+   * @param option The option that defines the maximum pitch angle limit.
+   * @returns A function that returns the maximum pitch angle limit defined by the specified option.
+   */
+  private createMaxPitchAngleFunc(option: number | null | (() => number | null) = null): () => number | undefined {
+    switch (typeof option) {
+      case 'number':
+        return () => option;
+      case 'function':
+        return () => option() ?? undefined;
+      default:
+        return () => undefined;
+    }
   }
 
   /**
@@ -201,7 +237,7 @@ export class APVNavPathDirector implements PlaneDirector {
         return;
       }
 
-      this.drivePitch && this.drivePitch(this.getDesiredPitch(), true, true);
+      this.drivePitch && this.drivePitch(this.getDesiredPitch(), true, true, undefined, this.maxPitchDownAngleFunc(), this.maxPitchUpAngleFunc());
     }
   }
 

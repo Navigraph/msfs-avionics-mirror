@@ -1,0 +1,10 @@
+.svs-page .wt-ifd-ias-trend-vector-container {
+    position: absolute;
+    top: 12px;
+    left: 85px;
+}
+
+.svs-page svg.wt-ifd-ias-trend-vector {
+    stroke: none;
+    fill: var(--wtdyne-color-cyan);
+}

@@ -1,5 +1,5 @@
 import { EventBus } from '../data/EventBus';
-import { SimVarValueType } from '../data/SimVars';
+import { RegisteredSimVarUtils, SimVarValueType } from '../data/SimVars';
 import { ThrottleLeverManager } from '../fadec/ThrottleLeverManager';
 import { Accessible } from '../sub/Accessible';
 import { Subscribable } from '../sub/Subscribable';
@@ -37,7 +37,8 @@ export class JetAutothrottle extends AbstractAutothrottle {
  * An autothrottle throttle for turbine jet engines.
  */
 class JetAutothrottleThrottle extends AutothrottleThrottle {
-  private readonly commandedN1SimVar: string;
+  private readonly n1SimVar = RegisteredSimVarUtils.create(`TURB ENG N1:${this.index}`, SimVarValueType.Percent);
+  private readonly commandedN1SimVar = RegisteredSimVarUtils.create(`TURB ENG THROTTLE COMMANDED N1:${this.index}`, SimVarValueType.Percent);
 
   /** @inheritdoc */
   public constructor(
@@ -60,12 +61,15 @@ class JetAutothrottleThrottle extends AutothrottleThrottle {
       powerLookaheadSmoothingConstant, powerLookaheadSmoothingVelocityConstant,
       throttleLeverManager
     );
-
-    this.commandedN1SimVar = `TURB ENG THROTTLE COMMANDED N1:${this.index}`;
   }
 
   /** @inheritdoc */
   protected getPower(): number {
-    return SimVar.GetSimVarValue(this.commandedN1SimVar, SimVarValueType.Percent);
+    return this.n1SimVar.get();
+  }
+
+  /** @inheritdoc */
+  protected getCommandedPower(): number {
+    return this.commandedN1SimVar.get();
   }
 }

@@ -46,7 +46,8 @@ export interface MapOwnAirplaneLayerProps<M extends MapOwnAirplaneLayerModules> 
  * A layer which draws an own airplane icon. The icon is positioned at the projected location of the airplane and is
  * rotated to match the airplane's heading.
  */
-export class MapOwnAirplaneLayer<M extends MapOwnAirplaneLayerModules = MapOwnAirplaneLayerModules> extends MapLayer<MapOwnAirplaneLayerProps<M>> {
+export class MapOwnAirplaneLayer<M extends MapOwnAirplaneLayerModules = MapOwnAirplaneLayerModules, P extends MapOwnAirplaneLayerProps<M> = MapOwnAirplaneLayerProps<M>>
+  extends MapLayer<P> {
   protected static readonly vec2Cache = [Vec2Math.create()];
 
   protected readonly imageFilePath = SubscribableUtils.isSubscribable(this.props.imageFilePath)
@@ -71,6 +72,10 @@ export class MapOwnAirplaneLayer<M extends MapOwnAirplaneLayerModules = MapOwnAi
   protected readonly iconAnchor = SubscribableUtils.toSubscribable(this.props.iconAnchor, true);
 
   protected readonly iconOffset = Vec2Math.create();
+
+  /**
+   * Bounds as [left, top, right, bottom], in pixels.
+   */
   protected readonly visibilityBounds = VecNMath.create(4);
 
   protected readonly iconTransform = CssTransformBuilder.concat(
@@ -114,22 +119,16 @@ export class MapOwnAirplaneLayer<M extends MapOwnAirplaneLayerModules = MapOwnAi
       this.needUpdatePositionRotation = this.showIcon;
     });
 
-    this.headingSub = this.ownAirplanePropsModule.hdgTrue.sub(hdg => {
-      this.planeRotation = hdg;
-      this.needUpdatePositionRotation = this.showIcon;
+    this.headingSub = this.ownAirplanePropsModule.hdgTrue.sub((hdg) => {
+      this.onHeadingChanged(hdg);
     }, false, true);
-    this.trackSub = this.ownAirplanePropsModule.trackTrue.sub(track => {
-      this.planeRotation = track;
-      this.needUpdatePositionRotation = this.showIcon;
+
+    this.trackSub = this.ownAirplanePropsModule.trackTrue.sub((track) => {
+      this.onTrackChanged(track);
     }, false, true);
-    this.trackThresholdSub = this.isGsAboveTrackThreshold.sub(isAboveThreshold => {
-      if (isAboveThreshold) {
-        this.headingSub!.pause();
-        this.trackSub!.resume(true);
-      } else {
-        this.trackSub!.pause();
-        this.headingSub!.resume(true);
-      }
+
+    this.trackThresholdSub = this.isGsAboveTrackThreshold.sub((isAboveThreshold) => {
+      this.onGroundSpeedAboveThresholdChanged(isAboveThreshold);
     }, false, true);
 
     this.iconSizeSub = this.iconSize.sub(size => {
@@ -143,32 +142,72 @@ export class MapOwnAirplaneLayer<M extends MapOwnAirplaneLayerModules = MapOwnAi
       this.updateOffset();
     });
 
-    this.orientationSub = this.ownAirplaneIconModule.orientation.sub(orientation => {
-      switch (orientation) {
-        case MapOwnAirplaneIconOrientation.HeadingUp:
-          this.isGsAboveTrackThreshold.pause();
-          this.trackThresholdSub!.pause();
-          this.trackSub!.pause();
-          this.headingSub!.resume(true);
-          break;
-        case MapOwnAirplaneIconOrientation.TrackUp:
-          this.headingSub!.pause();
-          this.trackSub!.pause();
-          this.isGsAboveTrackThreshold.resume();
-          this.trackThresholdSub!.resume(true);
-          break;
-        default:
-          this.needUpdatePositionRotation = this.showIcon;
-          this.isGsAboveTrackThreshold.pause();
-          this.trackThresholdSub!.pause();
-          this.headingSub!.pause();
-          this.trackSub!.pause();
-          this.planeRotation = 0;
-      }
+    this.orientationSub = this.ownAirplaneIconModule.orientation.sub((orientation) => {
+      this.onOrientationChanged(orientation);
     }, true);
 
     this.needUpdateVisibility = true;
     this.needUpdatePositionRotation = true;
+  }
+
+  /**
+   * Callback fired when the airplane heading changes
+   * @param value the new value
+   */
+  protected onHeadingChanged(value: number): void {
+    this.planeRotation = value;
+    this.needUpdatePositionRotation = this.showIcon;
+  }
+
+  /**
+   * Callback fired when the airplane track changes
+   * @param value the new value
+   */
+  protected onTrackChanged(value: number): void {
+    this.planeRotation = value;
+    this.needUpdatePositionRotation = this.showIcon;
+  }
+
+  /**
+   * Callback fired when the ground speed above threshold state changes
+   * @param value the new value
+   */
+  protected onGroundSpeedAboveThresholdChanged(value: boolean): void {
+    if (value) {
+      this.headingSub!.pause();
+      this.trackSub!.resume(true);
+    } else {
+      this.trackSub!.pause();
+      this.headingSub!.resume(true);
+    }
+  }
+
+  /**
+   * Callback fired when the orientation mode changes
+   * @param value the new value
+   */
+  protected onOrientationChanged(value: MapOwnAirplaneIconOrientation): void {
+    switch (value) {
+      case MapOwnAirplaneIconOrientation.HeadingUp:
+        this.isGsAboveTrackThreshold.pause();
+        this.trackThresholdSub!.pause();
+        this.trackSub!.pause();
+        this.headingSub!.resume(true);
+        break;
+      case MapOwnAirplaneIconOrientation.TrackUp:
+        this.headingSub!.pause();
+        this.trackSub!.pause();
+        this.isGsAboveTrackThreshold.resume();
+        this.trackThresholdSub!.resume(true);
+        break;
+      default:
+        this.needUpdatePositionRotation = this.showIcon;
+        this.isGsAboveTrackThreshold.pause();
+        this.trackThresholdSub!.pause();
+        this.headingSub!.pause();
+        this.trackSub!.pause();
+        this.planeRotation = 0;
+    }
   }
 
   /**

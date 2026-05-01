@@ -158,6 +158,16 @@ export class MapSystemSharedFlightPlanLayer extends MapLayer<MapSystemSharedFlig
   }
 
   /** @inheritDoc */
+  public onWake(): void {
+    this.canvasLayerRef.instance.onWake();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.canvasLayerRef.instance.onSleep();
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
     this.canvasLayerRef.instance.onMapProjectionChanged(mapProjection, changeFlags);
   }
@@ -175,6 +185,7 @@ export class MapSystemSharedFlightPlanLayer extends MapLayer<MapSystemSharedFlig
         model={this.props.model}
         mapProjection={this.props.mapProjection}
         overdrawFactor={Math.SQRT2}
+        collapseOnSleep
         class={this.props.class}
       >
         {this.props.planConfigs.map(planConfig => {
@@ -297,6 +308,8 @@ class MapSystemSharedFlightPlanSubLayer extends MapSharedCachedCanvasSubLayer<Ma
 
   private wasLastVisible = true;
 
+  private isAwake = true;
+
   /** @inheritDoc */
   public onAttached(): void {
     this.wasLastVisible = this.props.isVisible.get();
@@ -323,8 +336,20 @@ class MapSystemSharedFlightPlanSubLayer extends MapSharedCachedCanvasSubLayer<Ma
   }
 
   /** @inheritDoc */
+  public onWake(): void {
+    this.isAwake = true;
+
+    this.updateClipBounds();
+  }
+
+  /** @inheritDoc */
+  public onSleep(): void {
+    this.isAwake = false;
+  }
+
+  /** @inheritDoc */
   public onMapProjectionChanged(mapProjection: MapProjection, changeFlags: number): void {
-    if (BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
+    if (this.isAwake && BitFlags.isAll(changeFlags, MapProjectionChangeType.ProjectedSize)) {
       this.updateClipBounds();
     }
   }

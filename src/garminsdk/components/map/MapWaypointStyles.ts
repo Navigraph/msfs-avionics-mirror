@@ -1,18 +1,128 @@
 import {
-  FacilityType, FacilityWaypointUtils, FlightPathWaypoint, ICAO, MapLocationTextLabelOptions, ReadonlyFloat64Array,
-  RunwaySurfaceCategory, Vec2Math, VecNMath, Waypoint
+  BitFlags, FacilityType, FacilityWaypointUtils, FlightPathWaypoint, ICAO, MapLocationTextLabelOptions,
+  ReadonlyFloat64Array, RunwaySurfaceCategory, Vec2Math, VecNMath, Waypoint
 } from '@microsoft/msfs-sdk';
 
 import { AirportSize, AirportWaypoint } from '../../navigation/AirportWaypoint';
 import { ProcedureTurnLegWaypoint } from './flightplan/MapFlightPlanWaypointRecord';
 import { MapRunwayLabelWaypoint } from './MapRunwayLabelWaypoint';
 import { MapRunwayOutlineWaypoint } from './MapRunwayOutlineWaypoint';
-import { MapRunwayOutlineIconStyles, MapWaypointIconHighlightStyles, MapWaypointIconStyles, MapWaypointLabelStyles } from './MapWaypointDisplayBuilder';
+import {
+  MapRunwayOutlineIconStyles, MapWaypointIconHighlightStyles, MapWaypointIconStyles, MapWaypointLabelStyles
+} from './MapWaypointDisplayBuilder';
+import { MapWaypointRenderRole } from './MapWaypointRenderer';
+
+/**
+ * Render priority values.
+ */
+type Priorities = {
+  /** The base priority. */
+  base: number;
+
+  /** Priorities for airport waypoints. */
+  airport: {
+    /** Priorities for large airport waypoints. */
+    [AirportSize.Large]: number;
+
+    /** Priorities for medium airport waypoints. */
+    [AirportSize.Medium]: number;
+
+    /** Priorities for small airport waypoints. */
+    [AirportSize.Small]: number;
+  };
+
+  /** Priorities for VOR waypoints. */
+  vor: number;
+
+  /** Priorities for NDB waypoints. */
+  ndb: number;
+
+  /** Priorities for intersection waypoints. */
+  int: number;
+
+  /** Priorities for runway waypoints. */
+  rwy: number;
+
+  /** Priorities for user waypoints. */
+  user: number;
+
+  /** Priorities for flight plan waypoints. */
+  fp: number;
+};
+
+/**
+ * Label font parameters.
+ */
+type Font = {
+  /** The font family. */
+  font: string;
+
+  /** The large font size. */
+  largeFontSize: number;
+
+  /** The regular font size. */
+  regularFontSize: number;
+
+  /** The large font size for flight plan labels. */
+  fpLargeFontSize: number;
+
+  /** The regular font size for flight plan labels. */
+  fpRegularFontSize: number;
+};
 
 /**
  * A utility class for generating next-generation (NXi, G3000, etc) Garmin map waypoint styles.
  */
 export class NextGenMapWaypointStyles {
+  /**
+   * Gets a set of render priorities for a given base priority. All render priorities are guaranteed to be in the range
+   * `[basePriority, basePriority + 1)`.
+   * @param basePriority The base priority for which to get a set of render priorities.
+   * @returns A set of render priorities for the specified base priority.
+   */
+  private static getPriorities(basePriority: number): Priorities {
+    return {
+      base: basePriority,
+      airport: {
+        [AirportSize.Large]: basePriority + 0.8,
+        [AirportSize.Medium]: basePriority + 0.79,
+        [AirportSize.Small]: basePriority + 0.78
+      },
+      vor: basePriority + 0.7,
+      ndb: basePriority + 0.6,
+      int: basePriority + 0.5,
+      rwy: basePriority + 0.4,
+      user: basePriority + 0.9,
+      fp: basePriority + 0.1,
+    };
+  }
+
+  /**
+   * Gets font parameters.
+   * @param fontType The font type.
+   * @param scale The font scale.
+   * @returns Font parameters for the specified font type and scale.
+   */
+  private static getFont(fontType: 'Roboto' | 'DejaVu', scale: number): Font {
+    if (fontType === 'Roboto') {
+      return {
+        font: 'Roboto',
+        largeFontSize: 20 * scale,
+        regularFontSize: 16 * scale,
+        fpLargeFontSize: 20 * scale,
+        fpRegularFontSize: 16 * scale,
+      };
+    } else {
+      return {
+        font: 'DejaVuSans-SemiBold',
+        largeFontSize: 17 * scale,
+        regularFontSize: 14 * scale,
+        fpLargeFontSize: 17 * scale,
+        fpRegularFontSize: 17 * scale,
+      };
+    }
+  }
+
   /**
    * Creates a function which retrieves next-generation (NXi, G3000, etc) icon styles for normal waypoints.
    * @param basePriority The base icon render priority. Icon priorities are guaranteed to fall in the range
@@ -22,29 +132,21 @@ export class NextGenMapWaypointStyles {
    * @returns A function which retrieves next-generation (NXi, G3000, etc) icon styles for normal waypoints.
    */
   public static normalIconStyles(basePriority: number, scale = 1): (waypoint: Waypoint) => MapWaypointIconStyles {
-    const airportPriority = {
-      [AirportSize.Large]: basePriority + 0.8,
-      [AirportSize.Medium]: basePriority + 0.79,
-      [AirportSize.Small]: basePriority + 0.78
-    };
-    const vorPriority = basePriority + 0.7;
-    const ndbPriority = basePriority + 0.6;
-    const intPriority = basePriority + 0.5;
-    const userPriority = basePriority + 0.9;
+    const priorities = NextGenMapWaypointStyles.getPriorities(basePriority);
 
     const airportSize = Vec2Math.create(26 * scale, 26 * scale);
     const standardSize = Vec2Math.create(32 * scale, 32 * scale);
 
     const airportStyle = {
-      [AirportSize.Large]: { priority: airportPriority[AirportSize.Large], size: airportSize },
-      [AirportSize.Medium]: { priority: airportPriority[AirportSize.Medium], size: airportSize },
-      [AirportSize.Small]: { priority: airportPriority[AirportSize.Small], size: airportSize }
+      [AirportSize.Large]: { priority: priorities.airport[AirportSize.Large], size: airportSize },
+      [AirportSize.Medium]: { priority: priorities.airport[AirportSize.Medium], size: airportSize },
+      [AirportSize.Small]: { priority: priorities.airport[AirportSize.Small], size: airportSize }
     };
 
-    const vorStyle = { priority: vorPriority, size: standardSize };
-    const ndbStyle = { priority: ndbPriority, size: standardSize };
-    const intStyle = { priority: intPriority, size: standardSize };
-    const userStyle = { priority: userPriority, size: standardSize };
+    const vorStyle = { priority: priorities.vor, size: standardSize };
+    const ndbStyle = { priority: priorities.ndb, size: standardSize };
+    const intStyle = { priority: priorities.int, size: standardSize };
+    const userStyle = { priority: priorities.user, size: standardSize };
 
     const defaultStyle = { priority: basePriority, size: standardSize };
 
@@ -52,7 +154,7 @@ export class NextGenMapWaypointStyles {
       if (waypoint instanceof AirportWaypoint) {
         return airportStyle[waypoint.size];
       } else if (FacilityWaypointUtils.isFacilityWaypoint(waypoint)) {
-        switch (ICAO.getFacilityType(waypoint.facility.get().icao)) {
+        switch (ICAO.getFacilityTypeFromValue(waypoint.facility.get().icaoStruct)) {
           case FacilityType.VOR:
             return vorStyle;
           case FacilityType.NDB:
@@ -82,29 +184,9 @@ export class NextGenMapWaypointStyles {
     fontType: 'Roboto' | 'DejaVu',
     scale = 1
   ): (waypoint: Waypoint) => MapWaypointLabelStyles {
-    let font: string, largeFontSize: number, regularFontSize: number;
+    const priorities = NextGenMapWaypointStyles.getPriorities(basePriority);
 
-    if (fontType === 'Roboto') {
-      font = 'Roboto';
-      largeFontSize = 20 * scale;
-      regularFontSize = 16 * scale;
-    } else {
-      font = 'DejaVuSans-SemiBold';
-      largeFontSize = 17 * scale;
-      regularFontSize = 14 * scale;
-    }
-
-    const airportPriority = {
-      [AirportSize.Large]: basePriority + 0.8,
-      [AirportSize.Medium]: basePriority + 0.79,
-      [AirportSize.Small]: basePriority + 0.78
-    };
-    const vorPriority = basePriority + 0.7;
-    const ndbPriority = basePriority + 0.6;
-    const intPriority = basePriority + 0.5;
-    const userPriority = basePriority + 0.9;
-
-    const runwayOutlinePriority = basePriority + 0.75;
+    const { font, largeFontSize, regularFontSize } = NextGenMapWaypointStyles.getFont(fontType, scale);
 
     const airportOptions = {
       [AirportSize.Large]: NextGenMapWaypointStyles.createNormalLabelOptions(Vec2Math.create(0, -12 * scale), font, largeFontSize),
@@ -118,17 +200,17 @@ export class NextGenMapWaypointStyles {
     const runwayOutlineOptions = NextGenMapWaypointStyles.createRunwayLabelOptions(Vec2Math.create(0, -5 * scale), font, largeFontSize, 7 * scale);
 
     const airportStyle = {
-      [AirportSize.Large]: { priority: airportPriority[AirportSize.Large], alwaysShow: false, options: airportOptions[AirportSize.Large] },
-      [AirportSize.Medium]: { priority: airportPriority[AirportSize.Medium], alwaysShow: false, options: airportOptions[AirportSize.Medium] },
-      [AirportSize.Small]: { priority: airportPriority[AirportSize.Small], alwaysShow: false, options: airportOptions[AirportSize.Small] }
+      [AirportSize.Large]: { priority: priorities.airport[AirportSize.Large], alwaysShow: false, options: airportOptions[AirportSize.Large] },
+      [AirportSize.Medium]: { priority: priorities.airport[AirportSize.Medium], alwaysShow: false, options: airportOptions[AirportSize.Medium] },
+      [AirportSize.Small]: { priority: priorities.airport[AirportSize.Small], alwaysShow: false, options: airportOptions[AirportSize.Small] }
     };
 
-    const vorStyle = { priority: vorPriority, alwaysShow: false, options: standardOptions };
-    const ndbStyle = { priority: ndbPriority, alwaysShow: false, options: standardOptions };
-    const intStyle = { priority: intPriority, alwaysShow: false, options: intOptions };
-    const userStyle = { priority: userPriority, alwaysShow: false, options: standardOptions };
+    const vorStyle = { priority: priorities.vor, alwaysShow: false, options: standardOptions };
+    const ndbStyle = { priority: priorities.ndb, alwaysShow: false, options: standardOptions };
+    const intStyle = { priority: priorities.int, alwaysShow: false, options: intOptions };
+    const userStyle = { priority: priorities.user, alwaysShow: false, options: standardOptions };
 
-    const runwayOutlineStyle = { priority: runwayOutlinePriority, alwaysShow: false, options: runwayOutlineOptions };
+    const runwayOutlineStyle = { priority: basePriority + 0.75, alwaysShow: false, options: runwayOutlineOptions };
 
     const defaultStyle = { priority: basePriority, alwaysShow: false, options: standardOptions };
 
@@ -138,7 +220,7 @@ export class NextGenMapWaypointStyles {
       } else if (waypoint instanceof MapRunwayLabelWaypoint) {
         return runwayOutlineStyle;
       } else if (FacilityWaypointUtils.isFacilityWaypoint(waypoint)) {
-        switch (ICAO.getFacilityType(waypoint.facility.get().icao)) {
+        switch (ICAO.getFacilityTypeFromValue(waypoint.facility.get().icaoStruct)) {
           case FacilityType.VOR:
             return vorStyle;
           case FacilityType.NDB:
@@ -236,34 +318,24 @@ export class NextGenMapWaypointStyles {
    * @returns A function which retrieves next-generation (NXi, G3000, etc) icon styles for flight plan waypoints.
    */
   public static flightPlanIconStyles(active: boolean, basePriority: number, scale = 1): (waypoint: Waypoint) => MapWaypointIconStyles {
-    const airportPriority = {
-      [AirportSize.Large]: basePriority + 0.8,
-      [AirportSize.Medium]: basePriority + 0.79,
-      [AirportSize.Small]: basePriority + 0.78
-    };
-    const vorPriority = basePriority + 0.7;
-    const ndbPriority = basePriority + 0.6;
-    const intPriority = basePriority + 0.5;
-    const rwyPriority = basePriority + 0.4;
-    const userPriority = basePriority + 0.9;
-    const fpPriority = basePriority + 0.1;
+    const priorities = NextGenMapWaypointStyles.getPriorities(basePriority);
 
     const airportSize = Vec2Math.create(26 * scale, 26 * scale);
     const standardSize = Vec2Math.create(32 * scale, 32 * scale);
     const fpIconSize = Vec2Math.create(8 * scale, 8 * scale);
 
     const airportStyle = {
-      [AirportSize.Large]: { priority: airportPriority[AirportSize.Large], size: airportSize },
-      [AirportSize.Medium]: { priority: airportPriority[AirportSize.Medium], size: airportSize },
-      [AirportSize.Small]: { priority: airportPriority[AirportSize.Small], size: airportSize }
+      [AirportSize.Large]: { priority: priorities.airport[AirportSize.Large], size: airportSize },
+      [AirportSize.Medium]: { priority: priorities.airport[AirportSize.Medium], size: airportSize },
+      [AirportSize.Small]: { priority: priorities.airport[AirportSize.Small], size: airportSize }
     };
 
-    const vorStyle = { priority: vorPriority, size: standardSize };
-    const ndbStyle = { priority: ndbPriority, size: standardSize };
-    const intStyle = { priority: intPriority, size: standardSize };
-    const rwyStyle = { priority: rwyPriority, size: standardSize };
-    const userStyle = { priority: userPriority, size: standardSize };
-    const fpStyle = { priority: fpPriority, size: fpIconSize };
+    const vorStyle = { priority: priorities.vor, size: standardSize };
+    const ndbStyle = { priority: priorities.ndb, size: standardSize };
+    const intStyle = { priority: priorities.int, size: standardSize };
+    const rwyStyle = { priority: priorities.rwy, size: standardSize };
+    const userStyle = { priority: priorities.user, size: standardSize };
+    const fpStyle = { priority: priorities.fp, size: fpIconSize };
 
     const defaultStyle = { priority: basePriority, size: standardSize };
 
@@ -271,7 +343,7 @@ export class NextGenMapWaypointStyles {
       if (waypoint instanceof AirportWaypoint) {
         return airportStyle[waypoint.size];
       } else if (FacilityWaypointUtils.isFacilityWaypoint(waypoint)) {
-        switch (ICAO.getFacilityType(waypoint.facility.get().icao)) {
+        switch (ICAO.getFacilityTypeFromValue(waypoint.facility.get().icaoStruct)) {
           case FacilityType.VOR:
             return vorStyle;
           case FacilityType.NDB:
@@ -307,33 +379,13 @@ export class NextGenMapWaypointStyles {
     fontType: 'Roboto' | 'DejaVu',
     scale = 1
   ): (waypoint: Waypoint) => MapWaypointLabelStyles {
-    let font: string, largeFontSize: number, regularFontSize: number;
-
-    if (fontType === 'Roboto') {
-      font = 'Roboto-Bold';
-      largeFontSize = 20 * scale;
-      regularFontSize = 16 * scale;
-    } else {
-      font = 'DejaVuSans-SemiBold';
-      largeFontSize = 17 * scale;
-      regularFontSize = 17 * scale;
-    }
-
     const createLabelOptions = active
       ? NextGenMapWaypointStyles.createFplActiveLabelOptions
       : NextGenMapWaypointStyles.createFplInactiveLabelOptions;
 
-    const airportPriority = {
-      [AirportSize.Large]: basePriority + 0.8,
-      [AirportSize.Medium]: basePriority + 0.79,
-      [AirportSize.Small]: basePriority + 0.78
-    };
-    const vorPriority = basePriority + 0.7;
-    const ndbPriority = basePriority + 0.6;
-    const intPriority = basePriority + 0.5;
-    const rwyPriority = basePriority + 0.4;
-    const userPriority = basePriority + 0.9;
-    const fpPriority = basePriority + 0.1;
+    const priorities = NextGenMapWaypointStyles.getPriorities(basePriority);
+
+    const { font, fpLargeFontSize: largeFontSize, fpRegularFontSize: regularFontSize } = NextGenMapWaypointStyles.getFont(fontType, scale);
 
     const airportOptions = {
       [AirportSize.Large]: createLabelOptions(Vec2Math.create(0, -15 * scale), font, largeFontSize),
@@ -347,17 +399,17 @@ export class NextGenMapWaypointStyles {
     const smallOptions = createLabelOptions(Vec2Math.create(0, -8 * scale), font, regularFontSize);
 
     const airportStyle = {
-      [AirportSize.Large]: { priority: airportPriority[AirportSize.Large], alwaysShow: true, options: airportOptions[AirportSize.Large] },
-      [AirportSize.Medium]: { priority: airportPriority[AirportSize.Medium], alwaysShow: true, options: airportOptions[AirportSize.Medium] },
-      [AirportSize.Small]: { priority: airportPriority[AirportSize.Small], alwaysShow: true, options: airportOptions[AirportSize.Small] }
+      [AirportSize.Large]: { priority: priorities.airport[AirportSize.Large], alwaysShow: true, options: airportOptions[AirportSize.Large] },
+      [AirportSize.Medium]: { priority: priorities.airport[AirportSize.Medium], alwaysShow: true, options: airportOptions[AirportSize.Medium] },
+      [AirportSize.Small]: { priority: priorities.airport[AirportSize.Small], alwaysShow: true, options: airportOptions[AirportSize.Small] }
     };
 
-    const vorStyle = { priority: vorPriority, alwaysShow: true, options: vorOptions };
-    const ndbStyle = { priority: ndbPriority, alwaysShow: true, options: ndbOptions };
-    const intStyle = { priority: intPriority, alwaysShow: true, options: smallOptions };
-    const rwyStyle = { priority: rwyPriority, alwaysShow: true, options: smallOptions };
-    const userStyle = { priority: userPriority, alwaysShow: true, options: userOptions };
-    const fpStyle = { priority: fpPriority, alwaysShow: true, options: smallOptions };
+    const vorStyle = { priority: priorities.vor, alwaysShow: true, options: vorOptions };
+    const ndbStyle = { priority: priorities.ndb, alwaysShow: true, options: ndbOptions };
+    const intStyle = { priority: priorities.int, alwaysShow: true, options: smallOptions };
+    const rwyStyle = { priority: priorities.rwy, alwaysShow: true, options: smallOptions };
+    const userStyle = { priority: priorities.user, alwaysShow: true, options: userOptions };
+    const fpStyle = { priority: priorities.fp, alwaysShow: true, options: smallOptions };
 
     const defaultStyle = { priority: basePriority, alwaysShow: true, options: smallOptions };
 
@@ -365,7 +417,7 @@ export class NextGenMapWaypointStyles {
       if (waypoint instanceof AirportWaypoint) {
         return airportStyle[waypoint.size];
       } else if (FacilityWaypointUtils.isFacilityWaypoint(waypoint)) {
-        switch (ICAO.getFacilityType(waypoint.facility.get().icao)) {
+        switch (ICAO.getFacilityTypeFromValue(waypoint.facility.get().icaoStruct)) {
           case FacilityType.VOR:
             return vorStyle;
           case FacilityType.NDB:
@@ -453,54 +505,51 @@ export class NextGenMapWaypointStyles {
     const airportHighlightRingRadiusBuffer = -5 * scale;
     const standardHighlightRingRadiusBuffer = -8 * scale;
 
-    const airportPriority = {
-      [AirportSize.Large]: basePriority + 0.8,
-      [AirportSize.Medium]: basePriority + 0.79,
-      [AirportSize.Small]: basePriority + 0.78
-    };
-    const vorPriority = basePriority + 0.7;
-    const ndbPriority = basePriority + 0.6;
-    const intPriority = basePriority + 0.5;
-    const userPriority = basePriority + 0.9;
+    const priorities = NextGenMapWaypointStyles.getPriorities(basePriority);
 
     const airportSize = Vec2Math.create(26 * scale, 26 * scale);
     const standardSize = Vec2Math.create(32 * scale, 32 * scale);
 
     const airportStyle = {
       [AirportSize.Large]: {
-        priority: airportPriority[AirportSize.Large],
+        priority: priorities.airport[AirportSize.Large],
         size: airportSize,
         highlightOptions: Object.assign({ ringRadiusBuffer: airportHighlightRingRadiusBuffer }, baseHighlightOptions)
       },
       [AirportSize.Medium]: {
-        priority: airportPriority[AirportSize.Medium],
+        priority: priorities.airport[AirportSize.Medium],
         size: airportSize,
         highlightOptions: Object.assign({ ringRadiusBuffer: airportHighlightRingRadiusBuffer }, baseHighlightOptions)
       },
       [AirportSize.Small]: {
-        priority: airportPriority[AirportSize.Small],
+        priority: priorities.airport[AirportSize.Small],
         size: airportSize,
         highlightOptions: Object.assign({ ringRadiusBuffer: airportHighlightRingRadiusBuffer }, baseHighlightOptions)
       },
     };
 
     const vorStyle = {
-      priority: vorPriority,
+      priority: priorities.vor,
       size: standardSize,
       highlightOptions: Object.assign({ ringRadiusBuffer: standardHighlightRingRadiusBuffer }, baseHighlightOptions)
     };
     const ndbStyle = {
-      priority: ndbPriority,
+      priority: priorities.ndb,
       size: standardSize,
       highlightOptions: Object.assign({ ringRadiusBuffer: standardHighlightRingRadiusBuffer }, baseHighlightOptions)
     };
     const intStyle = {
-      priority: intPriority,
+      priority: priorities.int,
+      size: standardSize,
+      highlightOptions: Object.assign({ ringRadiusBuffer: standardHighlightRingRadiusBuffer }, baseHighlightOptions)
+    };
+    const rwyStyle = {
+      priority: priorities.rwy,
       size: standardSize,
       highlightOptions: Object.assign({ ringRadiusBuffer: standardHighlightRingRadiusBuffer }, baseHighlightOptions)
     };
     const userStyle = {
-      priority: userPriority,
+      priority: priorities.user,
       size: standardSize,
       highlightOptions: Object.assign({ ringRadiusBuffer: standardHighlightRingRadiusBuffer }, baseHighlightOptions)
     };
@@ -515,13 +564,15 @@ export class NextGenMapWaypointStyles {
       if (waypoint instanceof AirportWaypoint) {
         return airportStyle[waypoint.size];
       } else if (FacilityWaypointUtils.isFacilityWaypoint(waypoint)) {
-        switch (ICAO.getFacilityType(waypoint.facility.get().icao)) {
+        switch (ICAO.getFacilityTypeFromValue(waypoint.facility.get().icaoStruct)) {
           case FacilityType.VOR:
             return vorStyle;
           case FacilityType.NDB:
             return ndbStyle;
           case FacilityType.Intersection:
             return intStyle;
+          case FacilityType.RWY:
+            return rwyStyle;
           case FacilityType.USR:
             return userStyle;
         }
@@ -545,27 +596,9 @@ export class NextGenMapWaypointStyles {
     fontType: 'Roboto' | 'DejaVu',
     scale = 1
   ): (waypoint: Waypoint) => MapWaypointLabelStyles {
-    let font: string, largeFontSize: number, regularFontSize: number;
+    const priorities = NextGenMapWaypointStyles.getPriorities(basePriority);
 
-    if (fontType === 'Roboto') {
-      font = 'Roboto-Bold';
-      largeFontSize = 20 * scale;
-      regularFontSize = 16 * scale;
-    } else {
-      font = 'DejaVuSans-SemiBold';
-      largeFontSize = 17 * scale;
-      regularFontSize = 17 * scale;
-    }
-
-    const airportPriority = {
-      [AirportSize.Large]: basePriority + 0.8,
-      [AirportSize.Medium]: basePriority + 0.79,
-      [AirportSize.Small]: basePriority + 0.78
-    };
-    const vorPriority = basePriority + 0.7;
-    const ndbPriority = basePriority + 0.6;
-    const intPriority = basePriority + 0.5;
-    const userPriority = basePriority + 0.9;
+    const { font, largeFontSize, regularFontSize } = NextGenMapWaypointStyles.getFont(fontType, scale);
 
     const airportOptions = {
       [AirportSize.Large]: NextGenMapWaypointStyles.createHighlightLabelOptions(Vec2Math.create(0, -15 * scale), font, largeFontSize),
@@ -575,33 +608,36 @@ export class NextGenMapWaypointStyles {
 
     const vorOptions = NextGenMapWaypointStyles.createHighlightLabelOptions(Vec2Math.create(0, -11 * scale), font, regularFontSize);
     const ndbOptions = NextGenMapWaypointStyles.createHighlightLabelOptions(Vec2Math.create(0, -11 * scale), font, regularFontSize);
-    const intOptions = NextGenMapWaypointStyles.createHighlightLabelOptions(Vec2Math.create(0, -8 * scale), font, regularFontSize);
     const userOptions = NextGenMapWaypointStyles.createHighlightLabelOptions(Vec2Math.create(0, -12 * scale), font, regularFontSize);
+    const smallOptions = NextGenMapWaypointStyles.createHighlightLabelOptions(Vec2Math.create(0, -8 * scale), font, regularFontSize);
 
     const airportStyle = {
-      [AirportSize.Large]: { priority: airportPriority[AirportSize.Large], alwaysShow: true, options: airportOptions[AirportSize.Large] },
-      [AirportSize.Medium]: { priority: airportPriority[AirportSize.Medium], alwaysShow: true, options: airportOptions[AirportSize.Medium] },
-      [AirportSize.Small]: { priority: airportPriority[AirportSize.Small], alwaysShow: true, options: airportOptions[AirportSize.Small] }
+      [AirportSize.Large]: { priority: priorities.airport[AirportSize.Large], alwaysShow: true, options: airportOptions[AirportSize.Large] },
+      [AirportSize.Medium]: { priority: priorities.airport[AirportSize.Medium], alwaysShow: true, options: airportOptions[AirportSize.Medium] },
+      [AirportSize.Small]: { priority: priorities.airport[AirportSize.Small], alwaysShow: true, options: airportOptions[AirportSize.Small] }
     };
 
-    const vorStyle = { priority: vorPriority, alwaysShow: true, options: vorOptions };
-    const ndbStyle = { priority: ndbPriority, alwaysShow: true, options: ndbOptions };
-    const intStyle = { priority: intPriority, alwaysShow: true, options: intOptions };
-    const userStyle = { priority: userPriority, alwaysShow: true, options: userOptions };
+    const vorStyle = { priority: priorities.vor, alwaysShow: true, options: vorOptions };
+    const ndbStyle = { priority: priorities.ndb, alwaysShow: true, options: ndbOptions };
+    const intStyle = { priority: priorities.int, alwaysShow: true, options: smallOptions };
+    const rwyStyle = { priority: priorities.rwy, alwaysShow: true, options: smallOptions };
+    const userStyle = { priority: priorities.user, alwaysShow: true, options: userOptions };
 
-    const defaultStyle = { priority: basePriority, alwaysShow: false, options: intOptions };
+    const defaultStyle = { priority: basePriority, alwaysShow: false, options: smallOptions };
 
     return (waypoint: Waypoint): MapWaypointLabelStyles => {
       if (waypoint instanceof AirportWaypoint) {
         return airportStyle[waypoint.size];
       } else if (FacilityWaypointUtils.isFacilityWaypoint(waypoint)) {
-        switch (ICAO.getFacilityType(waypoint.facility.get().icao)) {
+        switch (ICAO.getFacilityTypeFromValue(waypoint.facility.get().icaoStruct)) {
           case FacilityType.VOR:
             return vorStyle;
           case FacilityType.NDB:
             return ndbStyle;
           case FacilityType.Intersection:
             return intStyle;
+          case FacilityType.RWY:
+            return rwyStyle;
           case FacilityType.USR:
             return userStyle;
         }
@@ -735,5 +771,263 @@ export class NextGenMapWaypointStyles {
    */
   public static procTransitionPreviewLabelStyles(basePriority: number, fontType: 'Roboto' | 'DejaVu', scale = 1): (waypoint: Waypoint) => MapWaypointLabelStyles {
     return NextGenMapWaypointStyles.normalLabelStyles(basePriority, fontType, scale);
+  }
+
+  /**
+   * Creates a function which retrieves next-generation (NXi, G3000, etc) icon styles for hovered waypoints.
+   * @param basePriority The base icon render priority. Icon priorities are guaranteed to fall in the range
+   * `[basePriority, basePriority + 1)`.
+   * @param scale The scaling factor for the icons. The larger the value, the larger the rendered icons. Defaults to
+   * `1`.
+   * @returns A function which retrieves next-generation (NXi, G3000, etc) icon styles for hovered waypoints.
+   */
+  public static hoverIconStyles(basePriority: number, scale = 1): (combinedRole: MapWaypointRenderRole | 0, waypoint: Waypoint) => MapWaypointIconHighlightStyles {
+    const baseHighlightOptions = {
+      strokeWidth: 2,
+      strokeColor: 'white',
+      outlineWidth: 0,
+      outlineColor: 'black',
+      bgColor: '#3c3c3c'
+    };
+
+    const airportHighlightRingRadiusBuffer = -5 * scale;
+    const standardHighlightRingRadiusBuffer = -8 * scale;
+    const fpHighlightRingRadiusBuffer = 8 * scale;
+
+    const priorities = NextGenMapWaypointStyles.getPriorities(basePriority);
+
+    const airportSize = Vec2Math.create(26 * scale, 26 * scale);
+    const standardSize = Vec2Math.create(32 * scale, 32 * scale);
+    const fpSize = Vec2Math.create(8 * scale, 8 * scale);
+
+    const airportStyle = {
+      [AirportSize.Large]: {
+        priority: priorities.airport[AirportSize.Large],
+        size: airportSize,
+        highlightOptions: Object.assign({ ringRadiusBuffer: airportHighlightRingRadiusBuffer }, baseHighlightOptions)
+      },
+      [AirportSize.Medium]: {
+        priority: priorities.airport[AirportSize.Medium],
+        size: airportSize,
+        highlightOptions: Object.assign({ ringRadiusBuffer: airportHighlightRingRadiusBuffer }, baseHighlightOptions)
+      },
+      [AirportSize.Small]: {
+        priority: priorities.airport[AirportSize.Small],
+        size: airportSize,
+        highlightOptions: Object.assign({ ringRadiusBuffer: airportHighlightRingRadiusBuffer }, baseHighlightOptions)
+      },
+    };
+
+    const vorStyle = {
+      priority: priorities.vor,
+      size: standardSize,
+      highlightOptions: Object.assign({ ringRadiusBuffer: standardHighlightRingRadiusBuffer }, baseHighlightOptions)
+    };
+    const ndbStyle = {
+      priority: priorities.ndb,
+      size: standardSize,
+      highlightOptions: Object.assign({ ringRadiusBuffer: standardHighlightRingRadiusBuffer }, baseHighlightOptions)
+    };
+    const intStyle = {
+      priority: priorities.int,
+      size: standardSize,
+      highlightOptions: Object.assign({ ringRadiusBuffer: standardHighlightRingRadiusBuffer }, baseHighlightOptions)
+    };
+    const rwyStyle = {
+      priority: priorities.rwy,
+      size: standardSize,
+      highlightOptions: Object.assign({ ringRadiusBuffer: standardHighlightRingRadiusBuffer }, baseHighlightOptions)
+    };
+    const userStyle = {
+      priority: priorities.user,
+      size: standardSize,
+      highlightOptions: Object.assign({ ringRadiusBuffer: standardHighlightRingRadiusBuffer }, baseHighlightOptions)
+    };
+
+    const fpStyle = {
+      priority: priorities.fp,
+      size: fpSize,
+      highlightOptions: Object.assign({ ringRadiusBuffer: fpHighlightRingRadiusBuffer }, baseHighlightOptions)
+    };
+
+    const defaultStyle = {
+      priority: basePriority,
+      size: standardSize,
+      highlightOptions: Object.assign({ ringRadiusBuffer: standardHighlightRingRadiusBuffer }, baseHighlightOptions)
+    };
+
+    return (combinedRole: MapWaypointRenderRole | 0, waypoint: Waypoint): MapWaypointIconHighlightStyles => {
+      if (waypoint instanceof AirportWaypoint) {
+        return airportStyle[waypoint.size];
+      } else if (FacilityWaypointUtils.isFacilityWaypoint(waypoint)) {
+        switch (ICAO.getFacilityTypeFromValue(waypoint.facility.get().icaoStruct)) {
+          case FacilityType.VOR:
+            return vorStyle;
+          case FacilityType.NDB:
+            return ndbStyle;
+          case FacilityType.Intersection:
+            return intStyle;
+          case FacilityType.RWY:
+            return rwyStyle;
+          case FacilityType.USR:
+            return userStyle;
+        }
+      } else if (waypoint instanceof FlightPathWaypoint) {
+        return fpStyle;
+      }
+
+      return defaultStyle;
+    };
+  }
+
+  /**
+   * Creates a function which retrieves next-generation (NXi, G3000, etc) label styles for hovered waypoints.
+   * @param basePriority The base label render priority. Label priorities are guaranteed to fall in the range
+   * `[basePriority, basePriority + 1)`.
+   * @param fontType The type of font to use for the labels.
+   * @param scale The scaling factor for the labels. The larger the value, the larger the rendered label. Defaults to
+   * `1`.
+   * @returns A function which retrieves next-generation (NXi, G3000, etc) label styles for hovered waypoints.
+   */
+  public static hoverLabelStyles(
+    basePriority: number,
+    fontType: 'Roboto' | 'DejaVu',
+    scale = 1
+  ): (combinedRole: MapWaypointRenderRole | 0, waypoint: Waypoint) => MapWaypointLabelStyles {
+    const font = NextGenMapWaypointStyles.getFont(fontType, scale);
+    const priorities = NextGenMapWaypointStyles.getPriorities(basePriority);
+
+    const styles = new Map([
+      0,
+      MapWaypointRenderRole.Highlight,
+      MapWaypointRenderRole.FlightPlanActive,
+      MapWaypointRenderRole.FlightPlanInactive,
+      MapWaypointRenderRole.ProcedurePreview,
+      MapWaypointRenderRole.ProcedureTransitionPreview,
+      MapWaypointRenderRole.Normal,
+      MapWaypointRenderRole.Airway,
+      MapWaypointRenderRole.VNav,
+    ].map(combinedRole => {
+      return [combinedRole, NextGenMapWaypointStyles.hoverLabelStylesForCombinedRole(combinedRole, priorities, font, scale)];
+    }));
+
+    return (combinedRole: MapWaypointRenderRole | 0, waypoint: Waypoint): MapWaypointLabelStyles => {
+      return (styles.get(combinedRole) ?? styles.get(0)!)(waypoint);
+    };
+  }
+
+  /**
+   * Creates a function which retrieves next-generation (NXi, G3000, etc) label styles for hovered waypoints rendered
+   * under a given combined render role.
+   * @param combinedRole The combined render role for which to get label styles.
+   * @param priorities The render priorities to use.
+   * @param font The font parameters to use.
+   * @param scale The scaling factor for the labels. The larger the value, the larger the rendered label.
+   * @returns A function which retrieves next-generation (NXi, G3000, etc) label styles for hovered waypoints rendered
+   * under the specified combined render role.
+   */
+  private static hoverLabelStylesForCombinedRole(
+    combinedRole: MapWaypointRenderRole | 0,
+    priorities: Readonly<Priorities>,
+    font: Readonly<Font>,
+    scale: number
+  ): (waypoint: Waypoint) => MapWaypointLabelStyles {
+    const isFlightPlan = BitFlags.isAny(
+      combinedRole,
+      MapWaypointRenderRole.FlightPlanActive
+      | MapWaypointRenderRole.FlightPlanInactive
+      | MapWaypointRenderRole.ProcedurePreview
+    );
+
+    let largeFontSize: number;
+    let regularFontSize: number;
+
+    if (isFlightPlan) {
+      ({ fpLargeFontSize: largeFontSize, fpRegularFontSize: regularFontSize } = font);
+    } else {
+      ({ largeFontSize, regularFontSize } = font);
+    }
+
+    const airportOptions = {
+      [AirportSize.Large]: NextGenMapWaypointStyles.createHoverLabelOptions(combinedRole, Vec2Math.create(0, -15 * scale), font.font, largeFontSize),
+      [AirportSize.Medium]: NextGenMapWaypointStyles.createHoverLabelOptions(combinedRole, Vec2Math.create(0, -15 * scale), font.font, regularFontSize),
+      [AirportSize.Small]: NextGenMapWaypointStyles.createHoverLabelOptions(combinedRole, Vec2Math.create(0, -15 * scale), font.font, regularFontSize)
+    };
+
+    const vorOptions = NextGenMapWaypointStyles.createHoverLabelOptions(combinedRole, Vec2Math.create(0, -11 * scale), font.font, regularFontSize);
+    const ndbOptions = NextGenMapWaypointStyles.createHoverLabelOptions(combinedRole, Vec2Math.create(0, -11 * scale), font.font, regularFontSize);
+    const userOptions = NextGenMapWaypointStyles.createHoverLabelOptions(combinedRole, Vec2Math.create(0, -12 * scale), font.font, regularFontSize);
+    const smallOptions = NextGenMapWaypointStyles.createHoverLabelOptions(combinedRole, Vec2Math.create(0, -8 * scale), font.font, regularFontSize);
+
+    const airportStyle = {
+      [AirportSize.Large]: { priority: priorities.airport[AirportSize.Large], alwaysShow: true, options: airportOptions[AirportSize.Large] },
+      [AirportSize.Medium]: { priority: priorities.airport[AirportSize.Medium], alwaysShow: true, options: airportOptions[AirportSize.Medium] },
+      [AirportSize.Small]: { priority: priorities.airport[AirportSize.Small], alwaysShow: true, options: airportOptions[AirportSize.Small] }
+    };
+
+    const vorStyle = { priority: priorities.vor, alwaysShow: true, options: vorOptions };
+    const ndbStyle = { priority: priorities.ndb, alwaysShow: true, options: ndbOptions };
+    const intStyle = { priority: priorities.int, alwaysShow: true, options: smallOptions };
+    const rwyStyle = { priority: priorities.rwy, alwaysShow: true, options: smallOptions };
+    const userStyle = { priority: priorities.user, alwaysShow: true, options: userOptions };
+    const fpStyle = { priority: priorities.fp, alwaysShow: true, options: smallOptions };
+
+    const defaultStyle = { priority: priorities.base, alwaysShow: false, options: smallOptions };
+
+    return (waypoint: Waypoint): MapWaypointLabelStyles => {
+      if (waypoint instanceof AirportWaypoint) {
+        return airportStyle[waypoint.size];
+      } else if (FacilityWaypointUtils.isFacilityWaypoint(waypoint)) {
+        switch (ICAO.getFacilityTypeFromValue(waypoint.facility.get().icaoStruct)) {
+          case FacilityType.VOR:
+            return vorStyle;
+          case FacilityType.NDB:
+            return ndbStyle;
+          case FacilityType.Intersection:
+            return intStyle;
+          case FacilityType.RWY:
+            return rwyStyle;
+          case FacilityType.USR:
+            return userStyle;
+        }
+      } else if (waypoint instanceof FlightPathWaypoint) {
+        return fpStyle;
+      }
+
+      return defaultStyle;
+    };
+  }
+
+  /**
+   * Creates initialization options for next-generation (NXi, G3000, etc) style waypoint labels rendered in a hover
+   * role.
+   * @param combinedRole The hover role's combined render role.
+   * @param offset The label offset, in pixels.
+   * @param font The name of the label font.
+   * @param fontSize The font size of the label, in pixels.
+   * @returns Initialization options for next-generation (NXi, G3000, etc) style waypoint labels rendered in a hover
+   * role.
+   */
+  private static createHoverLabelOptions(combinedRole: MapWaypointRenderRole | 0, offset: ReadonlyFloat64Array, font: string, fontSize: number): MapLocationTextLabelOptions {
+    const isFlightPlan = BitFlags.isAny(
+      combinedRole,
+      MapWaypointRenderRole.FlightPlanActive
+      | MapWaypointRenderRole.FlightPlanInactive
+      | MapWaypointRenderRole.ProcedurePreview
+    );
+
+    return {
+      anchor: isFlightPlan ? Vec2Math.create(0, 1) : Vec2Math.create(0.5, 1),
+      offset,
+      font,
+      fontSize,
+      fontColor: 'white',
+      fontOutlineWidth: 0,
+      showBg: true,
+      bgPadding: VecNMath.create(4, 1, 1, 1, 1),
+      bgColor: 'black',
+      bgOutlineWidth: 1,
+      bgOutlineColor: 'white'
+    };
   }
 }

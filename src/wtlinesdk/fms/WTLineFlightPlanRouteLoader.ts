@@ -13,14 +13,14 @@ import { WTLineFacilityUtils } from '../navigation/WTLineFacilityUtils';
 import { FlightPlanIndexType, FlightPlanIndexTypes, MainFlightPlanIndexType } from './WTLineFmsTypes';
 
 /**
- * A loader of flight plan routes into an instance of {@link WT21Fms}.
+ * A loader of flight plan routes into an instance of {@link WTLineFms}.
  */
 export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes<U, V>, U extends number = FlightPlanIndexType<T>, V extends U = MainFlightPlanIndexType<T>> {
   private loadOpId = 0;
   private activeLoadPromise?: Promise<boolean>;
 
   /**
-   * Creates a new instance of WT21FlightPlanRouteLoader.
+   * Creates a new instance of WTLineFlightPlanRouteLoader.
    * @param fms The FMS containing the primary flight plan to which the loader loads flight plan routes.
    * @param mainFlightPlanIndex The index of the main flight plan to load the route into
    */
@@ -148,6 +148,8 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
         }
 
         if (origin) {
+          this.fms.setOriginAirport(this.mainFlightPlanIndex, origin.airport.icaoStruct);
+
           const departureIndexes = this.retrieveDepartureArrivalIndexes(
             origin.airport,
             origin.airport.departures,
@@ -157,7 +159,8 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
           );
 
           if (departureIndexes.procedureIndex >= 0) {
-            await this.fms.loadDeparture(
+            await this.fms.loadOriginDeparture(
+              this.mainFlightPlanIndex,
               origin.airport,
               departureIndexes.procedureIndex,
               departureIndexes.runwayTransitionIndex,
@@ -169,7 +172,7 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
               return false;
             }
           } else {
-            this.fms.setOrigin(origin.airport, origin.runway);
+            this.fms.setDepartureRunway(this.mainFlightPlanIndex, origin.airport.icaoStruct, origin.runway, true);
           }
         }
       }
@@ -188,6 +191,8 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
         }
 
         if (destination) {
+          this.fms.setDestinationAirport(this.mainFlightPlanIndex, destination.airport.icaoStruct);
+
           const arrivalIndexes = this.retrieveDepartureArrivalIndexes(
             destination.airport,
             destination.airport.arrivals,
@@ -227,10 +232,6 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
               return false;
             }
           }
-
-          if (plan.procedureDetails.arrivalIndex < 0 && plan.procedureDetails.approachIndex < 0) {
-            this.fms.setDestination(destination.airport, destination.runway);
-          }
         }
       }
 
@@ -254,7 +255,7 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
         plan.getLegIndexesFromLeg(directToTargetLeg, directToTargetIndexes);
       }
 
-      if (this.fms.canDirectTo(directToTargetIndexes.segmentIndex, directToTargetIndexes.segmentLegIndex)) {
+      if (WTLineFmsUtils.canDirectTo(plan, directToTargetIndexes.segmentIndex, directToTargetIndexes.segmentLegIndex)) {
         this.fms.createDirectTo(directToTargetIndexes.segmentIndex, directToTargetIndexes.segmentLegIndex);
       }
 
@@ -312,7 +313,6 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
 
     let airwayEntryFacility: IntersectionFacility | null = null;
     let airwayEntrySegmentIndex = -1;
-    let airwayEntrySegmentLegIndex = -1;
 
     if (lastDepartureLeg) {
       switch (lastDepartureLeg.leg.type) {
@@ -325,7 +325,7 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
         case LegType.IF:
         case LegType.RF:
         case LegType.TF:
-          airwayEntryFacility = await this.retrieveIntersectionFacility(ICAO.stringV1ToValue(lastDepartureLeg.leg.fixIcao));
+          airwayEntryFacility = await this.retrieveIntersectionFacility(lastDepartureLeg.leg.fixIcaoStruct);
 
           if (opId !== this.loadOpId) {
             return null;
@@ -333,7 +333,6 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
 
           if (airwayEntryFacility) {
             airwayEntrySegmentIndex = departureSegment!.segmentIndex;
-            airwayEntrySegmentLegIndex = departureSegment!.legs.length - 1;
           }
       }
     }
@@ -387,7 +386,6 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
               // User facilities can never be airway entry waypoints.
               airwayEntryFacility = null;
               airwayEntrySegmentIndex = -1;
-              airwayEntrySegmentLegIndex = -1;
 
               if (isPrevLegPpos) {
                 directToTargetLeg = currentSegment.legs[currentSegment.legs.length - 1];
@@ -395,7 +393,7 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
             }
           }
         } else {
-          console.warn('WT21FlightPlanRouteLoader: cannot load lat/lon or PBD enroute leg due to pilot waypoint limit reached');
+          console.warn('WTLineFlightPlanRouteLoader: cannot load lat/lon or PBD enroute leg due to pilot waypoint limit reached');
         }
       } else {
         if (ICAO.isValueFacility(leg.fixIcao)) {
@@ -417,10 +415,10 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
                 if (airwayExitFacility) {
                   airway = await this.retrieveAirway(leg.via, airwayEntryFacility, airwayExitFacility);
                 } else {
-                  console.warn(`WT21FlightPlanRouteLoader: could not load airway '${leg.via}' to fix ${leg.fixIcao.ident} - the fix is not a valid exit waypoint`);
+                  console.warn(`WTLineFlightPlanRouteLoader: could not load airway '${leg.via}' to fix ${leg.fixIcao.ident} - the fix is not a valid exit waypoint`);
                 }
               } else {
-                console.warn(`WT21FlightPlanRouteLoader: could not load airway '${leg.via}' to fix ${leg.fixIcao.ident} - no valid entry waypoint`);
+                console.warn(`WTLineFlightPlanRouteLoader: could not load airway '${leg.via}' to fix ${leg.fixIcao.ident} - no valid entry waypoint`);
               }
             }
 
@@ -440,12 +438,11 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
               // before it (i.e. the entry waypoint) and we are guaranteed to be adding the segment to the end of the
               // flight plan so there is nothing after the segment to duplicate.
 
-              const airwaySegmentIndex = this.fms.insertAirwaySegment(
+              const airwaySegmentIndex = await this.fms.insertAirwayAtSegment(
+                this.mainFlightPlanIndex,
                 airway.airway,
-                airwayEntryFacility!,
-                airwayExitFacility!,
+                airwayExitFacility ?? undefined,
                 airwayEntrySegmentIndex,
-                airwayEntrySegmentLegIndex
               );
 
               // There is guaranteed to be an enroute segment after the airway segment that was just inserted.
@@ -453,7 +450,6 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
 
               airwayEntryFacility = airwayExitFacility;
               airwayEntrySegmentIndex = airwaySegmentIndex;
-              airwayEntrySegmentLegIndex = plan.getSegment(airwaySegmentIndex).legs.length - 1;
 
               if (isPrevLegPpos) {
                 directToTargetLeg = plan.getSegment(airwaySegmentIndex).legs[0];
@@ -477,7 +473,6 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
                 }
 
                 airwayEntrySegmentIndex = currentSegment.segmentIndex;
-                airwayEntrySegmentLegIndex = currentSegment.legs.length - 1;
 
                 if (isPrevLegPpos) {
                   directToTargetLeg = currentSegment.legs[currentSegment.legs.length - 1];
@@ -490,7 +485,7 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
             return null;
           }
         } else {
-          console.warn(`WT21FlightPlanRouteLoader: enroute fix with ICAO '${ICAO.valueToStringV1(leg.fixIcao)}' has invalid facility type`);
+          console.warn(`WTLineFlightPlanRouteLoader: enroute fix with ICAO '${ICAO.valueToStringV1(leg.fixIcao)}' has invalid facility type`);
         }
       }
 
@@ -510,7 +505,7 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
     try {
       return await this.fms.facLoader.getFacility(ICAO.getFacilityTypeFromValue(icao), ICAO.valueToStringV1(icao));
     } catch {
-      console.warn(`WT21FlightPlanRouteLoader: unable to retrieve facility with ICAO '${ICAO.valueToStringV1(icao)}'`);
+      console.warn(`WTLineFlightPlanRouteLoader: unable to retrieve facility with ICAO '${ICAO.valueToStringV1(icao)}'`);
     }
 
     return null;
@@ -540,7 +535,7 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
           runway = RunwayUtils.matchOneWayRunwayFromDesignation(airport, designation);
 
           if (!runway) {
-            console.warn(`WT21FlightPlanRouteLoader: unable to retrieve find runway with designation '${designation}' in airport ${airportIcao.ident}`);
+            console.warn(`WTLineFlightPlanRouteLoader: unable to retrieve find runway with designation '${designation}' in airport ${airportIcao.ident}`);
           }
         }
 
@@ -576,11 +571,11 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
     );
 
     if (procedureName !== '' && result.procedureIndex < 0) {
-      console.warn(`WT21FlightPlanRouteLoader: unable to find procedure with name '${procedureName}' in airport ${ICAO.getAirportIdentFromStringV1(airport.icao)}`);
+      console.warn(`WTLineFlightPlanRouteLoader: unable to find procedure with name '${procedureName}' in airport ${airport.icaoStruct.ident}`);
     }
 
     if (result.procedureIndex >= 0 && transitionName !== '' && result.enrouteTransitionIndex < 0) {
-      console.warn(`WT21FlightPlanRouteLoader: unable to find enroute transition with name '${transitionName}' in procedure ${ICAO.getAirportIdentFromStringV1(airport.icao)}.${procArray[result.procedureIndex].name}`);
+      console.warn(`WTLineFlightPlanRouteLoader: unable to find enroute transition with name '${transitionName}' in procedure ${airport.icaoStruct.ident}.${procArray[result.procedureIndex].name}`);
     }
 
     return result;
@@ -601,11 +596,11 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
     const result = AirportUtils.findApproachIndexesFromIdentifier(airport, approachIdentifier, transitionName);
 
     if (approachIdentifier.type !== '' && result.approachIndex < 0) {
-      console.warn(`WT21FlightPlanRouteLoader: unable to find approach ${approachIdentifier.type}${approachIdentifier.suffix === '' ? '' : ` ${approachIdentifier.suffix}`}${approachIdentifier.runway.number === '' ? '' : ` for runway ${approachIdentifier.runway.number}${approachIdentifier.runway.designator}`} in airport ${ICAO.getAirportIdentFromStringV1(airport.icao)}`);
+      console.warn(`WTLineFlightPlanRouteLoader: unable to find approach ${approachIdentifier.type}${approachIdentifier.suffix === '' ? '' : ` ${approachIdentifier.suffix}`}${approachIdentifier.runway.number === '' ? '' : ` for runway ${approachIdentifier.runway.number}${approachIdentifier.runway.designator}`} in airport ${ICAO.getAirportIdentFromStringV1(airport.icao)}`);
     }
 
     if (result.approachIndex >= 0 && transitionName !== '' && result.transitionIndex < 0) {
-      console.warn(`WT21FlightPlanRouteLoader: unable to find approach transition with name '${transitionName}' in approach ${ICAO.getAirportIdentFromStringV1(airport.icao)}.${WTLineFmsUtils.getApproachNameAsString(airport, result.approachIndex, -1)}`);
+      console.warn(`WTLineFlightPlanRouteLoader: unable to find approach transition with name '${transitionName}' in approach ${airport.icaoStruct.ident}.${WTLineFmsUtils.getApproachNameAsString(airport, result.approachIndex, -1)}`);
     }
 
     return result;
@@ -626,26 +621,12 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
           try {
             return await this.fms.facLoader.getFacility(FacilityType.Intersection, ICAO.valueToStringV1(icao));
           } catch {
-            console.warn(`WT21FlightPlanRouteLoader: unable to retrieve waypoint with ICAO '${ICAO.valueToStringV1(icao)}'`);
+            console.warn(`WTLineFlightPlanRouteLoader: unable to retrieve waypoint with ICAO '${ICAO.valueToStringV1(icao)}'`);
           }
       }
     }
 
     return null;
-  }
-
-  /**
-   * Retrieves the type-matched facility corresponding to an intersection facility.
-   * @param facility The intersection facility for which to retrieve the type-matched facility.
-   * @returns A Promise which is fulfilled with the requested facility, or `null` if such a facility could not be
-   * found.
-   */
-  private async retrieveFacilityFromIntersection(facility: IntersectionFacility): Promise<Facility | null> {
-    if (ICAO.isStringV1Facility(facility.icao, FacilityType.Intersection)) {
-      return facility;
-    }
-
-    return this.retrieveFacility(ICAO.stringV1ToValue(facility.icao));
   }
 
   /**
@@ -668,13 +649,13 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
     } | null
   > {
     if (ICAO.valueEquals(entryFacility.icaoStruct, exitFacility.icaoStruct)) {
-      console.warn(`WT21FlightPlanRouteLoader: could not load airway '${airwayName}' to fix ${ICAO.tryValueToStringV2(exitFacility.icaoStruct)} - the fix is the same as the entry fix`);
+      console.warn(`WTLineFlightPlanRouteLoader: could not load airway '${airwayName}' to fix ${ICAO.tryValueToStringV2(exitFacility.icaoStruct)} - the fix is the same as the entry fix`);
       return null;
     }
 
     try {
       // Note: airway type passed to getAirway() doesn't actually matter, so we will just use an arbitrary value.
-      const airway = await this.fms.facLoader.getAirway(airwayName, AirwayType.None, exitFacility.icao);
+      const airway = await this.fms.facLoader.getAirway(airwayName, AirwayType.None, exitFacility.icaoStruct);
 
       let entryIndex = -1;
       let exitIndex = -1;
@@ -684,14 +665,14 @@ export abstract class WTLineFlightPlanRouteLoader<T extends FlightPlanIndexTypes
         if ((entryIndex = airway.waypoints.findIndex(airwayFix => ICAO.valueEquals(airwayFix.icaoStruct, entryFacility.icaoStruct))) >= 0) {
           return { airway, entryIndex, exitIndex };
         } else {
-          console.warn(`WT21FlightPlanRouteLoader: could not load airway '${airwayName}' to fix ${ICAO.tryValueToStringV2(exitFacility.icaoStruct)} - the entry fix ${ICAO.tryValueToStringV2(entryFacility.icaoStruct)} is not part of the specified airway`);
+          console.warn(`WTLineFlightPlanRouteLoader: could not load airway '${airwayName}' to fix ${ICAO.tryValueToStringV2(exitFacility.icaoStruct)} - the entry fix ${ICAO.tryValueToStringV2(entryFacility.icaoStruct)} is not part of the specified airway`);
         }
       } else {
         // Should never happen.
-        console.warn(`WT21FlightPlanRouteLoader: could not load airway '${airwayName}' to fix ${ICAO.tryValueToStringV2(exitFacility.icaoStruct)} - the fix is not part of the specified airway`);
+        console.warn(`WTLineFlightPlanRouteLoader: could not load airway '${airwayName}' to fix ${ICAO.tryValueToStringV2(exitFacility.icaoStruct)} - the fix is not part of the specified airway`);
       }
     } catch {
-      console.warn(`WT21FlightPlanRouteLoader: could not load airway '${airwayName}' to fix ${ICAO.tryValueToStringV2(exitFacility.icaoStruct)} - the fix is not part of the specified airway`);
+      console.warn(`WTLineFlightPlanRouteLoader: could not load airway '${airwayName}' to fix ${ICAO.tryValueToStringV2(exitFacility.icaoStruct)} - the fix is not part of the specified airway`);
     }
 
     return null;
