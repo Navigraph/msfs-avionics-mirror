@@ -5,6 +5,7 @@
   "main": "index.ts",
   "scripts": {
     "build": "npm run build:compile && npm run build:rollup && npm run build:copies",
+    "build:types": "npx rollup -c rollup.config.dts.mjs",
     "build:compile": "npx tsc",
     "build:rollup": "robocopy html_ui *.css build/workingtitle-instruments-epic2/html_ui /s & npx rollup -c rollup.config.js",
     "build:copies": "npm run build:copies:extras & npm run build:copies:sdk & npm run build:copies:e2shared & npm run build:copies:behaviors",

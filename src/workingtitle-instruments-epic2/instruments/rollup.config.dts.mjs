@@ -1,0 +1,19 @@
+import { dts } from "rollup-plugin-dts";
+
+const src_path = `html_ui/Pages/VCockpit/Instruments/NavSystems/Epic2`;
+
+export default [
+  {
+    input: `${src_path}/TSC/index.ts`,
+    output: {
+      file: `dist-types/Epic2Tsc.d.ts`,
+      format: "es",
+    },
+    external: [
+      /@microsoft\/msfs-sdk/,
+      /@microsoft\/msfs-epic2-shared/,
+      /\.(css|svg|png|jpe?g|gif)$/,
+    ],
+    plugins: [dts()],
+  },
+];
