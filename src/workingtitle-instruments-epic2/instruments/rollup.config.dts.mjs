@@ -6,7 +6,7 @@ export default [
   {
     input: `${src_path}/TSC/index.ts`,
     output: {
-      file: `dist-types/Epic2Tsc.d.ts`,
+      file: `dist-types/2020-Epic2Tsc.d.ts`,
       format: "es",
     },
     external: [

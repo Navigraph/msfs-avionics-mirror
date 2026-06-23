@@ -1597,5 +1597,5 @@ declare class XpdrTabContent extends TscTabContent<XpdrTabContentProps> {
     destroy(): void;
 }
 
-export { BottomRow, CharInput, CharInputSlot, ComTabContent, CursorInput, DividerLine, DuAndCcdIcon, DuAndCcdSelectManager, DuAndCcdTabContent, Epic2TscInstrument, GenericCursorInputSlot, HomeTabContent, Keyboard, KeyboardAlphaKeyPopup, KeyboardController, MenuTab, NavTabContent, NumberPad, RadioSub, TSC_ICONS, TscButton, TscIconButton, XpdrTabContent };
+export { BottomRow, CharInput, CharInputSlot, ComTabContent, CursorInput, DividerLine, DuAndCcdIcon, DuAndCcdSelectManager, DuAndCcdTabContent, Epic2TscInstrument, GenericCursorInputSlot, HomeTabContent, Keyboard, KeyboardAlphaKeyPopup, KeyboardController, MenuTab, NavTabContent, NumberPad, RadioSub, TSC_ICONS, TscButton, TscIconButton, TscService, XpdrTabContent };
 export type { BottomRowProps, CharInputProps, CharInputSlotProps, CursorInputCharSelectionMode, CursorInputProps, CursorInputSlot, GenericCursorInputSlotProps, KeyValueMapType, KeyValues, KeyboardProps, NavButtonConfigProps, NavTabContentProps, NumButtonProps, RadioSubProps, TscButtonStyles };

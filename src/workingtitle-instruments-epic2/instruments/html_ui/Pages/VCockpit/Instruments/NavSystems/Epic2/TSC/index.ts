@@ -3,3 +3,4 @@ export * from './Epic2TscInstrument';
 export * from './Components';
 export * from './Pages';
 export * from './Shared';
+export * from './TscService';
