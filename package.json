@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "rollup-plugin-dts": "^6.4.1"
+  }
+}
