@@ -1,8 +1,9 @@
-# Project
-
-> **Note:** This is a fork of [microsoft/msfs-avionics-mirror](https://github.com/microsoft/msfs-avionics-mirror),
+> [!IMPORTANT]
+> This is a fork of [microsoft/msfs-avionics-mirror](https://github.com/microsoft/msfs-avionics-mirror),
 > detached from GitHub's fork network. Pull in upstream changes with `node scripts/sync-upstream.mjs`
 > (see [Syncing with upstream](#syncing-with-upstream)).
+
+# Project
 
 Welcome to the Microsoft Flight Simulator avionics source code repository. At this time, this repository contains the source code for the following MSFS 2024 (V2) avionics:
 
