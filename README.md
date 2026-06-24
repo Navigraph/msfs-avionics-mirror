@@ -1,6 +1,11 @@
 # Project
 
+> **Note:** This is a fork of [microsoft/msfs-avionics-mirror](https://github.com/microsoft/msfs-avionics-mirror),
+> detached from GitHub's fork network. Pull in upstream changes with `node scripts/sync-upstream.mjs`
+> (see [Syncing with upstream](#syncing-with-upstream)).
+
 Welcome to the Microsoft Flight Simulator avionics source code repository. At this time, this repository contains the source code for the following MSFS 2024 (V2) avionics:
+
 - Garmin G1000 NXi
 - Garmin GNS430W/530W
 - Garmin G3000/G5000
@@ -18,6 +23,14 @@ For the MSFS 2020 (V1) source, please use the `v1` branch.
 
 Documentation for the provided Typescript/JSX avionics creation framework can be found at https://microsoft.github.io/msfs-avionics-mirror/2024/
 
+## Syncing with upstream
+
+This fork is detached from the upstream Microsoft repo, so updates are pulled manually:
+
+```bash
+node scripts/sync-upstream.mjs
+```
+
 ## Contributing
 
 This repository is solely a mirror for the provided source for reference purposes and community usage. Contributions to the source are not able to be accepted at this time.
@@ -28,8 +41,8 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
+trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
